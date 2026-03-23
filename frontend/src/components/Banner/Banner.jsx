@@ -43,8 +43,8 @@ const Banner = () => {
                 <div className={bannerStyles.titleContainer}>
                   {/* Responsive heading sizes: smaller on phones, same on desktop */}
                   <h1 className={bannerStyles.title}>
-                    Medi
-                    <span className={bannerStyles.titleGradient}>Care+</span>
+                    Re
+                    <span className={bannerStyles.titleGradient}>vive+</span>
                   </h1>
 
                   {/* Stars */}
@@ -115,7 +115,7 @@ const Banner = () => {
                 </button>
 
                 <button
-                  onClick={() => (window.location.href = "tel:8299431275")}
+                  onClick={() => (window.location.href = "tel:78909710")}
                   aria-label="Emergency Call"
                   className={bannerStyles.emergencyButton}
                 >
@@ -147,6 +147,6 @@ const Banner = () => {
       </div>{" "}
       {/* end main container */}
     </div>
-  )
-}
+  );
+};
 export default Banner;

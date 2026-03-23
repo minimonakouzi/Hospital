@@ -1,5 +1,7 @@
 import cors from 'cors';
 import 'dotenv/config';
+
+console.log("CLERK KEY =", process.env.CLERK_PUBLISHABLE_KEY);
 import express from 'express';
 import { connectDB } from './config/db.js';
 
@@ -39,7 +41,7 @@ app.use(
 
 
 // ⭐ Use Clerk middleware globally (does NOT protect routes)
-app.use(clerkMiddleware());
+//app.use(clerkMiddleware());
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ limit: "20mb", extended: true }));
 

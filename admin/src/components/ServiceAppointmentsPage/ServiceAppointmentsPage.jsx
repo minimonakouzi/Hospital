@@ -91,17 +91,18 @@ function Toast({ toasts, removeToast }) {
   return (
     <div className={serviceAppointmentsStyles.toastContainer}>
       {toasts.map((t) => (
-        <div
-          key={t.id}
-          className={serviceAppointmentsStyles.toast}
-        >
+        <div key={t.id} className={serviceAppointmentsStyles.toast}>
           <div className={serviceAppointmentsStyles.toastContent}>
             <div className="mt-0.5">
               <Loader2 className={serviceAppointmentsStyles.toastSpinner} />
             </div>
             <div className={serviceAppointmentsStyles.toastText}>
-              <div className={serviceAppointmentsStyles.toastTitle}>{t.title}</div>
-              <div className={serviceAppointmentsStyles.toastMessage}>{t.message}</div>
+              <div className={serviceAppointmentsStyles.toastTitle}>
+                {t.title}
+              </div>
+              <div className={serviceAppointmentsStyles.toastMessage}>
+                {t.message}
+              </div>
             </div>
             <button
               onClick={() => removeToast(t.id)}
@@ -269,7 +270,6 @@ function RescheduleButton({ appointment, onReschedule, disabled }) {
   );
 }
 
-
 /* ---------------------------
   Main Component (fetch + actions)
 --------------------------- */
@@ -311,17 +311,17 @@ export default function ServiceAppointmentsPage() {
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(
-          body?.message || `Failed to fetch appointments (${res.status})`
+          body?.message || `Failed to fetch appointments (${res.status})`,
         );
       }
       const body = await res.json();
       const list = Array.isArray(body.appointments)
         ? body.appointments
-        : body.appointments ??
+        : (body.appointments ??
           body.items ??
           body.data ??
           body.appointments ??
-          [];
+          []);
 
       const normalized = (Array.isArray(list) ? list : [])
         .map((a) => {
@@ -379,7 +379,7 @@ export default function ServiceAppointmentsPage() {
     const timers = toasts.map((t) =>
       setTimeout(() => {
         setToasts((s) => s.filter((x) => x.id !== t.id));
-      }, 3000)
+      }, 3000),
     );
     return () => timers.forEach((t) => clearTimeout(t));
   }, [toasts]);
@@ -397,13 +397,13 @@ export default function ServiceAppointmentsPage() {
     if (old.status === "Completed" || old.status === "Canceled") {
       pushToast(
         "Cannot change status",
-        `Appointment #${id} is already ${old.status}.`
+        `Appointment #${id} is already ${old.status}.`,
       );
       return;
     }
 
     setAppointments((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: newStatus } : a))
+      prev.map((a) => (a.id === id ? { ...a, status: newStatus } : a)),
     );
     pushToast("Updating status", `Appointment #${id} → ${newStatus}`);
 
@@ -416,7 +416,7 @@ export default function ServiceAppointmentsPage() {
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(
-          body?.message || `Status update failed (${res.status})`
+          body?.message || `Status update failed (${res.status})`,
         );
       }
       const body = await res.json();
@@ -433,30 +433,30 @@ export default function ServiceAppointmentsPage() {
                   updated.time ||
                     updated.rescheduledTo?.time ||
                     a.raw?.time ||
-                    `${formatTwo(a.hour)}:${formatTwo(a.minute)} ${a.ampm}`
+                    `${formatTwo(a.hour)}:${formatTwo(a.minute)} ${a.ampm}`,
                 ).hour,
                 minute: parseTimeToParts(
                   updated.time ||
                     updated.rescheduledTo?.time ||
                     a.raw?.time ||
-                    `${formatTwo(a.hour)}:${formatTwo(a.minute)} ${a.ampm}`
+                    `${formatTwo(a.hour)}:${formatTwo(a.minute)} ${a.ampm}`,
                 ).minute,
                 ampm: parseTimeToParts(
                   updated.time ||
                     updated.rescheduledTo?.time ||
                     a.raw?.time ||
-                    `${formatTwo(a.hour)}:${formatTwo(a.minute)} ${a.ampm}`
+                    `${formatTwo(a.hour)}:${formatTwo(a.minute)} ${a.ampm}`,
                 ).ampm,
                 raw: updated || a.raw,
               }
-            : a
-        )
+            : a,
+        ),
       );
       pushToast("Status updated", `Appointment #${id} is now ${newStatus}`);
     } catch (err) {
       console.error("changeStatusRemote:", err);
       setAppointments((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, status: old.status } : a))
+        prev.map((a) => (a.id === id ? { ...a, status: old.status } : a)),
       );
       pushToast("Update failed", err.message || "Failed to update status");
     }
@@ -483,13 +483,13 @@ export default function ServiceAppointmentsPage() {
               ampm,
               status: "Rescheduled",
             }
-          : a
-      )
+          : a,
+      ),
     );
 
     pushToast(
       "Rescheduling",
-      `Appointment #${id} → ${formatDateNice(dateStr)} ${timeStr}`
+      `Appointment #${id} → ${formatDateNice(dateStr)} ${timeStr}`,
     );
 
     try {
@@ -532,20 +532,20 @@ export default function ServiceAppointmentsPage() {
                 status: updated.status || "Rescheduled",
                 raw: updated || a.raw,
               }
-            : a
-        )
+            : a,
+        ),
       );
       pushToast(
         "Rescheduled",
         `Appointment #${id} moved to ${formatDateNice(
-          finalDate
-        )} ${finalTimeStr}`
+          finalDate,
+        )} ${finalTimeStr}`,
       );
     } catch (err) {
       console.error("rescheduleRemote:", err);
       pushToast(
         "Reschedule failed",
-        err.message || "Failed to reschedule — reloading"
+        err.message || "Failed to reschedule — reloading",
       );
       await fetchAppointments();
     }
@@ -559,14 +559,14 @@ export default function ServiceAppointmentsPage() {
     if (
       !window.confirm(
         `Mark appointment for ${appt.patientName} on ${formatDateNice(
-          appt.date
-        )} as CANCELED?`
+          appt.date,
+        )} as CANCELED?`,
       )
     )
       return;
 
     setAppointments((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: "Canceled" } : a))
+      prev.map((a) => (a.id === id ? { ...a, status: "Canceled" } : a)),
     );
     pushToast("Canceling", `Appointment #${id} is being canceled`);
 
@@ -576,7 +576,7 @@ export default function ServiceAppointmentsPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-        }
+        },
       );
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -592,8 +592,8 @@ export default function ServiceAppointmentsPage() {
                 status: updated.status || "Canceled",
                 raw: updated || a.raw,
               }
-            : a
-        )
+            : a,
+        ),
       );
       pushToast("Canceled", `Appointment #${id} canceled`);
     } catch (err) {
@@ -610,7 +610,7 @@ export default function ServiceAppointmentsPage() {
         q
           ? (a.patientName || "").toLowerCase().includes(q) ||
             (a.serviceName || "").toLowerCase().includes(q)
-          : true
+          : true,
       )
       .filter((a) => (statusFilter ? a.status === statusFilter : true));
   }, [appointments, debouncedSearch, statusFilter]);
@@ -651,7 +651,9 @@ export default function ServiceAppointmentsPage() {
               <span className="sr-only">Search appointments</span>
               <div className="flex items-center gap-2 relative w-full">
                 <div className={serviceAppointmentsStyles.searchIconContainer}>
-                  <SearchIcon className={serviceAppointmentsStyles.searchIcon} />
+                  <SearchIcon
+                    className={serviceAppointmentsStyles.searchIcon}
+                  />
                 </div>
                 <input
                   value={search}
@@ -666,7 +668,9 @@ export default function ServiceAppointmentsPage() {
                     className={serviceAppointmentsStyles.clearSearchButton}
                     aria-label="clear search"
                   >
-                    <XIcon className={serviceAppointmentsStyles.clearSearchIcon} />
+                    <XIcon
+                      className={serviceAppointmentsStyles.clearSearchIcon}
+                    />
                   </button>
                 ) : null}
               </div>
@@ -708,9 +712,7 @@ export default function ServiceAppointmentsPage() {
           <Loader2 className="animate-spin" /> Loading appointments...
         </div>
       ) : error ? (
-        <div className={serviceAppointmentsStyles.errorContainer}>
-          {error}
-        </div>
+        <div className={serviceAppointmentsStyles.errorContainer}>{error}</div>
       ) : (
         <div className={serviceAppointmentsStyles.gridContainer}>
           {displayList.length === 0 ? (
@@ -737,22 +739,40 @@ export default function ServiceAppointmentsPage() {
                   <div className={serviceAppointmentsStyles.cardInner}>
                     <div>
                       <div className={serviceAppointmentsStyles.cardHeader}>
-                        <div className={serviceAppointmentsStyles.patientInfoContainer}>
-                          <div className={serviceAppointmentsStyles.patientAvatar}>
-                            <User className={serviceAppointmentsStyles.patientAvatarIcon} />
+                        <div
+                          className={
+                            serviceAppointmentsStyles.patientInfoContainer
+                          }
+                        >
+                          <div
+                            className={serviceAppointmentsStyles.patientAvatar}
+                          >
+                            <User
+                              className={
+                                serviceAppointmentsStyles.patientAvatarIcon
+                              }
+                            />
                           </div>
 
                           <div>
-                            <div className={serviceAppointmentsStyles.patientName}>
+                            <div
+                              className={serviceAppointmentsStyles.patientName}
+                            >
                               {a.patientName}
                             </div>
-                            <div className={serviceAppointmentsStyles.patientDetails}>
+                            <div
+                              className={
+                                serviceAppointmentsStyles.patientDetails
+                              }
+                            >
                               {a.gender} • {a.age} yrs
                             </div>
                           </div>
                         </div>
 
-                        <div className={serviceAppointmentsStyles.statusContainer}>
+                        <div
+                          className={serviceAppointmentsStyles.statusContainer}
+                        >
                           <StatusBadge status={a.status} />
                           <div className="mt-1">
                             <StatusSelect
@@ -764,38 +784,56 @@ export default function ServiceAppointmentsPage() {
                         </div>
                       </div>
 
-                      <div className={serviceAppointmentsStyles.detailsContainer}>
+                      <div
+                        className={serviceAppointmentsStyles.detailsContainer}
+                      >
                         <div className={serviceAppointmentsStyles.detailItem}>
-                          <Phone className={serviceAppointmentsStyles.detailIcon} />
-                          <span className={serviceAppointmentsStyles.detailText}>
+                          <Phone
+                            className={serviceAppointmentsStyles.detailIcon}
+                          />
+                          <span
+                            className={serviceAppointmentsStyles.detailText}
+                          >
                             {a.mobile}
                           </span>
                         </div>
 
                         <div className={serviceAppointmentsStyles.detailItem}>
-                          <BadgeIndianRupee className={serviceAppointmentsStyles.detailIcon} />
+                          <BadgeIndianRupee
+                            className={serviceAppointmentsStyles.detailIcon}
+                          />
                           <span className={serviceAppointmentsStyles.feesText}>
-                            Fees: ₹{a.fees}
+                            Fees: ${a.fees}
                           </span>
                         </div>
 
                         <div className={serviceAppointmentsStyles.detailItem}>
-                          <Calendar className={serviceAppointmentsStyles.detailIcon} />
-                          <span className={serviceAppointmentsStyles.detailText}>
+                          <Calendar
+                            className={serviceAppointmentsStyles.detailIcon}
+                          />
+                          <span
+                            className={serviceAppointmentsStyles.detailText}
+                          >
                             Date: {formatDateNice(a.date)}
                           </span>
                         </div>
 
                         <div className={serviceAppointmentsStyles.detailItem}>
-                          <Clock className={serviceAppointmentsStyles.detailIcon} />
-                          <span className={serviceAppointmentsStyles.detailText}>
+                          <Clock
+                            className={serviceAppointmentsStyles.detailIcon}
+                          />
+                          <span
+                            className={serviceAppointmentsStyles.detailText}
+                          >
                             Time: {formatTimeDisplay(a)}
                           </span>
                         </div>
 
                         <div className={serviceAppointmentsStyles.serviceText}>
                           Service:{" "}
-                          <span className={serviceAppointmentsStyles.serviceName}>
+                          <span
+                            className={serviceAppointmentsStyles.serviceName}
+                          >
                             {a.serviceName}
                           </span>
                         </div>
@@ -803,7 +841,11 @@ export default function ServiceAppointmentsPage() {
                     </div>
 
                     <div className={serviceAppointmentsStyles.actionsContainer}>
-                      <div className={serviceAppointmentsStyles.actionsInnerContainer}>
+                      <div
+                        className={
+                          serviceAppointmentsStyles.actionsInnerContainer
+                        }
+                      >
                         <div className="flex-1">
                           <RescheduleButton
                             appointment={a}
@@ -818,7 +860,9 @@ export default function ServiceAppointmentsPage() {
                           <button
                             onClick={() => cancelRemote(a.id)}
                             disabled={isLocked}
-                            className={serviceAppointmentsStyles.cancelButton(isLocked)}
+                            className={serviceAppointmentsStyles.cancelButton(
+                              isLocked,
+                            )}
                             title={
                               isLocked ? "Cannot cancel" : "Cancel appointment"
                             }
@@ -840,23 +884,33 @@ export default function ServiceAppointmentsPage() {
 
       <div className={serviceAppointmentsStyles.legendContainer}>
         <div className={serviceAppointmentsStyles.legendItem}>
-          <div className={`${serviceAppointmentsStyles.legendDot} bg-amber-400`} />{" "}
+          <div
+            className={`${serviceAppointmentsStyles.legendDot} bg-amber-400`}
+          />{" "}
           <span>Pending</span>
         </div>
         <div className={serviceAppointmentsStyles.legendItem}>
-          <div className={`${serviceAppointmentsStyles.legendDot} bg-emerald-400`} />{" "}
+          <div
+            className={`${serviceAppointmentsStyles.legendDot} bg-emerald-400`}
+          />{" "}
           <span>Confirmed</span>
         </div>
         <div className={serviceAppointmentsStyles.legendItem}>
-          <div className={`${serviceAppointmentsStyles.legendDot} bg-red-400`} />{" "}
+          <div
+            className={`${serviceAppointmentsStyles.legendDot} bg-red-400`}
+          />{" "}
           <span>Canceled</span>
         </div>
         <div className={serviceAppointmentsStyles.legendItem}>
-          <div className={`${serviceAppointmentsStyles.legendDot} bg-sky-400`} />{" "}
+          <div
+            className={`${serviceAppointmentsStyles.legendDot} bg-sky-400`}
+          />{" "}
           <span>Completed</span>
         </div>
         <div className={serviceAppointmentsStyles.legendItem}>
-          <div className={`${serviceAppointmentsStyles.legendDot} bg-indigo-400`} />{" "}
+          <div
+            className={`${serviceAppointmentsStyles.legendDot} bg-indigo-400`}
+          />{" "}
           <span>Rescheduled</span>
         </div>
       </div>

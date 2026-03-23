@@ -132,8 +132,8 @@ export default function AnimatedDoctorListResponsive({ apiBase }) {
         const list = Array.isArray(body.data)
           ? body.data
           : Array.isArray(body.doctors)
-          ? body.doctors
-          : [];
+            ? body.doctors
+            : [];
 
         // normalize schedule to plain object and ensure keys normalized
         const normalized = list.map((d) => {
@@ -166,11 +166,11 @@ export default function AnimatedDoctorListResponsive({ apiBase }) {
     let list = doctors;
     if (filterStatus === "available") {
       list = list.filter(
-        (d) => (d.availability || "").toString().toLowerCase() === "available"
+        (d) => (d.availability || "").toString().toLowerCase() === "available",
       );
     } else if (filterStatus === "unavailable") {
       list = list.filter(
-        (d) => (d.availability || "").toString().toLowerCase() !== "available"
+        (d) => (d.availability || "").toString().toLowerCase() !== "available",
       );
     }
     if (!q) return list;
@@ -269,7 +269,7 @@ export default function AnimatedDoctorListResponsive({ apiBase }) {
             aria-pressed={filterStatus === "available"}
             className={doctorListStyles.filterButton(
               filterStatus === "available",
-              "emerald"
+              "emerald",
             )}
           >
             Available
@@ -280,7 +280,7 @@ export default function AnimatedDoctorListResponsive({ apiBase }) {
             aria-pressed={filterStatus === "unavailable"}
             className={doctorListStyles.filterButton(
               filterStatus === "unavailable",
-              "red"
+              "red",
             )}
           >
             Unavailable
@@ -328,12 +328,12 @@ export default function AnimatedDoctorListResponsive({ apiBase }) {
 
                         <span
                           className={doctorListStyles.availabilityBadge(
-                            isAvailable
+                            isAvailable,
                           )}
                         >
                           <span
                             className={doctorListStyles.availabilityDot(
-                              isAvailable
+                              isAvailable,
                             )}
                           />
                           {isAvailable ? "Available" : "Unavailable"}

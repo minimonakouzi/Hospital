@@ -585,7 +585,7 @@ export default function ListPage() {
                     <span className=" sm:inline">:</span>
                     <span>{formatTimeAMPM(a.time)}</span>
                   </div>
-                  <div className={listPageStyles.feeText}>₹{a.fee}</div>
+                  <div className={listPageStyles.feeText}>${a.fee}</div>
                 </div>
 
                 <div className={listPageStyles.contactStatusSection}>

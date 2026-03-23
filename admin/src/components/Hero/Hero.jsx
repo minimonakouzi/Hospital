@@ -25,18 +25,14 @@ export default function Hero({ role = "admin", userName = "Doctor" }) {
             <div className={heroStyles.contentBox}>
               {/* Image */}
               <div className={heroStyles.logoContainer}>
-                <img
-                  src={logoImg}
-                  alt="Medtek"
-                  className={heroStyles.logo}
-                />
+                <img src={logoImg} alt="Medtek" className={heroStyles.logo} />
               </div>
 
               {/* Heading */}
               <h1 className={heroStyles.heading}>
                 {isDoctor
                   ? `Welcome, Dr. ${userName}`
-                  : "WELCOME TO MEDICARE ADMIN PANEL"}
+                  : "WELCOME TO REVIVE ADMIN PANEL"}
               </h1>
 
               <p className={heroStyles.description}>

@@ -70,8 +70,8 @@ export default function ContactPage() {
     else if (!/^\S+@\S+\.\S+$/.test(form.email))
       e.email = "Enter a valid email";
     if (!form.phone.trim()) e.phone = "Phone number is required";
-    else if (!/^[0-9]{10}$/.test(form.phone))
-      e.phone = "Phone number must be exactly 10 digits";
+    else if (!/^[0-9]{8}$/.test(form.phone))
+      e.phone = "Phone number must be exactly 8 digits";
 
     if (!form.department && !form.service) {
       e.department = "Please choose a department or service";
@@ -121,7 +121,7 @@ export default function ContactPage() {
       form.department || "N/A"
     }\nService: ${form.service || "N/A"}\nMessage: ${form.message}`;
 
-    const url = `https://wa.me/8299431275?text=${encodeURIComponent(text)}`;
+    const url = `https://wa.me/81727941?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank");
 
     setForm(initial);
@@ -145,9 +145,7 @@ export default function ContactPage() {
       <div className={contactPageStyles.gridContainer}>
         {/* Left: Contact form */}
         <div className={contactPageStyles.formContainer}>
-          <h2 className={contactPageStyles.formTitle}>
-            Contact Our Clinic
-          </h2>
+          <h2 className={contactPageStyles.formTitle}>Contact Our Hospital</h2>
           <p className={contactPageStyles.formSubtitle}>
             Fill the form — we'll open WhatsApp so you can connect with us
             instantly.
@@ -203,9 +201,9 @@ export default function ContactPage() {
                   type="tel"
                   value={form.phone}
                   onChange={handleChange}
-                  placeholder="1234567890"
+                  placeholder="12345678"
                   className={contactPageStyles.input}
-                  maxLength="10"
+                  maxLength="8"
                   aria-invalid={!!errors.phone}
                 />
                 {errors.phone && (
@@ -231,9 +229,7 @@ export default function ContactPage() {
                   ))}
                 </select>
                 {errors.department && (
-                  <p className={contactPageStyles.error}>
-                    {errors.department}
-                  </p>
+                  <p className={contactPageStyles.error}>{errors.department}</p>
                 )}
               </div>
             </div>
@@ -304,35 +300,27 @@ export default function ContactPage() {
         {/* Right: Contact info + Map */}
         <div className={contactPageStyles.infoContainer}>
           <div className={contactPageStyles.infoCard}>
-            <h3 className={contactPageStyles.infoTitle}>
-              Visit Our Clinic
-            </h3>
-            <p className={contactPageStyles.infoText}>
-              Gomtinagar, Lucknow, Uttar Pradesh
+            <h3 className={contactPageStyles.infoTitle}>Visit Our Hospital</h3>
+            <p className={contactPageStyles.infoText}>Lebanon , Beirut</p>
+            <p className={contactPageStyles.infoItem}>
+              <Phone size={16} /> 81727914
             </p>
             <p className={contactPageStyles.infoItem}>
-              <Phone size={16} /> 8299431275
-            </p>
-            <p className={contactPageStyles.infoItem}>
-              <Mail size={16} /> info@yourclinic.com
+              <Mail size={16} /> info@yourhospital.com
             </p>
           </div>
 
           <iframe
-            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3559.460792853461!2d80.98709187529213!3d26.870382662861033!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x399be2ae3cea2421%3A0x6c0de12e8a77818f!2sGomti%20Nagar%2C%20Lucknow%2C%20Uttar%20Pradesh!5e0!3m2!1sen!2sin!4v1731769000000!5m2!1sen!2sin"
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3312.65364346415!2d35.496961299999995!3d33.87281599999999!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x151f1740ef2ed83b%3A0xf1ec1faedb96137f!2sBeirut%20Arab%20University!5e0!3m2!1sen!2slb!4v1774291172248!5m2!1sen!2slb"
             className={contactPageStyles.map}
-            title="Gomti Nagar Map"
+            title="Revive Hospital Map"
             loading="lazy"
             allowFullScreen
           ></iframe>
 
           <div className={contactPageStyles.hoursContainer}>
-            <h4 className={contactPageStyles.hoursTitle}>
-              Clinic Hours
-            </h4>
-            <p className={contactPageStyles.hoursText}>
-              Mon - Sat: 9:00 AM - 6:00 PM
-            </p>
+            <h4 className={contactPageStyles.hoursTitle}>Hospital Hours</h4>
+            <p className={contactPageStyles.hoursText}>24/7 Availability</p>
           </div>
         </div>
       </div>

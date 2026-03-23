@@ -41,7 +41,7 @@ function normalizeDoctor(doc) {
     "General";
   const fee = safeNumber(
     doc.fee ?? doc.fees ?? doc.consultationFee ?? doc.consultation_fee ?? 0,
-    0
+    0,
   );
   const image =
     doc.imageUrl ||
@@ -114,7 +114,7 @@ export default function DashboardPage() {
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(
-            body?.message || `Failed to fetch doctors (${res.status})`
+            body?.message || `Failed to fetch doctors (${res.status})`,
           );
         }
         const body = await res.json();
@@ -160,7 +160,7 @@ export default function DashboardPage() {
 
         const body = await res.json().catch(() => ({}));
         const count = Number(
-          body?.count ?? body?.totalUsers ?? body?.data ?? 0
+          body?.count ?? body?.totalUsers ?? body?.data ?? 0,
         );
         if (mounted) setPatientCount(isNaN(count) ? 0 : count);
       } catch (err) {
@@ -181,19 +181,19 @@ export default function DashboardPage() {
     const totalDoctors = doctors.length;
     const totalAppointments = doctors.reduce(
       (s, d) => s + safeNumber(d.appointments?.total, 0),
-      0
+      0,
     );
     const totalEarnings = doctors.reduce(
       (s, d) => s + safeNumber(d.earnings, 0),
-      0
+      0,
     );
     const completed = doctors.reduce(
       (s, d) => s + safeNumber(d.appointments?.completed, 0),
-      0
+      0,
     );
     const canceled = doctors.reduce(
       (s, d) => s + safeNumber(d.appointments?.canceled, 0),
-      0
+      0,
     );
     const totalLoginPatients =
       doctors.reduce((s, d) => s + (d.raw?.loginPatientsCount ?? 0), 0) || 0;
@@ -231,9 +231,7 @@ export default function DashboardPage() {
         {/* Header */}
         <div className={s.headerContainer}>
           <div>
-            <h1 className={s.headerTitle}>
-              DASHBOARD
-            </h1>
+            <h1 className={s.headerTitle}>DASHBOARD</h1>
             <p className={s.headerSubtitle}>
               Overview of doctors & appointments
             </p>
@@ -255,7 +253,7 @@ export default function DashboardPage() {
             value={
               patientCountLoading
                 ? "Loading..."
-                : patientCount ?? totals.totalLoginPatients
+                : (patientCount ?? totals.totalLoginPatients)
             }
           />
 
@@ -268,7 +266,7 @@ export default function DashboardPage() {
           <StatCard
             icon={<BadgeIndianRupee className="w-6 h-6" />}
             label="Total Earnings"
-            value={`₹ ${totals.totalEarnings.toLocaleString()}`}
+            value={`$ ${totals.totalEarnings.toLocaleString()}`}
           />
 
           <StatCard
@@ -286,9 +284,7 @@ export default function DashboardPage() {
 
         {/* Search */}
         <div className="mb-6">
-          <label className={s.searchLabel}>
-            Search doctors
-          </label>
+          <label className={s.searchLabel}>Search doctors</label>
           <div className={s.searchContainer}>
             <div className={s.searchInputContainer}>
               <input
@@ -348,8 +344,11 @@ export default function DashboardPage() {
                 {visibleDoctors.map((d, idx) => (
                   <tr
                     key={d.id}
-                    className={s.tableRow + " " + 
-                      (idx % 2 === 0 ? s.tableRowEven : s.tableRowOdd)}
+                    className={
+                      s.tableRow +
+                      " " +
+                      (idx % 2 === 0 ? s.tableRowEven : s.tableRowOdd)
+                    }
                   >
                     <td className={s.tableCell + " " + s.tableCellFlex}>
                       <div className={s.verticalLine} />
@@ -359,12 +358,8 @@ export default function DashboardPage() {
                         className={s.doctorImage}
                       />
                       <div>
-                        <div className={s.doctorName}>
-                          {d.name}
-                        </div>
-                        <div className={s.doctorId}>
-                          ID: {d.id}
-                        </div>
+                        <div className={s.doctorName}>{d.name}</div>
+                        <div className={s.doctorId}>ID: {d.id}</div>
                       </div>
                     </td>
 
@@ -372,9 +367,7 @@ export default function DashboardPage() {
                       {d.specialization}
                     </td>
 
-                    <td className={s.tableCell + " " + s.feeText}>
-                      ₹ {d.fee}
-                    </td>
+                    <td className={s.tableCell + " " + s.feeText}>$ {d.fee}</td>
 
                     <td className={s.tableCell + " " + s.appointmentsText}>
                       {d.appointments.total}
@@ -389,7 +382,7 @@ export default function DashboardPage() {
                     </td>
 
                     <td className={s.tableCell + " " + s.earningsText}>
-                      ₹ {d.earnings.toLocaleString()}
+                      $ {d.earnings.toLocaleString()}
                     </td>
                   </tr>
                 ))}
@@ -445,25 +438,21 @@ function MobileDoctorCard({ d }) {
     <div className={s.mobileDoctorCard}>
       <div className={s.mobileDoctorHeader}>
         <div className="flex items-center gap-3">
-          <img
-            src={d.image}
-            alt={d.name}
-            className={s.mobileDoctorImage}
-          />
+          <img src={d.image} alt={d.name} className={s.mobileDoctorImage} />
           <div>
             <div className={s.mobileDoctorName}>{d.name}</div>
-            <div className={s.mobileDoctorSpecialization}>{d.specialization}</div>
+            <div className={s.mobileDoctorSpecialization}>
+              {d.specialization}
+            </div>
           </div>
         </div>
-        <div className={s.mobileDoctorFee}>₹ {d.fee}</div>
+        <div className={s.mobileDoctorFee}>$ {d.fee}</div>
       </div>
 
       <div className={s.mobileStatsGrid}>
         <div>
           <div className={s.mobileStatLabel}>Appts</div>
-          <div className={s.mobileStatValue}>
-            {d.appointments.total}
-          </div>
+          <div className={s.mobileStatValue}>{d.appointments.total}</div>
         </div>
 
         <div>
@@ -483,7 +472,7 @@ function MobileDoctorCard({ d }) {
 
       <div className={s.mobileEarningsContainer}>
         <div>Earned</div>
-        <div className="font-semibold">₹ {d.earnings.toLocaleString()}</div>
+        <div className="font-semibold">$ {d.earnings.toLocaleString()}</div>
       </div>
     </div>
   );

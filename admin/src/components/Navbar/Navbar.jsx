@@ -144,7 +144,7 @@ export default function AnimatedNavbar() {
       return;
     }
     clerk.openSignIn();
-    navigate('/h')
+    navigate("/h");
   };
 
   const handleSignOut = async () => {
@@ -173,18 +173,10 @@ export default function AnimatedNavbar() {
         <div className={ns.flexContainer}>
           {/* LEFT */}
           <div className={ns.logoContainer}>
-            <img
-              src={logoImg}
-              alt="Medtek"
-              className={ns.logoImage}
-            />
+            <img src={logoImg} alt="Medtek" className={ns.logoImage} />
             <Link to="/">
-              <div className={ns.logoLink}>
-                MediCare
-              </div>
-              <div className={ns.logoSubtext}>
-                Healthcare Solutions
-              </div>
+              <div className={ns.logoLink}>Revive</div>
+              <div className={ns.logoSubtext}>Healthcare Solutions</div>
             </Link>
           </div>
 
@@ -278,10 +270,7 @@ export default function AnimatedNavbar() {
 
         {/* When mobile menu is open, render an overlay that closes the menu when clicked. */}
         {open && (
-          <div
-            className={ns.mobileOverlay}
-            onClick={() => setOpen(false)}
-          />
+          <div className={ns.mobileOverlay} onClick={() => setOpen(false)} />
         )}
 
         {/* MOBILE MENU */}
@@ -359,7 +348,7 @@ export default function AnimatedNavbar() {
                       }}
                       className={ns.mobileLoginButton + " " + ns.cursorPointer}
                     >
-                      Login 
+                      Login
                     </button>
                   </div>
                 )}
@@ -380,12 +369,8 @@ function CenterNavItem({ to, icon, label }) {
       to={to}
       end
       className={({ isActive }) =>
-        `nav-item ${
-          isActive ? "active" : ""
-        } ${ns.centerNavItemBase} ${
-          isActive
-            ? ns.centerNavItemActive
-            : ns.centerNavItemInactive
+        `nav-item ${isActive ? "active" : ""} ${ns.centerNavItemBase} ${
+          isActive ? ns.centerNavItemActive : ns.centerNavItemInactive
         }`
       }
     >

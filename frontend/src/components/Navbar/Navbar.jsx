@@ -103,9 +103,7 @@ export default function Navbar() {
                 </div>
               </div>
               <div className={navbarStyles.logoTextContainer}>
-                <h1 className={navbarStyles.logoTitle}>
-                  MediCare
-                </h1>
+                <h1 className={navbarStyles.logoTitle}>Revive</h1>
                 <p className={navbarStyles.logoSubtitle}>
                   Healthcare Solutions
                 </p>

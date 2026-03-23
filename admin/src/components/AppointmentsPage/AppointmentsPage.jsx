@@ -1,7 +1,11 @@
 // AppointmentsPage.jsx
 import React, { useMemo, useState, useEffect } from "react";
 import { Search, Calendar, BadgeIndianRupee } from "lucide-react";
-import { pageStyles, statusClasses, keyframesStyles } from "../../assets/dummyStyles";
+import {
+  pageStyles,
+  statusClasses,
+  keyframesStyles,
+} from "../../assets/dummyStyles";
 
 /* ----------------------
   Config
@@ -147,7 +151,7 @@ export default function AppointmentsPage() {
 
   const displayed = useMemo(
     () => (showAll ? sortedFiltered : sortedFiltered.slice(0, 8)),
-    [sortedFiltered, showAll]
+    [sortedFiltered, showAll],
   );
 
   // Admin cancel (calls backend POST /api/appointments/:id/cancel)
@@ -166,14 +170,14 @@ export default function AppointmentsPage() {
     const ok = window.confirm(
       `As admin, mark appointment for ${appt.patientName} with ${
         appt.doctorName
-      } on ${formatDateISO(appt.slot.date)} at ${appt.slot.time} as CANCELLED?`
+      } on ${formatDateISO(appt.slot.date)} at ${appt.slot.time} as CANCELLED?`,
     );
     if (!ok) return;
 
     try {
       // Optimistic UI update
       setAppointments((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, status: "Canceled" } : p))
+        prev.map((p) => (p.id === id ? { ...p, status: "Canceled" } : p)),
       );
       setShowAll(true);
 
@@ -201,8 +205,8 @@ export default function AppointmentsPage() {
                   },
                   raw: updated,
                 }
-              : p
-          )
+              : p,
+          ),
         );
       }
     } catch (err) {
@@ -248,9 +252,7 @@ export default function AppointmentsPage() {
       <div className={pageStyles.maxWidthContainer}>
         <header className={pageStyles.headerContainer}>
           <div className={pageStyles.headerTitleSection}>
-            <h1 className={pageStyles.headerTitle}>
-              Appointments
-            </h1>
+            <h1 className={pageStyles.headerTitle}>Appointments</h1>
             <p className={pageStyles.headerSubtitle}>
               Manage and search upcoming patient appointments
             </p>
@@ -309,13 +311,9 @@ export default function AppointmentsPage() {
         </header>
 
         {loading ? (
-          <div className={pageStyles.loadingErrorContainer}>
-            Loading...
-          </div>
+          <div className={pageStyles.loadingErrorContainer}>Loading...</div>
         ) : error ? (
-          <div className={pageStyles.errorContainer}>
-            {error}
-          </div>
+          <div className={pageStyles.errorContainer}>{error}</div>
         ) : sortedFiltered.length === 0 ? (
           <div className={pageStyles.noResultsContainer}>
             No appointments found.
@@ -364,9 +362,7 @@ export default function AppointmentsPage() {
                     </div>
 
                     <div className="text-right">
-                      <div className={pageStyles.feeLabel}>
-                        Fees
-                      </div>
+                      <div className={pageStyles.feeLabel}>Fees</div>
                       <div className={pageStyles.feeAmount}>
                         <BadgeIndianRupee size={16} />
                         <span>{a.fee}</span>
@@ -401,7 +397,10 @@ export default function AppointmentsPage() {
                           }
                           disabled={isDisabled}
                           aria-disabled={isDisabled}
-                          className={pageStyles.cancelButton(isDisabled, isCompleted)}
+                          className={pageStyles.cancelButton(
+                            isDisabled,
+                            isCompleted,
+                          )}
                         >
                           {isDisabled
                             ? isCompleted

@@ -78,15 +78,15 @@ function getScheduleDates(schedule) {
 }
 
 /**
- * Normalize phone string: remove non-digits and return up to last 10 digits.
+ * Normalize phone string: remove non-digits and return up to last 8 digits.
  * Returns empty string if no digits.
  */
-function normalizePhoneTo10(phone) {
+function normalizePhoneLebanon(phone) {
   if (!phone) return "";
   const digits = ("" + phone).replace(/\D/g, "");
   if (!digits) return "";
-  // prefer last 10 digits (common when country code present)
-  return digits.length <= 10 ? digits : digits.slice(-10);
+  // prefer last 8 digits (common when country code present)
+  return digits.length <= 8 ? digits : digits.slice(-8);
 }
 
 export default function DoctorDetail() {
@@ -133,7 +133,7 @@ export default function DoctorDetail() {
           ? user.phoneNumbers[0]
           : "") ||
         "";
-      const phone = normalizePhoneTo10(rawPhone);
+      const phone = normalizePhoneLebanon(rawPhone);
       const email =
         (user.emailAddresses && user.emailAddresses[0]?.emailAddress) ||
         user.primaryEmailAddress ||
@@ -186,16 +186,17 @@ export default function DoctorDetail() {
     return doctor.schedule && doctor.schedule[key] ? doctor.schedule[key] : [];
   }, [selectedDate, doctor]);
 
-  // Mobile input handlers: only digits, max 10
+  // Mobile input handlers: only digits, max 8
+
   const handleMobileChange = (value) => {
-    const digits = value.replace(/\D/g, "").slice(0, 10);
+    const digits = value.replace(/\D/g, "").slice(0, 8);
     setFormData((prev) => ({ ...prev, mobile: digits }));
   };
 
   const handleMobilePaste = (e) => {
     e.preventDefault();
     const pasted = (e.clipboardData || window.clipboardData).getData("text");
-    const digits = pasted.replace(/\D/g, "").slice(0, 10);
+    const digits = pasted.replace(/\D/g, "").slice(0, 8);
     setFormData((prev) => ({ ...prev, mobile: digits }));
   };
 
@@ -216,10 +217,10 @@ export default function DoctorDetail() {
       return;
     }
 
-    // Mobile must be exactly 10 digits
+    // Mobile must be exactly 8 digits
     const mobileDigits = (formData.mobile || "").replace(/\D/g, "");
-    if (mobileDigits.length !== 10) {
-      toast.error("Mobile number must be exactly 10 digits.", {
+    if (mobileDigits.length !== 8) {
+      toast.error("Mobile number must be exactly 8 digits.", {
         position: "top-center",
         autoClose: 2500,
       });
@@ -496,7 +497,7 @@ export default function DoctorDetail() {
                     <div className={doctorDetailStyles.infoLabel}>
                       Consultation Fee
                     </div>
-                    <div className={doctorDetailStyles.feeValue}>₹{fee}</div>
+                    <div className={doctorDetailStyles.feeValue}>${fee}</div>
                   </div>
                 </div>
 
@@ -614,9 +615,9 @@ export default function DoctorDetail() {
                     <input
                       type="tel"
                       inputMode="numeric"
-                      pattern="\d{10}"
-                      maxLength={10}
-                      placeholder="Mobile Number (10 digits)"
+                      pattern="\d{8}"
+                      maxLength={8}
+                      placeholder="Mobile Number (8 digits)"
                       className={doctorDetailStyles.formInput}
                       value={formData.mobile}
                       onChange={(e) => handleMobileChange(e.target.value)}
@@ -633,7 +634,6 @@ export default function DoctorDetail() {
                       <option value="">Gender</option>
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
-                      <option value="Other">Other</option>
                     </select>
 
                     <input
@@ -732,7 +732,7 @@ export default function DoctorDetail() {
                         Consultation Fee:
                       </span>
                       <span className={doctorDetailStyles.feeDisplay}>
-                        ₹{fee}
+                        ${fee}
                       </span>
                     </div>
                   </div>

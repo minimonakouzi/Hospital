@@ -576,7 +576,7 @@ export default function AppointmentPage() {
 
               <h3 className={cardStyles.serviceName}>{srv.name}</h3>
 
-              <p className={cardStyles.price}>₹{srv.price}</p>
+              <p className={cardStyles.price}>${srv.price}</p>
 
               <p className={cardStyles.serviceDateContainer}>
                 <CalendarDays className={iconSize.medium} /> {srv.date}

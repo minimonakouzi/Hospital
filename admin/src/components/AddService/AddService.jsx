@@ -12,8 +12,6 @@ import {
 } from "lucide-react";
 import { addServiceStyles } from "../../assets/dummyStyles";
 
-
-
 export default function AddService({ apiBase, serviceId }) {
   const API_BASE = apiBase || "http://localhost:4000";
 
@@ -54,10 +52,10 @@ export default function AddService({ apiBase, serviceId }) {
     "Dec",
   ];
   const hours = Array.from({ length: 12 }).map((_, i) =>
-    String(i + 1).padStart(2, "0")
+    String(i + 1).padStart(2, "0"),
   );
   const minutes = Array.from({ length: 12 }).map((_, i) =>
-    String(i * 5).padStart(2, "0")
+    String(i * 5).padStart(2, "0"),
   );
   const ampm = ["AM", "PM"];
 
@@ -79,10 +77,10 @@ export default function AddService({ apiBase, serviceId }) {
   const daysInSelectedMonth = new Date(
     selectedYearNum,
     selectedMonthNum + 1,
-    0
+    0,
   ).getDate();
   const days = Array.from({ length: daysInSelectedMonth }).map((_, i) =>
-    String(i + 1)
+    String(i + 1),
   );
 
   // clamp selected day if month/year changes to a smaller month
@@ -108,7 +106,7 @@ export default function AddService({ apiBase, serviceId }) {
           showToast(
             "error",
             "Load failed",
-            "Could not load service for editing."
+            "Could not load service for editing.",
           );
           return;
         }
@@ -124,7 +122,7 @@ export default function AddService({ apiBase, serviceId }) {
         setInstructions(
           Array.isArray(data.instructions) && data.instructions.length
             ? data.instructions
-            : [""]
+            : [""],
         );
         setSlots(Array.isArray(data.slots) ? data.slots : []);
         // image: show remote image URL as preview
@@ -240,7 +238,7 @@ export default function AddService({ apiBase, serviceId }) {
       showToast(
         "error",
         "Duplicate Slot",
-        "This time slot has already been added. Please select a different time."
+        "This time slot has already been added. Please select a different time.",
       );
       return;
     }
@@ -250,7 +248,7 @@ export default function AddService({ apiBase, serviceId }) {
       showToast(
         "error",
         "Past Time",
-        "You cannot add a time slot in the past. Please select a future date/time."
+        "You cannot add a time slot in the past. Please select a future date/time.",
       );
       setErrors((e) => ({ ...e, slots: true }));
       return;
@@ -289,7 +287,7 @@ export default function AddService({ apiBase, serviceId }) {
       showToast(
         "error",
         "Missing Fields",
-        "Please fill all required fields before submitting."
+        "Please fill all required fields before submitting.",
       );
       return;
     }
@@ -334,7 +332,7 @@ export default function AddService({ apiBase, serviceId }) {
       showToast(
         "success",
         serviceId ? "Service Updated" : "Service Added",
-        `${serviceName} saved with ${slots.length} slot(s).`
+        `${serviceName} saved with ${slots.length} slot(s).`,
       );
 
       // If created new, reset form. If edited, update preview states to reflect server response
@@ -370,8 +368,8 @@ export default function AddService({ apiBase, serviceId }) {
               toast.type === "error"
                 ? addServiceStyles.toast.toastError
                 : toast.type === "info"
-                ? addServiceStyles.toast.toastInfo
-                : addServiceStyles.toast.toastSuccess
+                  ? addServiceStyles.toast.toastInfo
+                  : addServiceStyles.toast.toastSuccess
             } animate-slideIn`}
           >
             <div className={addServiceStyles.toast.iconContainer(toast.type)}>
@@ -384,9 +382,7 @@ export default function AddService({ apiBase, serviceId }) {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <div className={addServiceStyles.toast.title}>
-                {toast.title}
-              </div>
+              <div className={addServiceStyles.toast.title}>{toast.title}</div>
               <div className={addServiceStyles.toast.message}>
                 {toast.message}
               </div>
@@ -401,10 +397,7 @@ export default function AddService({ apiBase, serviceId }) {
         )}
       </div>
 
-      <form
-        onSubmit={handleSubmit}
-        className={addServiceStyles.container.form}
-      >
+      <form onSubmit={handleSubmit} className={addServiceStyles.container.form}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
           <div>
             <h1 className={addServiceStyles.header.title}>
@@ -541,7 +534,9 @@ export default function AddService({ apiBase, serviceId }) {
                   value={serviceName}
                   onChange={(e) => setServiceName(e.target.value)}
                   placeholder="e.g. General Consultation"
-                  className={addServiceStyles.formFields.input(errors.serviceName)}
+                  className={addServiceStyles.formFields.input(
+                    errors.serviceName,
+                  )}
                 />
               </div>
 
@@ -552,7 +547,7 @@ export default function AddService({ apiBase, serviceId }) {
                 <input
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  placeholder="₹ 499"
+                  placeholder="$500"
                   className={addServiceStyles.formFields.input(errors.price)}
                   inputMode="numeric"
                 />
@@ -602,13 +597,12 @@ export default function AddService({ apiBase, serviceId }) {
               </div>
 
               <div
-                className={addServiceStyles.instructions.container(errors.instructions)}
+                className={addServiceStyles.instructions.container(
+                  errors.instructions,
+                )}
               >
                 {instructions.map((ins, idx) => (
-                  <div
-                    key={idx}
-                    className={addServiceStyles.instructions.item}
-                  >
+                  <div key={idx} className={addServiceStyles.instructions.item}>
                     <div className={addServiceStyles.icon.number}>
                       {idx + 1}.
                     </div>
@@ -624,7 +618,9 @@ export default function AddService({ apiBase, serviceId }) {
                         onClick={() => removeInstruction(idx)}
                         className={addServiceStyles.instructions.removeButton}
                       >
-                        <Trash2 className={addServiceStyles.icon.removeInstruction} />
+                        <Trash2
+                          className={addServiceStyles.icon.removeInstruction}
+                        />
                       </button>
                     )}
                   </div>
@@ -633,9 +629,7 @@ export default function AddService({ apiBase, serviceId }) {
             </div>
 
             {/* slot controls */}
-            <div
-              className={addServiceStyles.slots.container(errors.slots)}
-            >
+            <div className={addServiceStyles.slots.container(errors.slots)}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2 text-emerald-700 font-medium">
                   <Calendar className="w-5 h-5" /> Slots & Schedule
@@ -706,7 +700,9 @@ export default function AddService({ apiBase, serviceId }) {
 
                 <div className={addServiceStyles.grids.timeSubGrid}>
                   <div className="min-w-0">
-                    <label className={addServiceStyles.labels.small}>Hour</label>
+                    <label className={addServiceStyles.labels.small}>
+                      Hour
+                    </label>
                     <select
                       value={slotHour}
                       onChange={(e) => setSlotHour(e.target.value)}
@@ -721,7 +717,9 @@ export default function AddService({ apiBase, serviceId }) {
                   </div>
 
                   <div className="min-w-0">
-                    <label className={addServiceStyles.labels.small}>Minute</label>
+                    <label className={addServiceStyles.labels.small}>
+                      Minute
+                    </label>
                     <select
                       value={slotMinute}
                       onChange={(e) => setSlotMinute(e.target.value)}
@@ -736,7 +734,9 @@ export default function AddService({ apiBase, serviceId }) {
                   </div>
 
                   <div className="min-w-0">
-                    <label className={addServiceStyles.labels.small}>AM/PM</label>
+                    <label className={addServiceStyles.labels.small}>
+                      AM/PM
+                    </label>
                     <select
                       value={slotAmPm}
                       onChange={(e) => setSlotAmPm(e.target.value)}
@@ -770,14 +770,12 @@ export default function AddService({ apiBase, serviceId }) {
                 <div className={addServiceStyles.grids.slotsGrid}>
                   {slots.length === 0 ? (
                     <div className="text-sm text-gray-400 italic px-4 py-2">
-                      No slots added yet. Select a time and click "Add This Time Slot"
+                      No slots added yet. Select a time and click "Add This Time
+                      Slot"
                     </div>
                   ) : (
                     slots.map((s, idx) => (
-                      <div
-                        key={s}
-                        className={addServiceStyles.slots.slotItem}
-                      >
+                      <div key={s} className={addServiceStyles.slots.slotItem}>
                         <div className="flex items-center gap-2 min-w-0">
                           <Clock className={addServiceStyles.icon.clock} />
                           <div className={addServiceStyles.slots.slotText}>

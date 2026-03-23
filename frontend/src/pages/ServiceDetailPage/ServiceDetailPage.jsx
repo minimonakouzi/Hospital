@@ -40,7 +40,7 @@ export default function ServiceDetail() {
   const [submitError, setSubmitError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
-  const isValidMobile = (m) => /^\d{10}$/.test(m);
+  const isValidMobile = (m) => /^\d{8}$/.test(m);
 
   const isValidAge = (a) => {
     if (a === "" || a === null || a === undefined) return false;
@@ -51,7 +51,7 @@ export default function ServiceDetail() {
   function getClientMissingFields() {
     const missing = [];
     if (!customerName || !customerName.trim()) missing.push("patientName");
-    if (!mobile || !isValidMobile(mobile)) missing.push("mobile (10 digits)");
+    if (!mobile || !isValidMobile(mobile)) missing.push("mobile (8 digits)");
     if (!selectedDate) missing.push("date");
     if (!selectedTime) missing.push("time");
 
@@ -476,8 +476,8 @@ export default function ServiceDetail() {
               <input
                 type="text"
                 required
-                placeholder="Mobile (10 digits) *"
-                maxLength={10}
+                placeholder="Mobile (8 digits) *"
+                maxLength={8}
                 value={mobile}
                 onChange={(e) => setMobile(e.target.value.replace(/\D/g, ""))}
                 className={
@@ -505,7 +505,6 @@ export default function ServiceDetail() {
                 <option value="">Select Gender *</option>
                 <option>Male</option>
                 <option>Female</option>
-                <option>Other</option>
               </select>
 
               <input
@@ -631,7 +630,7 @@ export default function ServiceDetail() {
               {submitting
                 ? "Submitting..."
                 : `Confirm Booking ${
-                    service.price ? `• ₹${service.price}` : ""
+                    service.price ? `• $${service.price}` : ""
                   }`}
             </button>
           </div>
@@ -693,7 +692,7 @@ export default function ServiceDetail() {
                 <b>Payment:</b> {paymentMethod}
               </p>
               <p>
-                <b>Price:</b> ₹{service.price}
+                <b>Price:</b> $ {service.price}
               </p>
             </div>
           </div>

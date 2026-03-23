@@ -40,31 +40,31 @@ const Footer = () => {
       Icon: Facebook,
       color: footerStyles.facebookColor,
       name: "Facebook",
-      href: "https://www.facebook.com/people/Hexagon-Digital-Services/61567156598660/",
+      //href: "https://www.facebook.com/people/Hexagon-Digital-Services/61567156598660/",
     },
     {
       Icon: Twitter,
       color: footerStyles.twitterColor,
       name: "Twitter",
-      href: "https://www.linkedin.com/company/hexagondigtial-services/",
+      //href: "https://www.linkedin.com/company/hexagondigtial-services/",
     },
     {
       Icon: Instagram,
       color: footerStyles.instagramColor,
       name: "Instagram",
-      href: "http://instagram.com/hexagondigitalservices?igsh=MWp2NG1oNTlibWVnZA%3D%3D",
+      //href: "http://instagram.com/hexagondigitalservices?igsh=MWp2NG1oNTlibWVnZA%3D%3D",
     },
     {
       Icon: Linkedin,
       color: footerStyles.linkedinColor,
       name: "LinkedIn",
-      href: "https://www.linkedin.com/company/hexagondigtial-services/",
+      //href: "https://www.linkedin.com/company/hexagondigtial-services/",
     },
     {
       Icon: Youtube,
       color: footerStyles.youtubeColor,
       name: "YouTube",
-      href: "https://youtube.com/@hexagondigitalservices?si=lxEFYNCP42t6AoDJ",
+      //href: "https://youtube.com/@hexagondigitalservices?si=lxEFYNCP42t6AoDJ",
     },
   ];
 
@@ -99,7 +99,8 @@ const Footer = () => {
               </div>
 
               <div>
-                <h2 className={footerStyles.companyName}>MediCare</h2>
+                <h2 className={footerStyles.companyName}>Revive</h2>
+
                 <p className={footerStyles.companyTagline}>
                   Healthcare Solutions
                 </p>
@@ -117,21 +118,23 @@ const Footer = () => {
                 <div className={footerStyles.contactIconWrapper}>
                   <Phone className={footerStyles.contactIcon} />
                 </div>
-                <span className={footerStyles.contactText}>+91 8299431275</span>
+                <span className={footerStyles.contactText}>+961 81727941</span>
               </div>
               <div className={footerStyles.contactItem}>
                 <div className={footerStyles.contactIconWrapper}>
                   <Mail className={footerStyles.contactIcon} />
                 </div>
                 <span className={footerStyles.contactText}>
-                  hexagonsservices@gmail.com
+                  monakouzi1@gmail.com
                 </span>
               </div>
               <div className={footerStyles.contactItem}>
                 <div className={footerStyles.contactIconWrapper}>
                   <MapPin className={footerStyles.contactIcon} />
                 </div>
-                <span className={footerStyles.contactText}>Lucknow, India</span>
+                <span className={footerStyles.contactText}>
+                  Beirut , Lebanon
+                </span>
               </div>
             </div>
           </div>
@@ -237,19 +240,7 @@ const Footer = () => {
         {/* Bottom */}
         <div className={footerStyles.bottomSection}>
           <div className={footerStyles.copyright}>
-            <span>© {currentYear} MediCare Healthcare.</span>
-          </div>
-
-          <div className={footerStyles.designerText}>
-            <span>Designed by</span>
-            <a
-              href="https://hexagondigitalservices.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={footerStyles.designerLink}
-            >
-              Hexagon Digital Services
-            </a>
+            <span>© {currentYear} Revive Healthcare.</span>
           </div>
         </div>
       </div>
