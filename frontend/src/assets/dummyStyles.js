@@ -143,9 +143,9 @@ export const bannerStyles = {
   emergencyButtonIcon: "w-4 h-4 sm:w-5 sm:h-5",
   
   // Image section
-  imageContainer: "relative w-full max-w-md mx-auto",
-  imageFrame: "relative transform transition-transform duration-500 overflow-hidden rounded-xl",
-  image: "w-full object-cover h-56 sm:h-72 md:h-96 lg:h-[360px] xl:h-[420px] transition-transform duration-700"
+  imageContainer: "relative w-full max-w-2xl mx-auto flex justify-center",
+  imageFrame: "relative transform transition-transform duration-500 overflow-hidden rounded-xl flex items-center justify-center",
+  image: "w-full h-auto max-h-[520px] object-contain transition-transform duration-700"
 };
 
 export const commonStyles = {

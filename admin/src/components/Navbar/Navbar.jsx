@@ -173,7 +173,7 @@ export default function AnimatedNavbar() {
         <div className={ns.flexContainer}>
           {/* LEFT */}
           <div className={ns.logoContainer}>
-            <img src={logoImg} alt="Medtek" className={ns.logoImage} />
+            <img src={logoImg} alt="Revive" className={ns.logoImage} />
             <Link to="/">
               <div className={ns.logoLink}>Revive</div>
               <div className={ns.logoSubtext}>Healthcare Solutions</div>

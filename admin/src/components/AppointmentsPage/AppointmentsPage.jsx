@@ -48,7 +48,7 @@ function dateTimeFromSlot(slot) {
   Component
 ------------------------ */
 export default function AppointmentsPage() {
-  // toggle this to true if current user is major admin — keeps same behavior as your backend logic
+  // toggle this to true if current user is admin — keeps same behavior as your backend logic
   const isAdmin = true;
 
   const [appointments, setAppointments] = useState([]);

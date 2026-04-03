@@ -42,7 +42,7 @@ export default function Navbar() {
             />
           </div>
           <div className={navbarStylesDr.brandTextContainer}>
-            <div className={navbarStylesDr.brandTitle}>Medtek</div>
+            <div className={navbarStylesDr.brandTitle}>Revive</div>
             <div className={navbarStylesDr.brandSubtitle}>
               HealthCare Solutions
             </div>
