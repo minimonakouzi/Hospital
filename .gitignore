@@ -1,0 +1,24 @@
+# dependencies
+node_modules
+**/node_modules
+
+# environment variables (VERY IMPORTANT)
+.env
+**/.env
+
+# expo / react native
+.expo
+dist
+build
+
+# logs
+*.log
+
+# system files
+.DS_Store
+
+# vscode
+.vscode
+
+# ignore mobile folder (since you made separate repo)
+mobile/
