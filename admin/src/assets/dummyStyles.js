@@ -21,7 +21,7 @@ export const doctorDetailStyles = {
   textareaBase: "p-3 rounded-xl border-2 border-blue-100 bg-white placeholder:text-gray-400 shadow-sm w-full focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all",
   inputWithIcon: "pr-12",
   
-  // File upload styles
+  // File upload style
   fileInput: "w-40 md:w-[180px] border-2 border-blue-100 rounded-full p-2 text-sm bg-white focus:border-blue-400 transition",
   imagePreview: "h-12 w-12 md:h-16 md:w-16 rounded-full shadow-md border-2 border-blue-200 object-cover",
   removeImageButton: "absolute -top-2 -right-1.5 bg-rose-500 text-white rounded-full p-1 transition",
