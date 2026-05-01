@@ -1,14 +1,16 @@
-import React from 'react'
-import Navbar from '../../components/Navbar/Navbar'
-import DashboardPage from '../../components/DashboardPage/DashboardPage'
+import React from "react";
+import DashboardPage from "../../components/DashboardPage/DashboardPage";
+import AdminLayout from "../../components/AdminLayout/AdminLayout";
 
 const Home = () => {
   return (
-    <div>
-        <Navbar/>
-        <DashboardPage/>
-    </div>
-  )
-}
+    <AdminLayout
+      title="Dashboard"
+      subtitle="Overview of doctors, patients, appointments, and earnings"
+    >
+      <DashboardPage />
+    </AdminLayout>
+  );
+};
 
-export default Home
+export default Home;

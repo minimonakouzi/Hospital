@@ -1,20 +1,17 @@
-// ServiceAppointmentsPage.jsx
-// Fixed reschedule flow to send `rescheduledTo` and handle backend response shape { success: true, data: updated }
-
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  User,
-  Phone,
+  DollarSign,
   Calendar,
-  Clock,
-  CheckCircle,
-  XCircle,
+  Check,
+  ChevronDown,
   Loader2,
-  BadgeIndianRupee,
-  Search as SearchIcon,
-  X as XIcon,
+  Phone,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  User,
+  X,
 } from "lucide-react";
-import { serviceAppointmentsStyles } from "../../assets/dummyStyles";
 
 /* ----------------------
   Config
@@ -27,6 +24,7 @@ const API_BASE = "http://localhost:4000";
 function formatTwo(n) {
   return String(n).padStart(2, "0");
 }
+
 function formatDateNice(dateStr) {
   if (!dateStr) return "";
   const d = new Date(`${dateStr}T00:00:00`);
@@ -39,33 +37,33 @@ function formatDateNice(dateStr) {
 
 function parseTimeToParts(timeStr) {
   if (!timeStr) return { hour: 12, minute: 0, ampm: "AM" };
+
   const m = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
   if (m) {
     let hh = Number(m[1]);
     const mm = Number(m[2]);
     const ampm = m[3] ? m[3].toUpperCase() : null;
+
     if (!ampm) {
       const hour12 = hh % 12 === 0 ? 12 : hh % 12;
       return { hour: hour12, minute: mm, ampm: hh >= 12 ? "PM" : "AM" };
     }
+
     return { hour: hh, minute: mm, ampm };
   }
-  return { hour: 12, minute: 0, ampm: "AM" };
-}
 
-function timePartsTo12HourString(hh24, mm) {
-  let ampm = hh24 >= 12 ? "PM" : "AM";
-  let hour = hh24 % 12 === 0 ? 12 : hh24 % 12;
-  return `${formatTwo(hour)}:${formatTwo(mm)} ${ampm}`;
+  return { hour: 12, minute: 0, ampm: "AM" };
 }
 
 function timePartsToInputValue(a) {
   const hour = Number(a.hour || 0);
   const minute = Number(a.minute || 0);
   let hh24 = hour % 12;
+
   if ((a.ampm || "AM").toUpperCase() === "PM") hh24 += 12;
   if (a.ampm === "AM" && hour === 12) hh24 = 0;
   if (a.ampm === "PM" && hour === 12) hh24 = 12;
+
   return `${formatTwo(hh24)}:${formatTwo(minute)}`;
 }
 
@@ -73,85 +71,6 @@ function formatTimeDisplay(a) {
   return `${formatTwo(a.hour)}:${formatTwo(a.minute)} ${a.ampm}`;
 }
 
-/* ----------------------
-  Small UI helpers
------------------------- */
-function StatusBadge({ status }) {
-  const classes = serviceAppointmentsStyles.statusBadge(status);
-  return (
-    <span className={classes}>
-      {status === "Confirmed" && <CheckCircle className="h-4 w-4" />}
-      {status === "Canceled" && <XCircle className="h-4 w-4" />}
-      {status}
-    </span>
-  );
-}
-
-function Toast({ toasts, removeToast }) {
-  return (
-    <div className={serviceAppointmentsStyles.toastContainer}>
-      {toasts.map((t) => (
-        <div key={t.id} className={serviceAppointmentsStyles.toast}>
-          <div className={serviceAppointmentsStyles.toastContent}>
-            <div className="mt-0.5">
-              <Loader2 className={serviceAppointmentsStyles.toastSpinner} />
-            </div>
-            <div className={serviceAppointmentsStyles.toastText}>
-              <div className={serviceAppointmentsStyles.toastTitle}>
-                {t.title}
-              </div>
-              <div className={serviceAppointmentsStyles.toastMessage}>
-                {t.message}
-              </div>
-            </div>
-            <button
-              onClick={() => removeToast(t.id)}
-              className={serviceAppointmentsStyles.toastCloseButton}
-              aria-label="close toast"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ---------------------------
-   StatusSelect
---------------------------- */
-function StatusSelect({ appointment, onChange, disabled }) {
-  const terminal =
-    appointment.status === "Completed" || appointment.status === "Canceled";
-
-  const options = [
-    { value: "Pending", label: "Pending" },
-    { value: "Confirmed", label: "Confirmed" },
-    { value: "Completed", label: "Completed" },
-    { value: "Canceled", label: "Canceled" },
-  ];
-
-  return (
-    <select
-      value={appointment.status}
-      onChange={(e) => onChange(e.target.value)}
-      disabled={terminal || disabled}
-      className={serviceAppointmentsStyles.statusSelect(terminal)}
-      title={terminal ? "Status cannot be changed" : "Change status"}
-    >
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-/* ----------------------
-  Helpers (add these near the other helpers)
------------------------- */
 function getTodayISO() {
   const d = new Date();
   const y = d.getFullYear();
@@ -159,8 +78,8 @@ function getTodayISO() {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+
 function isDateBefore(aDateStr, bDateStr) {
-  // compare using local midnights (consistent with other date parsing in file)
   try {
     const a = new Date(`${aDateStr}T00:00:00`);
     const b = new Date(`${bDateStr}T00:00:00`);
@@ -170,20 +89,133 @@ function isDateBefore(aDateStr, bDateStr) {
   }
 }
 
-/* ---------------------------
-   RescheduleButton (replace existing)
---------------------------- */
-function RescheduleButton({ appointment, onReschedule, disabled }) {
+function getTimestamp(a) {
+  try {
+    const [y, m, d] = (a.date || "1970-01-01").split("-").map(Number);
+    let hour = Number(a.hour) || 0;
+    const minute = Number(a.minute) || 0;
+    const ampm = (a.ampm || "AM").toUpperCase();
+
+    if (ampm === "AM" && hour === 12) hour = 0;
+    else if (ampm === "PM" && hour !== 12) hour += 12;
+
+    return new Date(y, (m || 1) - 1, d || 1, hour, minute, 0, 0).getTime();
+  } catch {
+    return 0;
+  }
+}
+
+function getInitials(name = "") {
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "PT";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
+}
+
+function extractUpdated(body) {
+  return body?.data || body?.appointment || body?.item || body || {};
+}
+
+function statusClasses(status) {
+  const s = (status || "").toLowerCase();
+  if (s === "confirmed") {
+    return "border-cyan-200 bg-cyan-50 text-cyan-700";
+  }
+  if (s === "completed") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+  if (s === "rescheduled") {
+    return "border-violet-200 bg-violet-50 text-violet-700";
+  }
+  if (s === "canceled" || s === "cancelled") {
+    return "border-rose-200 bg-rose-50 text-rose-700";
+  }
+  return "border-amber-200 bg-amber-50 text-amber-700";
+}
+
+/* ----------------------
+  Toast
+------------------------ */
+function Toasts({ toasts, removeToast }) {
+  if (!toasts.length) return null;
+
+  return (
+    <div className="fixed right-4 top-4 z-50 space-y-3">
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          className="flex min-w-[280px] items-start gap-3 rounded-2xl border border-blue-100 bg-white px-4 py-3 shadow-lg"
+        >
+          <div className="mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          </div>
+
+          <div className="flex-1">
+            <div className="text-sm font-semibold text-slate-900">
+              {t.title}
+            </div>
+            <div className="mt-1 text-xs text-slate-500">{t.message}</div>
+          </div>
+
+          <button
+            onClick={() => removeToast(t.id)}
+            className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
+            aria-label="Close toast"
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ----------------------
+  Status Select
+------------------------ */
+function StatusSelect({ appointment, onChange, disabled }) {
+  const terminal =
+    appointment.status === "Completed" || appointment.status === "Canceled";
+
+  const options = ["Pending", "Confirmed", "Completed", "Canceled"];
+
+  return (
+    <div className="relative">
+      <select
+        value={appointment.status}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={terminal || disabled}
+        className={`h-11 w-full appearance-none rounded-2xl border px-4 pr-10 text-sm font-semibold outline-none transition ${
+          terminal
+            ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+            : "border-blue-100 bg-white text-slate-700 focus:border-blue-300"
+        }`}
+      >
+        {options.map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+    </div>
+  );
+}
+
+/* ----------------------
+  Reschedule Button
+------------------------ */
+function ReschedulePanel({ appointment, onReschedule, disabled }) {
   const terminal =
     appointment.status === "Completed" || appointment.status === "Canceled";
   const [editing, setEditing] = useState(false);
   const todayISO = getTodayISO();
+
   const [date, setDate] = useState(appointment.date || todayISO);
   const [time, setTime] = useState(timePartsToInputValue(appointment));
 
   useEffect(() => {
     const baseDate = appointment.date || "";
-    // if appointment date is in the past, default to today for selection
     const initialDate =
       baseDate && !isDateBefore(baseDate, todayISO) ? baseDate : todayISO;
     setDate(initialDate);
@@ -193,111 +225,112 @@ function RescheduleButton({ appointment, onReschedule, disabled }) {
     appointment.hour,
     appointment.minute,
     appointment.ampm,
-    // include todayISO so component updates correctly around midnight if needed
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    todayISO,
   ]);
 
   function save() {
     if (!date || !time) return;
-    // validate date is not in the past
+
     if (isDateBefore(date, getTodayISO())) {
-      // simple feedback — swap to pushToast if you'd rather
       alert("Please choose today or a future date for rescheduling.");
       return;
     }
+
     onReschedule(date, time);
     setEditing(false);
   }
+
   function cancel() {
-    // restore to appointment date if valid, otherwise today
     const baseDate = appointment.date || "";
     const restoreDate =
       baseDate && !isDateBefore(baseDate, getTodayISO())
         ? baseDate
         : getTodayISO();
+
     setDate(restoreDate);
     setTime(timePartsToInputValue(appointment));
     setEditing(false);
   }
 
+  if (!editing) {
+    return (
+      <button
+        onClick={() => setEditing(true)}
+        disabled={terminal || disabled}
+        className={`h-11 rounded-2xl border px-4 text-sm font-semibold transition ${
+          terminal || disabled
+            ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+            : "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+        }`}
+      >
+        Reschedule
+      </button>
+    );
+  }
+
   return (
-    <div className="w-full">
-      {!editing ? (
-        <div className="flex justify-end">
-          <button
-            onClick={() => setEditing(true)}
-            disabled={terminal || disabled}
-            title={
-              terminal ? "Cannot reschedule completed/canceled" : "Reschedule"
-            }
-            className={serviceAppointmentsStyles.rescheduleButton(terminal)}
-          >
-            Reschedule
-          </button>
-        </div>
-      ) : (
-        <div className={serviceAppointmentsStyles.rescheduleEditContainer}>
-          <input
-            type="date"
-            value={date}
-            min={getTodayISO()}
-            onChange={(e) => setDate(e.target.value)}
-            className={serviceAppointmentsStyles.rescheduleDateInput}
-          />
-          <input
-            type="time"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            className={serviceAppointmentsStyles.rescheduleTimeInput}
-          />
-          <div className={serviceAppointmentsStyles.rescheduleActions}>
-            <button
-              onClick={save}
-              className={serviceAppointmentsStyles.rescheduleSaveButton}
-            >
-              Save
-            </button>
-            <button
-              onClick={cancel}
-              className={serviceAppointmentsStyles.rescheduleCancelButton}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+    <div className="space-y-3 rounded-2xl border border-blue-100 bg-blue-50 p-3">
+      <input
+        type="date"
+        value={date}
+        min={getTodayISO()}
+        onChange={(e) => setDate(e.target.value)}
+        className="h-11 w-full rounded-xl border border-blue-100 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-300"
+      />
+
+      <input
+        type="time"
+        value={time}
+        onChange={(e) => setTime(e.target.value)}
+        className="h-11 w-full rounded-xl border border-blue-100 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-300"
+      />
+
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={save}
+          className="h-10 rounded-xl bg-blue-600 text-sm font-semibold text-white transition hover:bg-blue-700"
+        >
+          Save
+        </button>
+        <button
+          onClick={cancel}
+          className="h-10 rounded-xl bg-rose-50 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }
 
-/* ---------------------------
-  Main Component (fetch + actions)
---------------------------- */
+/* ----------------------
+  Main Component
+------------------------ */
 export default function ServiceAppointmentsPage() {
   const [appointments, setAppointments] = useState([]);
   const [toasts, setToasts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Search & debounce
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [showAll, setShowAll] = useState(false);
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search.trim()), 220);
     return () => clearTimeout(t);
   }, [search]);
 
-  const [statusFilter, setStatusFilter] = useState("");
-
   useEffect(() => {
     fetchAppointments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function pushToast(title, message) {
     const toastId = Date.now() + Math.random();
     setToasts((t) => [...t, { id: toastId, title, message }]);
   }
+
   function removeToast(id) {
     setToasts((t) => t.filter((x) => x.id !== id));
   }
@@ -305,64 +338,60 @@ export default function ServiceAppointmentsPage() {
   async function fetchAppointments() {
     setLoading(true);
     setError(null);
+
     try {
       const url = `${API_BASE}/api/service-appointments?limit=500`;
       const res = await fetch(url);
+
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(
           body?.message || `Failed to fetch appointments (${res.status})`,
         );
       }
-      const body = await res.json();
-      const list = Array.isArray(body.appointments)
-        ? body.appointments
-        : (body.appointments ??
-          body.items ??
-          body.data ??
-          body.appointments ??
-          []);
 
-      const normalized = (Array.isArray(list) ? list : [])
-        .map((a) => {
-          const timeStr =
-            a.time ||
-            (a.slot && a.slot.time) ||
-            (a.hour !== undefined && a.minute !== undefined)
-              ? `${formatTwo(a.hour || 12)}:${formatTwo(a.minute ?? 0)} ${
-                  a.ampm || "AM"
-                }`
-              : a.rescheduledTo?.time ||
-                (a.slot && a.slot.time) ||
-                a.time ||
-                "";
-          const parsed = parseTimeToParts(timeStr);
-          return {
-            id: a._id || a.id,
-            patientName:
-              a.patientName ||
-              a.name ||
-              (a.raw && a.raw.patientName) ||
-              "Unknown",
-            gender: a.gender || (a.raw && a.raw.gender) || "",
-            mobile: a.mobile || a.phone || "",
-            age: a.age || a.raw?.age || "",
-            serviceName:
-              a.serviceName ||
-              a.service ||
-              a.raw?.serviceName ||
-              (a.notes || "").slice(0, 40),
-            fees: a.fees ?? a.fee ?? a.payment?.amount ?? 0,
-            date:
-              a.date || (a.slot && a.slot.date) || a.rescheduledTo?.date || "",
-            hour: parsed.hour,
-            minute: parsed.minute,
-            ampm: parsed.ampm,
-            status: a.status || (a.payment && a.payment.status) || "Pending",
-            raw: a,
-          };
-        })
-        .filter(Boolean);
+      const body = await res.json();
+
+      let list = [];
+      if (Array.isArray(body.appointments)) list = body.appointments;
+      else if (Array.isArray(body.data)) list = body.data;
+      else if (Array.isArray(body.items)) list = body.items;
+      else if (Array.isArray(body)) list = body;
+
+      const normalized = (Array.isArray(list) ? list : []).map((a) => {
+        let timeStr = "";
+
+        if (a.time) {
+          timeStr = a.time;
+        } else if (
+          a.hour !== undefined &&
+          a.minute !== undefined &&
+          a.ampm !== undefined
+        ) {
+          timeStr = `${formatTwo(a.hour)}:${formatTwo(a.minute)} ${a.ampm}`;
+        } else if (a.rescheduledTo?.time) {
+          timeStr = a.rescheduledTo.time;
+        }
+
+        const parsed = parseTimeToParts(timeStr);
+
+        return {
+          id: a._id || a.id,
+          patientName: a.patientName || "",
+          mobile: a.mobile || "",
+          age: a.age || "",
+          gender: a.gender || "",
+          serviceName: a.serviceName || "Service",
+          fees: a.fees ?? a.payment?.amount ?? a.raw?.fees ?? 0,
+          date: a.date || a.rescheduledTo?.date || "",
+          hour: parsed.hour,
+          minute: parsed.minute,
+          ampm: parsed.ampm,
+          status: a.status || "Pending",
+          raw: a,
+        };
+      });
+
       setAppointments(normalized);
     } catch (err) {
       console.error("fetchAppointments:", err);
@@ -373,38 +402,14 @@ export default function ServiceAppointmentsPage() {
     }
   }
 
-  // auto-hide toasts
-  useEffect(() => {
-    if (toasts.length === 0) return;
-    const timers = toasts.map((t) =>
-      setTimeout(() => {
-        setToasts((s) => s.filter((x) => x.id !== t.id));
-      }, 3000),
-    );
-    return () => timers.forEach((t) => clearTimeout(t));
-  }, [toasts]);
-
-  // Utility: normalize server response shape
-  function extractUpdated(body) {
-    // Backend may return { success: true, data: updated } or { appointment: updated } or updated directly
-    return body?.data || body?.appointment || body || {};
-  }
-
-  // change status -> PUT /api/service-appointments/:id with { status }
   async function changeStatusRemote(id, newStatus) {
     const old = appointments.find((a) => a.id === id);
     if (!old) return;
-    if (old.status === "Completed" || old.status === "Canceled") {
-      pushToast(
-        "Cannot change status",
-        `Appointment #${id} is already ${old.status}.`,
-      );
-      return;
-    }
 
     setAppointments((prev) =>
       prev.map((a) => (a.id === id ? { ...a, status: newStatus } : a)),
     );
+
     pushToast("Updating status", `Appointment #${id} → ${newStatus}`);
 
     try {
@@ -413,12 +418,12 @@ export default function ServiceAppointmentsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
+
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(
-          body?.message || `Status update failed (${res.status})`,
-        );
+        throw new Error(body?.message || `Update failed (${res.status})`);
       }
+
       const body = await res.json();
       const updated = extractUpdated(body);
 
@@ -432,19 +437,16 @@ export default function ServiceAppointmentsPage() {
                 hour: parseTimeToParts(
                   updated.time ||
                     updated.rescheduledTo?.time ||
-                    a.raw?.time ||
                     `${formatTwo(a.hour)}:${formatTwo(a.minute)} ${a.ampm}`,
                 ).hour,
                 minute: parseTimeToParts(
                   updated.time ||
                     updated.rescheduledTo?.time ||
-                    a.raw?.time ||
                     `${formatTwo(a.hour)}:${formatTwo(a.minute)} ${a.ampm}`,
                 ).minute,
                 ampm: parseTimeToParts(
                   updated.time ||
                     updated.rescheduledTo?.time ||
-                    a.raw?.time ||
                     `${formatTwo(a.hour)}:${formatTwo(a.minute)} ${a.ampm}`,
                 ).ampm,
                 raw: updated || a.raw,
@@ -452,6 +454,7 @@ export default function ServiceAppointmentsPage() {
             : a,
         ),
       );
+
       pushToast("Status updated", `Appointment #${id} is now ${newStatus}`);
     } catch (err) {
       console.error("changeStatusRemote:", err);
@@ -462,16 +465,15 @@ export default function ServiceAppointmentsPage() {
     }
   }
 
-  // reschedule -> PUT /api/service-appointments/:id with { rescheduledTo: { date, time }, status: "Rescheduled" }
   async function rescheduleRemote(id, dateStr, time24) {
     const appt = appointments.find((a) => a.id === id);
     if (!appt) return;
+
     const [hh, mm] = time24.split(":").map(Number);
     const hour12 = hh % 12 === 0 ? 12 : hh % 12;
     const ampm = hh >= 12 ? "PM" : "AM";
     const timeStr = `${formatTwo(hour12)}:${formatTwo(mm)} ${ampm}`;
 
-    // optimistic local update
     setAppointments((prev) =>
       prev.map((a) =>
         a.id === id
@@ -496,22 +498,23 @@ export default function ServiceAppointmentsPage() {
       const res = await fetch(`${API_BASE}/api/service-appointments/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        // send rescheduledTo (backend expects this) and set status
         body: JSON.stringify({
           rescheduledTo: { date: dateStr, time: timeStr },
           status: "Rescheduled",
         }),
       });
+
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.message || `Reschedule failed (${res.status})`);
       }
+
       const body = await res.json();
       const updated = extractUpdated(body);
 
-      // determine which date/time to use (prefer server returned values)
       const finalDate =
         updated.date || updated.rescheduledTo?.date || dateStr || appt.date;
+
       const finalTimeStr =
         updated.time ||
         updated.rescheduledTo?.time ||
@@ -535,11 +538,10 @@ export default function ServiceAppointmentsPage() {
             : a,
         ),
       );
+
       pushToast(
         "Rescheduled",
-        `Appointment #${id} moved to ${formatDateNice(
-          finalDate,
-        )} ${finalTimeStr}`,
+        `Appointment #${id} moved to ${formatDateNice(finalDate)} ${finalTimeStr}`,
       );
     } catch (err) {
       console.error("rescheduleRemote:", err);
@@ -551,23 +553,25 @@ export default function ServiceAppointmentsPage() {
     }
   }
 
-  // cancel -> POST /api/service-appointments/:id/cancel
   async function cancelRemote(id) {
     const appt = appointments.find((a) => a.id === id);
     if (!appt) return;
     if (appt.status === "Canceled") return;
+
     if (
       !window.confirm(
         `Mark appointment for ${appt.patientName} on ${formatDateNice(
           appt.date,
         )} as CANCELED?`,
       )
-    )
+    ) {
       return;
+    }
 
     setAppointments((prev) =>
       prev.map((a) => (a.id === id ? { ...a, status: "Canceled" } : a)),
     );
+
     pushToast("Canceling", `Appointment #${id} is being canceled`);
 
     try {
@@ -578,12 +582,15 @@ export default function ServiceAppointmentsPage() {
           headers: { "Content-Type": "application/json" },
         },
       );
+
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.message || `Cancel failed (${res.status})`);
       }
+
       const body = await res.json();
       const updated = extractUpdated(body);
+
       setAppointments((prev) =>
         prev.map((a) =>
           a.id === id
@@ -595,6 +602,7 @@ export default function ServiceAppointmentsPage() {
             : a,
         ),
       );
+
       pushToast("Canceled", `Appointment #${id} canceled`);
     } catch (err) {
       console.error("cancelRemote:", err);
@@ -605,6 +613,7 @@ export default function ServiceAppointmentsPage() {
 
   const filtered = useMemo(() => {
     const q = debouncedSearch.toLowerCase();
+
     return appointments
       .filter((a) =>
         q
@@ -612,310 +621,230 @@ export default function ServiceAppointmentsPage() {
             (a.serviceName || "").toLowerCase().includes(q)
           : true,
       )
-      .filter((a) => (statusFilter ? a.status === statusFilter : true));
+      .filter((a) => (statusFilter ? a.status === statusFilter : true))
+      .sort((a, b) => getTimestamp(b) - getTimestamp(a));
   }, [appointments, debouncedSearch, statusFilter]);
 
-  function getTimestamp(a) {
-    try {
-      const [y, m, d] = (a.date || "1970-01-01").split("-").map(Number);
-      let hour = Number(a.hour) || 0;
-      if ((a.ampm || "AM") === "PM" && hour !== 12) hour += 12;
-      if ((a.ampm || "AM") === "AM" && hour === 12) hour = 0;
-      const minute = Number(a.minute) || 0;
-      return new Date(y, (m || 1) - 1, d || 1, hour, minute).getTime();
-    } catch {
-      return 0;
-    }
-  }
-  const displayList = useMemo(() => {
-    const copy = filtered.slice();
-    copy.sort((x, y) => getTimestamp(y) - getTimestamp(x));
-    return copy;
-  }, [filtered]);
+  const displayed = useMemo(
+    () => (showAll ? filtered : filtered.slice(0, 8)),
+    [filtered, showAll],
+  );
 
   return (
-    <div className={serviceAppointmentsStyles.container}>
-      <header className={serviceAppointmentsStyles.headerContainer}>
-        <div className={serviceAppointmentsStyles.headerTitleContainer}>
-          <h1 className={serviceAppointmentsStyles.headerTitle}>
-            Appointments
-          </h1>
-          <p className={serviceAppointmentsStyles.headerSubtitle}>
-            Manage patient bookings — quick search & status controls
-          </p>
-        </div>
+    <div className="space-y-6">
+      <Toasts toasts={toasts} removeToast={removeToast} />
 
-        <div className={serviceAppointmentsStyles.searchContainer}>
-          <div className={serviceAppointmentsStyles.searchInputWrapper}>
-            <label className={serviceAppointmentsStyles.searchLabel}>
-              <span className="sr-only">Search appointments</span>
-              <div className="flex items-center gap-2 relative w-full">
-                <div className={serviceAppointmentsStyles.searchIconContainer}>
-                  <SearchIcon
-                    className={serviceAppointmentsStyles.searchIcon}
-                  />
-                </div>
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search by patient or service..."
-                  className={serviceAppointmentsStyles.searchInput}
-                  aria-label="Search appointments by patient name or service name"
-                />
-                {search ? (
-                  <button
-                    onClick={() => setSearch("")}
-                    className={serviceAppointmentsStyles.clearSearchButton}
-                    aria-label="clear search"
-                  >
-                    <XIcon
-                      className={serviceAppointmentsStyles.clearSearchIcon}
-                    />
-                  </button>
-                ) : null}
-              </div>
-            </label>
-
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className={serviceAppointmentsStyles.statusFilterSelect}
-              title="Filter by status"
-            >
-              <option value="">All</option>
-              <option value="Pending">Pending</option>
-              <option value="Confirmed">Confirmed</option>
-              <option value="Rescheduled">Rescheduled</option>
-              <option value="Completed">Completed</option>
-              <option value="Canceled">Canceled</option>
-            </select>
+      {/* Header */}
+      <section className="rounded-[32px] border border-blue-100 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <h1 className="text-[2rem] font-bold tracking-tight text-slate-900">
+              Appointments
+            </h1>
+            <p className="mt-1 text-sm italic text-slate-500">
+              Manage patient bookings — quick search & status controls
+            </p>
           </div>
 
-          <div className={serviceAppointmentsStyles.searchInfo}>
-            <div>
-              {displayList.length} result{displayList.length !== 1 ? "s" : ""}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative min-w-[240px]">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setShowAll(false);
+                }}
+                placeholder="Search by patient or service"
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
+              />
             </div>
-            <div>
-              <button
-                onClick={fetchAppointments}
-                className={serviceAppointmentsStyles.refreshButton}
+
+            <div className="relative min-w-[130px]">
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setShowAll(false);
+                }}
+                className="h-12 w-full appearance-none rounded-2xl border border-slate-200 bg-white px-4 pr-10 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-300"
               >
-                Refresh
-              </button>
+                <option value="">All</option>
+                <option value="Pending">Pending</option>
+                <option value="Confirmed">Confirmed</option>
+                <option value="Rescheduled">Rescheduled</option>
+                <option value="Completed">Completed</option>
+                <option value="Canceled">Canceled</option>
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             </div>
+
+            <button
+              onClick={() => {
+                setSearch("");
+                setStatusFilter("");
+                setShowAll(false);
+              }}
+              className="h-12 rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700"
+            >
+              Clear
+            </button>
           </div>
         </div>
-      </header>
 
-      {loading ? (
-        <div className={serviceAppointmentsStyles.loadingContainer}>
-          <Loader2 className="animate-spin" /> Loading appointments...
+        <div className="mt-8 flex items-center justify-between">
+          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+            {filtered.length} Results
+          </div>
+
+          <button
+            onClick={fetchAppointments}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 transition hover:text-blue-700"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </button>
         </div>
-      ) : error ? (
-        <div className={serviceAppointmentsStyles.errorContainer}>{error}</div>
-      ) : (
-        <div className={serviceAppointmentsStyles.gridContainer}>
-          {displayList.length === 0 ? (
-            <div className={serviceAppointmentsStyles.noResultsContainer}>
-              <div className={serviceAppointmentsStyles.noResultsIcon}>
-                <SearchIcon />
-              </div>
-              <div className={serviceAppointmentsStyles.noResultsText}>
-                No appointments match your search.
-              </div>
-              <div className={serviceAppointmentsStyles.noResultsSubtext}>
-                Try a different patient name or service
-              </div>
-            </div>
-          ) : (
-            displayList.map((a) => {
-              const isLocked =
-                a.status === "Completed" || a.status === "Canceled";
-              return (
-                <article
-                  key={a.id}
-                  className={serviceAppointmentsStyles.article}
-                >
-                  <div className={serviceAppointmentsStyles.cardInner}>
-                    <div>
-                      <div className={serviceAppointmentsStyles.cardHeader}>
-                        <div
-                          className={
-                            serviceAppointmentsStyles.patientInfoContainer
-                          }
-                        >
-                          <div
-                            className={serviceAppointmentsStyles.patientAvatar}
-                          >
-                            <User
-                              className={
-                                serviceAppointmentsStyles.patientAvatarIcon
-                              }
-                            />
-                          </div>
+      </section>
 
-                          <div>
-                            <div
-                              className={serviceAppointmentsStyles.patientName}
-                            >
-                              {a.patientName}
-                            </div>
-                            <div
-                              className={
-                                serviceAppointmentsStyles.patientDetails
-                              }
-                            >
-                              {a.gender} • {a.age} yrs
-                            </div>
-                          </div>
-                        </div>
-
-                        <div
-                          className={serviceAppointmentsStyles.statusContainer}
-                        >
-                          <StatusBadge status={a.status} />
-                          <div className="mt-1">
-                            <StatusSelect
-                              appointment={a}
-                              onChange={(s) => changeStatusRemote(a.id, s)}
-                              disabled={false}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div
-                        className={serviceAppointmentsStyles.detailsContainer}
-                      >
-                        <div className={serviceAppointmentsStyles.detailItem}>
-                          <Phone
-                            className={serviceAppointmentsStyles.detailIcon}
-                          />
-                          <span
-                            className={serviceAppointmentsStyles.detailText}
-                          >
-                            {a.mobile}
-                          </span>
-                        </div>
-
-                        <div className={serviceAppointmentsStyles.detailItem}>
-                          <BadgeIndianRupee
-                            className={serviceAppointmentsStyles.detailIcon}
-                          />
-                          <span className={serviceAppointmentsStyles.feesText}>
-                            Fees: ${a.fees}
-                          </span>
-                        </div>
-
-                        <div className={serviceAppointmentsStyles.detailItem}>
-                          <Calendar
-                            className={serviceAppointmentsStyles.detailIcon}
-                          />
-                          <span
-                            className={serviceAppointmentsStyles.detailText}
-                          >
-                            Date: {formatDateNice(a.date)}
-                          </span>
-                        </div>
-
-                        <div className={serviceAppointmentsStyles.detailItem}>
-                          <Clock
-                            className={serviceAppointmentsStyles.detailIcon}
-                          />
-                          <span
-                            className={serviceAppointmentsStyles.detailText}
-                          >
-                            Time: {formatTimeDisplay(a)}
-                          </span>
-                        </div>
-
-                        <div className={serviceAppointmentsStyles.serviceText}>
-                          Service:{" "}
-                          <span
-                            className={serviceAppointmentsStyles.serviceName}
-                          >
-                            {a.serviceName}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className={serviceAppointmentsStyles.actionsContainer}>
-                      <div
-                        className={
-                          serviceAppointmentsStyles.actionsInnerContainer
-                        }
-                      >
-                        <div className="flex-1">
-                          <RescheduleButton
-                            appointment={a}
-                            onReschedule={(d, t) =>
-                              rescheduleRemote(a.id, d, t)
-                            }
-                            disabled={false}
-                          />
-                        </div>
-
-                        <div className="ml-3">
-                          <button
-                            onClick={() => cancelRemote(a.id)}
-                            disabled={isLocked}
-                            className={serviceAppointmentsStyles.cancelButton(
-                              isLocked,
-                            )}
-                            title={
-                              isLocked ? "Cannot cancel" : "Cancel appointment"
-                            }
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              );
-            })
-          )}
+      {/* State */}
+      {loading && (
+        <div className="rounded-[24px] border border-blue-100 bg-white p-6 text-sm text-slate-500 shadow-sm">
+          Loading appointments...
         </div>
       )}
 
-      <Toast toasts={toasts} removeToast={removeToast} />
+      {error && (
+        <div className="rounded-[24px] border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 shadow-sm">
+          {error}
+        </div>
+      )}
 
-      <div className={serviceAppointmentsStyles.legendContainer}>
-        <div className={serviceAppointmentsStyles.legendItem}>
-          <div
-            className={`${serviceAppointmentsStyles.legendDot} bg-amber-400`}
-          />{" "}
-          <span>Pending</span>
-        </div>
-        <div className={serviceAppointmentsStyles.legendItem}>
-          <div
-            className={`${serviceAppointmentsStyles.legendDot} bg-emerald-400`}
-          />{" "}
-          <span>Confirmed</span>
-        </div>
-        <div className={serviceAppointmentsStyles.legendItem}>
-          <div
-            className={`${serviceAppointmentsStyles.legendDot} bg-red-400`}
-          />{" "}
-          <span>Canceled</span>
-        </div>
-        <div className={serviceAppointmentsStyles.legendItem}>
-          <div
-            className={`${serviceAppointmentsStyles.legendDot} bg-sky-400`}
-          />{" "}
-          <span>Completed</span>
-        </div>
-        <div className={serviceAppointmentsStyles.legendItem}>
-          <div
-            className={`${serviceAppointmentsStyles.legendDot} bg-indigo-400`}
-          />{" "}
-          <span>Rescheduled</span>
-        </div>
-      </div>
+      {!loading && !error && (
+        <>
+          {displayed.length === 0 ? (
+            <div className="rounded-[24px] border border-blue-100 bg-white p-8 text-center text-sm text-slate-500 shadow-sm">
+              No appointments found.
+            </div>
+          ) : (
+            <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+              {displayed.map((a) => {
+                const terminal =
+                  a.status === "Completed" || a.status === "Canceled";
 
-      <style>{serviceAppointmentsStyles.animatedBorderStyle}</style>
+                return (
+                  <article
+                    key={a.id}
+                    className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm transition hover:border-blue-200 hover:shadow-md"
+                  >
+                    {/* Top */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                          <User className="h-5 w-5" />
+                        </div>
+
+                        <div className="min-w-0">
+                          <h3 className="truncate text-xl font-bold text-slate-900">
+                            {a.patientName || "Unknown"}
+                          </h3>
+                          <div className="mt-1 text-xs font-medium text-slate-400">
+                            {a.gender || "Unknown"}{" "}
+                            {a.age ? `• ${a.age} yrs` : ""}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div
+                        className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] ${statusClasses(
+                          a.status,
+                        )}`}
+                      >
+                        {a.status}
+                      </div>
+                    </div>
+
+                    {/* Info */}
+                    <div className="mt-5 space-y-3 text-sm text-slate-700">
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-blue-600" />
+                        <span>{a.mobile || "No phone"}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-blue-600" />
+                        <span>Fees: ${a.fees}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-blue-600" />
+                        <span>Date: {formatDateNice(a.date)}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 rotate-90 text-blue-600" />
+                        <span>Time: {formatTimeDisplay(a)}</span>
+                      </div>
+                    </div>
+
+                    {/* Service */}
+                    <div className="mt-5">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                        Service
+                      </div>
+                      <div className="mt-2 text-xl font-bold text-blue-700">
+                        {a.serviceName}
+                      </div>
+                    </div>
+
+                    {/* Controls */}
+                    <div className="mt-5 space-y-3">
+                      <StatusSelect
+                        appointment={a}
+                        onChange={(value) => changeStatusRemote(a.id, value)}
+                        disabled={loading}
+                      />
+
+                      <div className="grid grid-cols-[1fr_auto] gap-3">
+                        <ReschedulePanel
+                          appointment={a}
+                          onReschedule={(date, time) =>
+                            rescheduleRemote(a.id, date, time)
+                          }
+                          disabled={loading}
+                        />
+
+                        <button
+                          onClick={() => cancelRemote(a.id)}
+                          disabled={terminal || loading}
+                          className={`h-11 rounded-2xl px-4 text-sm font-semibold transition ${
+                            terminal || loading
+                              ? "cursor-not-allowed border border-slate-200 bg-slate-100 text-slate-400"
+                              : "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                          }`}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </section>
+          )}
+
+          {filtered.length > 8 && (
+            <div className="flex justify-center">
+              <button
+                onClick={() => setShowAll((s) => !s)}
+                className="rounded-[22px] border border-slate-200 bg-slate-100 px-8 py-4 text-base font-semibold text-slate-600 shadow-sm transition hover:bg-slate-200"
+              >
+                {showAll ? "Show less" : `Show more (${filtered.length - 8})`}
+              </button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

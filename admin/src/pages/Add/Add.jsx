@@ -1,14 +1,16 @@
-import React from 'react'
-import Navbar from '../../components/Navbar/Navbar'
-import AddPage from '../../components/AddPage/AddPage'
+import React from "react";
+import AddPage from "../../components/AddPage/AddPage";
+import AdminLayout from "../../components/AdminLayout/AdminLayout";
 
 const Add = () => {
   return (
-    <div>
-        <Navbar/>
-        <AddPage/>
-    </div>
-  )
-}
+    <AdminLayout
+      title="Add Doctor"
+      subtitle="Create a new doctor profile with schedule, credentials, and details"
+    >
+      <AddPage />
+    </AdminLayout>
+  );
+};
 
-export default Add
+export default Add;

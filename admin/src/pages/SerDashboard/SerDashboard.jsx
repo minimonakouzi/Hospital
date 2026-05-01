@@ -1,14 +1,16 @@
-import React from 'react'
-import AnimatedNavbar from '../../components/Navbar/Navbar'
-import ServiceDashboard from '../../components/ServiceDashboard/ServiceDashboard'
+import React from "react";
+import ServiceDashboard from "../../components/ServiceDashboard/ServiceDashboard";
+import AdminLayout from "../../components/AdminLayout/AdminLayout";
 
 const SerDashboard = () => {
   return (
-    <div>
-        <AnimatedNavbar/>
-        <ServiceDashboard/>
-    </div>
-  )
-}
+    <AdminLayout
+      title="Service Dashboard"
+      subtitle="View service booking performance, totals, and status summaries"
+    >
+      <ServiceDashboard />
+    </AdminLayout>
+  );
+};
 
-export default SerDashboard
+export default SerDashboard;

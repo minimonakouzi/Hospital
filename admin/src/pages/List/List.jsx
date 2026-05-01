@@ -1,13 +1,16 @@
-import React from 'react'
-import ListPage from '../../components/ListPage/ListPage'
-import Navbar from '../../components/Navbar/Navbar'
+import React from "react";
+import ListPage from "../../components/ListPage/ListPage";
+import AdminLayout from "../../components/AdminLayout/AdminLayout";
+
 const List = () => {
   return (
-    <div>
-        <Navbar/>
-        <ListPage/>
-    </div>
-  )
-}
+    <AdminLayout
+      title="List Doctors"
+      subtitle="Browse, search, and manage all doctors in the system"
+    >
+      <ListPage />
+    </AdminLayout>
+  );
+};
 
-export default List
+export default List;

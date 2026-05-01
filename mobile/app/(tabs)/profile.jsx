@@ -23,17 +23,20 @@ import {
   Animated,
   Pressable,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useFocusEffect, useRouter } from "expo-router";
 import { getMyAppointments } from "../../services/appointments";
 import { getMyServiceAppointments } from "../../services/serviceAppointments";
-
-const PROFILE_STORAGE_KEY = "patient_profile_v1";
+import {
+  getMyPatientProfile,
+  saveMyPatientProfile,
+} from "../../services/patientProfile";
 
 const defaultProfile = {
+  firstName: "",
+  lastName: "",
   imageUri: "",
   phone: "",
   age: "",
@@ -51,11 +54,10 @@ function onlyDigits(value) {
   return String(value || "").replace(/\D/g, "");
 }
 
-function normalizeStoredProfile(value) {
+function normalizeProfile(value) {
   return { ...defaultProfile, ...(value || {}) };
 }
 
-// ─── Collapsible Section ────────────────────────────────────────────────────
 function CollapsibleSection({ title, icon, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen);
   const rotation = useRef(new Animated.Value(defaultOpen ? 1 : 0)).current;
@@ -102,22 +104,33 @@ function CollapsibleSection({ title, icon, defaultOpen = true, children }) {
   );
 }
 
-// ─── Main Screen ─────────────────────────────────────────────────────────────
+function ReadOnlyField({ label, value }) {
+  return (
+    <>
+      <Text style={styles.inputLabel}>{label}</Text>
+      <Text style={styles.readOnlyText}>{value ? String(value) : "—"}</Text>
+    </>
+  );
+}
+
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user } = useUser();
+  const { user, isLoaded: isUserLoaded } = useUser();
   const { signOut, getToken, isSignedIn } = useAuth();
 
   const [profile, setProfile] = useState(defaultProfile);
+  const [originalProfile, setOriginalProfile] = useState(defaultProfile);
   const [saving, setSaving] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [loadingStats, setLoadingStats] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const [doctorAppointmentsCount, setDoctorAppointmentsCount] = useState(0);
   const [serviceAppointmentsCount, setServiceAppointmentsCount] = useState(0);
 
   const fullName =
+    `${profile.firstName || ""} ${profile.lastName || ""}`.trim() ||
     user?.fullName?.trim() ||
     `${user?.firstName || ""} ${user?.lastName || ""}`.trim() ||
     "Patient";
@@ -135,15 +148,70 @@ export default function ProfileScreen() {
     return null;
   }, [profile.imageUri, clerkImage]);
 
-  // ─── Loaders ───────────────────────────────────────────────────────────────
+  const updateField = (key, value) =>
+    setProfile((prev) => ({ ...prev, [key]: value }));
+
   const loadProfile = async () => {
     try {
       setLoadingProfile(true);
-      const raw = await AsyncStorage.getItem(PROFILE_STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : defaultProfile;
-      setProfile(normalizeStoredProfile(parsed));
-    } catch {
-      setProfile(defaultProfile);
+
+      const clerkFirstName = user?.firstName || "";
+      const clerkLastName = user?.lastName || "";
+
+      if (!isSignedIn) {
+        const fallbackProfile = normalizeProfile({
+          firstName: clerkFirstName,
+          lastName: clerkLastName,
+        });
+        setProfile(fallbackProfile);
+        setOriginalProfile(fallbackProfile);
+        return;
+      }
+
+      const token = await getToken({ template: "default", skipCache: true });
+
+      if (!token) {
+        const fallbackProfile = normalizeProfile({
+          firstName: clerkFirstName,
+          lastName: clerkLastName,
+        });
+        setProfile(fallbackProfile);
+        setOriginalProfile(fallbackProfile);
+        return;
+      }
+
+      const backendProfile = await getMyPatientProfile(token);
+
+      const loadedProfile = normalizeProfile({
+        firstName: clerkFirstName,
+        lastName: clerkLastName,
+        imageUri: backendProfile?.imageUrl || "",
+        phone: backendProfile?.phone || "",
+        age:
+          backendProfile?.age === null || backendProfile?.age === undefined
+            ? ""
+            : String(backendProfile.age),
+        gender: backendProfile?.gender || "",
+        address: backendProfile?.address || "",
+        emergencyContact: backendProfile?.emergencyContact || "",
+        allergies: backendProfile?.allergies || "",
+        medicalHistory: backendProfile?.medicalHistory || "",
+        notificationsEnabled:
+          typeof backendProfile?.notificationsEnabled === "boolean"
+            ? backendProfile.notificationsEnabled
+            : true,
+      });
+
+      setProfile(loadedProfile);
+      setOriginalProfile(loadedProfile);
+    } catch (err) {
+      console.log("LOAD PROFILE ERROR:", err);
+      const fallbackProfile = normalizeProfile({
+        firstName: user?.firstName || "",
+        lastName: user?.lastName || "",
+      });
+      setProfile(fallbackProfile);
+      setOriginalProfile(fallbackProfile);
     } finally {
       setLoadingProfile(false);
     }
@@ -152,9 +220,20 @@ export default function ProfileScreen() {
   const loadStats = async () => {
     try {
       setLoadingStats(true);
-      if (!isSignedIn) return;
+
+      if (!isSignedIn) {
+        setDoctorAppointmentsCount(0);
+        setServiceAppointmentsCount(0);
+        return;
+      }
+
       const token = await getToken({ template: "default", skipCache: true });
-      if (!token) return;
+
+      if (!token) {
+        setDoctorAppointmentsCount(0);
+        setServiceAppointmentsCount(0);
+        return;
+      }
 
       const [doctorData, serviceData] = await Promise.all([
         getMyAppointments(token),
@@ -165,7 +244,8 @@ export default function ProfileScreen() {
       setServiceAppointmentsCount(
         (serviceData?.appointments || serviceData?.data || []).length,
       );
-    } catch {
+    } catch (err) {
+      console.log("LOAD STATS ERROR:", err);
       setDoctorAppointmentsCount(0);
       setServiceAppointmentsCount(0);
     } finally {
@@ -174,15 +254,19 @@ export default function ProfileScreen() {
   };
 
   useEffect(() => {
-    loadProfile();
-    loadStats();
-  }, []);
+    if (isUserLoaded) {
+      loadProfile();
+      loadStats();
+    }
+  }, [isUserLoaded]);
 
   useFocusEffect(
     useCallback(() => {
-      loadProfile();
-      loadStats();
-    }, []),
+      if (isUserLoaded) {
+        loadProfile();
+        loadStats();
+      }
+    }, [isUserLoaded]),
   );
 
   const onRefresh = async () => {
@@ -191,26 +275,107 @@ export default function ProfileScreen() {
     setRefreshing(false);
   };
 
-  const updateField = (key, value) =>
-    setProfile((prev) => ({ ...prev, [key]: value }));
+  const handleEditToggle = () => {
+    if (isEditing) {
+      setProfile(originalProfile);
+      setIsEditing(false);
+      return;
+    }
+    setOriginalProfile(profile);
+    setIsEditing(true);
+  };
 
-  // ─── Actions ───────────────────────────────────────────────────────────────
   const saveProfile = async () => {
     try {
       setSaving(true);
-      await AsyncStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
-      Alert.alert("Saved ✓", "Your profile was saved on this device.");
-    } catch {
-      Alert.alert("Error", "Could not save your profile right now.");
+
+      if (!isSignedIn || !user) {
+        Alert.alert("Not signed in", "Please sign in first.");
+        return;
+      }
+
+      const trimmedFirstName = String(profile.firstName || "").trim();
+      const trimmedLastName = String(profile.lastName || "").trim();
+
+      if (!trimmedFirstName || !trimmedLastName) {
+        Alert.alert(
+          "Missing name",
+          "Please enter both first name and last name.",
+        );
+        return;
+      }
+
+      if (typeof user.update === "function") {
+        await user.update({
+          firstName: trimmedFirstName,
+          lastName: trimmedLastName,
+        });
+      }
+
+      const token = await getToken({ template: "default", skipCache: true });
+
+      if (!token) {
+        Alert.alert("Error", "Could not get authentication token.");
+        return;
+      }
+
+      const payload = {
+        phone: profile.phone || "",
+        age: profile.age === "" ? null : Number(profile.age),
+        gender: profile.gender || "",
+        address: profile.address || "",
+        emergencyContact: profile.emergencyContact || "",
+        allergies: profile.allergies || "",
+        medicalHistory: profile.medicalHistory || "",
+        notificationsEnabled: !!profile.notificationsEnabled,
+        imageUrl: profile.imageUri || "",
+      };
+
+      const savedProfile = await saveMyPatientProfile(token, payload);
+
+      const updatedProfile = normalizeProfile({
+        firstName: trimmedFirstName,
+        lastName: trimmedLastName,
+        imageUri: savedProfile?.imageUrl || profile.imageUri || "",
+        phone: savedProfile?.phone || "",
+        age:
+          savedProfile?.age === null || savedProfile?.age === undefined
+            ? ""
+            : String(savedProfile.age),
+        gender: savedProfile?.gender || "",
+        address: savedProfile?.address || "",
+        emergencyContact: savedProfile?.emergencyContact || "",
+        allergies: savedProfile?.allergies || "",
+        medicalHistory: savedProfile?.medicalHistory || "",
+        notificationsEnabled:
+          typeof savedProfile?.notificationsEnabled === "boolean"
+            ? savedProfile.notificationsEnabled
+            : true,
+      });
+
+      setProfile(updatedProfile);
+      setOriginalProfile(updatedProfile);
+      setIsEditing(false);
+
+      Alert.alert("Saved ✓", "Your profile was updated successfully.");
+    } catch (err) {
+      console.log("SAVE PROFILE ERROR:", err);
+      Alert.alert(
+        "Error",
+        err?.message || "Could not save your profile right now.",
+      );
     } finally {
       setSaving(false);
     }
   };
 
   const pickImage = async () => {
+    if (!isEditing) return;
+
     try {
       const permission =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
+
       if (!permission.granted) {
         Alert.alert(
           "Permission needed",
@@ -218,12 +383,14 @@ export default function ProfileScreen() {
         );
         return;
       }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
       });
+
       if (!result.canceled && result.assets?.length) {
         updateField("imageUri", result.assets[0].uri);
       }
@@ -232,7 +399,9 @@ export default function ProfileScreen() {
     }
   };
 
-  const removeImage = () =>
+  const removeImage = () => {
+    if (!isEditing) return;
+
     Alert.alert("Remove photo", "Remove your profile photo?", [
       { text: "Cancel", style: "cancel" },
       {
@@ -241,6 +410,7 @@ export default function ProfileScreen() {
         onPress: () => updateField("imageUri", ""),
       },
     ]);
+  };
 
   const handleLogout = async () => {
     try {
@@ -251,7 +421,6 @@ export default function ProfileScreen() {
     }
   };
 
-  // ─── Loading State ─────────────────────────────────────────────────────────
   if (loadingProfile) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -263,7 +432,6 @@ export default function ProfileScreen() {
     );
   }
 
-  // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -280,26 +448,42 @@ export default function ProfileScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         >
-          {/* ── Header ── */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>My Profile</Text>
-            <TouchableOpacity
-              style={styles.logoutButton}
-              onPress={handleLogout}
-              activeOpacity={0.85}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="log-out-outline" size={16} color="#FFFFFF" />
-              <Text style={styles.logoutButtonText}>Logout</Text>
-            </TouchableOpacity>
+
+            <View style={styles.headerButtons}>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={handleEditToggle}
+                activeOpacity={0.85}
+              >
+                <Ionicons
+                  name={isEditing ? "close" : "create-outline"}
+                  size={16}
+                  color="#FFFFFF"
+                />
+                <Text style={styles.editButtonText}>
+                  {isEditing ? "Cancel" : "Edit"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.logoutButton}
+                onPress={handleLogout}
+                activeOpacity={0.85}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="log-out-outline" size={16} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* ── Avatar Card ── */}
           <View style={styles.profileCard}>
             <TouchableOpacity
               style={styles.avatarWrap}
-              activeOpacity={0.85}
+              activeOpacity={isEditing ? 0.85 : 1}
               onPress={pickImage}
+              disabled={!isEditing}
             >
               {avatarSource ? (
                 <Image source={avatarSource} style={styles.avatar} />
@@ -308,42 +492,45 @@ export default function ProfileScreen() {
                   <Ionicons name="person" size={40} color="#7D8CA3" />
                 </View>
               )}
-              <View style={styles.cameraBadge}>
-                <Ionicons name="camera" size={13} color="#FFFFFF" />
-              </View>
+              {isEditing && (
+                <View style={styles.cameraBadge}>
+                  <Ionicons name="camera" size={13} color="#FFFFFF" />
+                </View>
+              )}
             </TouchableOpacity>
 
             <Text style={styles.fullName}>{fullName}</Text>
             <Text style={styles.email}>{email || "No email found"}</Text>
 
-            <View style={styles.avatarButtonsRow}>
-              <TouchableOpacity
-                style={styles.avatarActionButton}
-                onPress={pickImage}
-                activeOpacity={0.8}
-                hitSlop={{ top: 4, bottom: 4 }}
-              >
-                <Ionicons name="image-outline" size={15} color="#0D63D8" />
-                <Text style={styles.avatarActionText}>Upload Photo</Text>
-              </TouchableOpacity>
+            {isEditing && (
+              <View style={styles.avatarButtonsRow}>
+                <TouchableOpacity
+                  style={styles.avatarActionButton}
+                  onPress={pickImage}
+                  activeOpacity={0.8}
+                  hitSlop={{ top: 4, bottom: 4 }}
+                >
+                  <Ionicons name="image-outline" size={15} color="#0D63D8" />
+                  <Text style={styles.avatarActionText}>Upload Photo</Text>
+                </TouchableOpacity>
 
-              <View style={styles.avatarDivider} />
+                <View style={styles.avatarDivider} />
 
-              <TouchableOpacity
-                style={styles.avatarActionButton}
-                onPress={removeImage}
-                activeOpacity={0.8}
-                hitSlop={{ top: 4, bottom: 4 }}
-              >
-                <Ionicons name="trash-outline" size={15} color="#D64545" />
-                <Text style={[styles.avatarActionText, { color: "#D64545" }]}>
-                  Remove
-                </Text>
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity
+                  style={styles.avatarActionButton}
+                  onPress={removeImage}
+                  activeOpacity={0.8}
+                  hitSlop={{ top: 4, bottom: 4 }}
+                >
+                  <Ionicons name="trash-outline" size={15} color="#D64545" />
+                  <Text style={[styles.avatarActionText, { color: "#D64545" }]}>
+                    Remove
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
-          {/* ── Stats ── */}
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
               <View style={styles.statIconWrap}>
@@ -368,31 +555,68 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {/* ── Personal Information ── */}
           <CollapsibleSection
             title="Personal Information"
             icon="person-outline"
           >
+            <Text style={styles.inputLabel}>First Name</Text>
+            {isEditing ? (
+              <TextInput
+                style={styles.input}
+                placeholder="Enter first name"
+                placeholderTextColor="#A8B4C4"
+                value={profile.firstName}
+                onChangeText={(t) => updateField("firstName", t)}
+                returnKeyType="next"
+              />
+            ) : (
+              <Text style={styles.readOnlyText}>
+                {profile.firstName || "—"}
+              </Text>
+            )}
+
+            <Text style={styles.inputLabel}>Last Name</Text>
+            {isEditing ? (
+              <TextInput
+                style={styles.input}
+                placeholder="Enter last name"
+                placeholderTextColor="#A8B4C4"
+                value={profile.lastName}
+                onChangeText={(t) => updateField("lastName", t)}
+                returnKeyType="next"
+              />
+            ) : (
+              <Text style={styles.readOnlyText}>{profile.lastName || "—"}</Text>
+            )}
+
             <Text style={styles.inputLabel}>Phone Number</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter phone number"
-              placeholderTextColor="#A8B4C4"
-              value={profile.phone}
-              onChangeText={(t) => updateField("phone", onlyDigits(t))}
-              keyboardType="phone-pad"
-              returnKeyType="next"
-            />
+            {isEditing ? (
+              <TextInput
+                style={styles.input}
+                placeholder="Enter phone number"
+                placeholderTextColor="#A8B4C4"
+                value={profile.phone}
+                onChangeText={(t) => updateField("phone", onlyDigits(t))}
+                keyboardType="phone-pad"
+                returnKeyType="next"
+              />
+            ) : (
+              <Text style={styles.readOnlyText}>{profile.phone || "—"}</Text>
+            )}
 
             <Text style={styles.inputLabel}>Age</Text>
-            <TextInput
-              style={[styles.input, styles.inputShort]}
-              placeholder="Your age"
-              placeholderTextColor="#A8B4C4"
-              value={profile.age}
-              onChangeText={(t) => updateField("age", onlyDigits(t))}
-              keyboardType="number-pad"
-            />
+            {isEditing ? (
+              <TextInput
+                style={[styles.input, styles.inputShort]}
+                placeholder="Your age"
+                placeholderTextColor="#A8B4C4"
+                value={profile.age}
+                onChangeText={(t) => updateField("age", onlyDigits(t))}
+                keyboardType="number-pad"
+              />
+            ) : (
+              <Text style={styles.readOnlyText}>{profile.age || "—"}</Text>
+            )}
 
             <Text style={styles.inputLabel}>Gender</Text>
             <View style={styles.chipsRow}>
@@ -402,8 +626,12 @@ export default function ProfileScreen() {
                   <TouchableOpacity
                     key={g}
                     style={[styles.chip, selected && styles.chipSelected]}
-                    onPress={() => updateField("gender", selected ? "" : g)}
-                    activeOpacity={0.8}
+                    onPress={() => {
+                      if (!isEditing) return;
+                      updateField("gender", selected ? "" : g);
+                    }}
+                    activeOpacity={isEditing ? 0.8 : 1}
+                    disabled={!isEditing}
                   >
                     <Text
                       style={[
@@ -419,56 +647,80 @@ export default function ProfileScreen() {
             </View>
 
             <Text style={styles.inputLabel}>Address</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your address"
-              placeholderTextColor="#A8B4C4"
-              value={profile.address}
-              onChangeText={(t) => updateField("address", t)}
-              returnKeyType="next"
-            />
+            {isEditing ? (
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your address"
+                placeholderTextColor="#A8B4C4"
+                value={profile.address}
+                onChangeText={(t) => updateField("address", t)}
+                returnKeyType="next"
+              />
+            ) : (
+              <Text style={styles.readOnlyText}>{profile.address || "—"}</Text>
+            )}
 
             <Text style={styles.inputLabel}>Emergency Contact</Text>
-            <TextInput
-              style={[styles.input, { marginBottom: 0 }]}
-              placeholder="Name and phone number"
-              placeholderTextColor="#A8B4C4"
-              value={profile.emergencyContact}
-              onChangeText={(t) => updateField("emergencyContact", t)}
-              returnKeyType="done"
-            />
+            {isEditing ? (
+              <TextInput
+                style={[styles.input, { marginBottom: 0 }]}
+                placeholder="Name and phone number"
+                placeholderTextColor="#A8B4C4"
+                value={profile.emergencyContact}
+                onChangeText={(t) => updateField("emergencyContact", t)}
+                returnKeyType="done"
+              />
+            ) : (
+              <Text style={[styles.readOnlyText, { marginBottom: 0 }]}>
+                {profile.emergencyContact || "—"}
+              </Text>
+            )}
           </CollapsibleSection>
 
-          {/* ── Medical Information ── */}
           <CollapsibleSection
             title="Medical Information"
             icon="medkit-outline"
             defaultOpen={false}
           >
             <Text style={styles.inputLabel}>Allergies</Text>
-            <TextInput
-              style={[styles.input, styles.multilineInput]}
-              placeholder="e.g. Penicillin, peanuts…"
-              placeholderTextColor="#A8B4C4"
-              value={profile.allergies}
-              onChangeText={(t) => updateField("allergies", t)}
-              multiline
-              textAlignVertical="top"
-            />
+            {isEditing ? (
+              <TextInput
+                style={[styles.input, styles.multilineInput]}
+                placeholder="e.g. Penicillin, peanuts…"
+                placeholderTextColor="#A8B4C4"
+                value={profile.allergies}
+                onChangeText={(t) => updateField("allergies", t)}
+                multiline
+                textAlignVertical="top"
+              />
+            ) : (
+              <Text style={styles.readOnlyText}>
+                {profile.allergies || "—"}
+              </Text>
+            )}
 
             <Text style={styles.inputLabel}>Medical History</Text>
-            <TextInput
-              style={[styles.input, styles.multilineInput, { marginBottom: 0 }]}
-              placeholder="Brief medical history…"
-              placeholderTextColor="#A8B4C4"
-              value={profile.medicalHistory}
-              onChangeText={(t) => updateField("medicalHistory", t)}
-              multiline
-              textAlignVertical="top"
-            />
+            {isEditing ? (
+              <TextInput
+                style={[
+                  styles.input,
+                  styles.multilineInput,
+                  { marginBottom: 0 },
+                ]}
+                placeholder="Brief medical history…"
+                placeholderTextColor="#A8B4C4"
+                value={profile.medicalHistory}
+                onChangeText={(t) => updateField("medicalHistory", t)}
+                multiline
+                textAlignVertical="top"
+              />
+            ) : (
+              <Text style={[styles.readOnlyText, styles.readOnlyMultiline]}>
+                {profile.medicalHistory || "—"}
+              </Text>
+            )}
           </CollapsibleSection>
 
-          {/* ── Preferences ── */}
           <CollapsibleSection
             title="Preferences"
             icon="settings-outline"
@@ -489,33 +741,34 @@ export default function ProfileScreen() {
                   profile.notificationsEnabled ? "#0D63D8" : "#F8FAFD"
                 }
                 ios_backgroundColor="#D8E0EC"
+                disabled={!isEditing}
               />
             </View>
           </CollapsibleSection>
 
-          {/* ── Save Button ── */}
-          <TouchableOpacity
-            style={[styles.saveButton, saving && { opacity: 0.75 }]}
-            onPress={saveProfile}
-            activeOpacity={0.88}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <>
-                <Ionicons name="save-outline" size={18} color="#FFFFFF" />
-                <Text style={styles.saveButtonText}>Save Profile</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          {isEditing && (
+            <TouchableOpacity
+              style={[styles.saveButton, saving && { opacity: 0.75 }]}
+              onPress={saveProfile}
+              activeOpacity={0.88}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="save-outline" size={18} color="#FFFFFF" />
+                  <Text style={styles.saveButtonText}>Save Profile</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -525,12 +778,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
+    paddingHorizontal: 17,
+    paddingTop: 30,
     paddingBottom: 40,
   },
 
-  // Loading
   loadingWrap: {
     flex: 1,
     justifyContent: "center",
@@ -542,7 +794,6 @@ const styles = StyleSheet.create({
     color: "#5B6472",
   },
 
-  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -555,23 +806,36 @@ const styles = StyleSheet.create({
     color: "#07142B",
     letterSpacing: -0.5,
   },
+  headerButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  editButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#0D63D8",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    minHeight: 40,
+  },
+  editButtonText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "700",
+  },
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     backgroundColor: "#D64545",
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 10,
-    borderRadius: 14,
-    minHeight: 44,
+    borderRadius: 17,
+    minHeight: 40,
   },
-  logoutButtonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-
-  // Profile Card
   profileCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 24,
@@ -658,7 +922,6 @@ const styles = StyleSheet.create({
     color: "#0D63D8",
   },
 
-  // Stats
   statsRow: {
     flexDirection: "row",
     gap: 10,
@@ -699,7 +962,6 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
 
-  // Collapsible Section
   sectionCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
@@ -745,7 +1007,6 @@ const styles = StyleSheet.create({
     paddingTop: 14,
   },
 
-  // Inputs
   inputLabel: {
     fontSize: 11,
     fontWeight: "700",
@@ -772,8 +1033,21 @@ const styles = StyleSheet.create({
     minHeight: 90,
     textAlignVertical: "top",
   },
+  readOnlyText: {
+    minHeight: 50,
+    backgroundColor: "#F3F6FB",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    fontSize: 15,
+    color: "#12233D",
+    marginBottom: 14,
+    overflow: "hidden",
+  },
+  readOnlyMultiline: {
+    minHeight: 90,
+  },
 
-  // Gender Chips
   chipsRow: {
     flexDirection: "row",
     gap: 8,
@@ -805,7 +1079,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  // Preferences
   preferenceRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -828,7 +1101,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // Save Button
   saveButton: {
     height: 56,
     borderRadius: 18,
@@ -846,7 +1118,7 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     color: "#FFFFFF",
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "800",
     letterSpacing: 0.2,
   },

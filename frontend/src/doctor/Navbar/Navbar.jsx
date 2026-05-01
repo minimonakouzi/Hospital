@@ -1,15 +1,18 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import { NavLink, useParams, useLocation } from "react-router-dom";
-import { Home, Calendar, Edit, Menu, X, LogOut } from "lucide-react";
+import {
+  LayoutDashboard,
+  CalendarDays,
+  SquarePen,
+  LogOut,
+  ShieldCheck,
+} from "lucide-react";
 import logo from "../../assets/logo.png";
-import { navbarStylesDr } from "../../assets/dummyStyles";
 
 export default function Navbar() {
-  const [open, setOpen] = useState(false);
   const params = useParams();
   const location = useLocation();
 
-  // Try params first, then try to extract from pathname (e.g. /doctor-admin/123/...)
   const doctorId = useMemo(() => {
     if (params?.id) return params.id;
     const m = location.pathname.match(/\/doctor-admin\/([^/]+)/);
@@ -17,134 +20,117 @@ export default function Navbar() {
     return null;
   }, [params, location.pathname]);
 
-  // If we don't have an id, send users to login as a safe fallback
   const basePath = doctorId
     ? `/doctor-admin/${doctorId}`
     : "/doctor-admin/login";
 
   const navItems = [
-    { name: "Dashboard", to: `${basePath}`, Icon: Home },
-    { name: "Appointments", to: `${basePath}/appointments`, Icon: Calendar },
-    { name: "Edit Profile", to: `${basePath}/profile/edit`, Icon: Edit },
+    { name: "Dashboard", to: `${basePath}`, Icon: LayoutDashboard, end: true },
+    {
+      name: "Appointments",
+      to: `${basePath}/appointments`,
+      Icon: CalendarDays,
+      end: false,
+    },
+    {
+      name: "Edit Profile",
+      to: `${basePath}/profile/edit`,
+      Icon: SquarePen,
+      end: false,
+    },
   ];
 
+  const handleLogout = () => {
+    localStorage.removeItem("doctorToken_v1");
+    window.location.href = "/doctor-admin/login";
+  };
+
   return (
-    <>
-      {/* Main Navbar */}
-      <nav className={navbarStylesDr.navContainer}>
-        {/* Left Brand */}
-        <div className={navbarStylesDr.leftBrand}>
-          <div className={navbarStylesDr.logoContainer}>
-            <img
-              src={logo}
-              alt="App logo"
-              className={navbarStylesDr.logoImage}
-            />
-          </div>
-          <div className={navbarStylesDr.brandTextContainer}>
-            <div className={navbarStylesDr.brandTitle}>Revive</div>
-            <div className={navbarStylesDr.brandSubtitle}>
-              HealthCare Solutions
+    <aside className="h-screen w-[270px] overflow-hidden border-r border-white/10 bg-gradient-to-b from-[#0d1b3d] via-[#1f58d6] to-[#17336f] text-white shadow-[10px_0_35px_rgba(15,23,42,0.18)]">
+      <div className="flex h-full flex-col">
+        {/* Top brand */}
+        <div className="border-b border-white/10 px-5 py-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white/95 shadow-md">
+              <img
+                src={logo}
+                alt="Revive logo"
+                className="h-10 w-10 object-contain"
+              />
+            </div>
+
+            <div>
+              <h1 className="text-[1.05rem] font-bold tracking-tight text-white">
+                Revive
+              </h1>
+              <p className="text-sm text-white/75">Doctor Dashboard</p>
             </div>
           </div>
         </div>
 
-        {/* Desktop Menu (visible on lg) */}
-        <div className={navbarStylesDr.desktopMenu}>
-          <div className={navbarStylesDr.desktopMenuItems}>
-            {navItems.map(({ name, to, Icon }) => (
+        {/* Small info card */}
+        <div className="px-4 pt-4">
+          <div className="rounded-3xl border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
+            <div className="mb-2 flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-white/90" />
+              <p className="text-sm font-semibold text-white">
+                Doctor Controls
+              </p>
+            </div>
+            <p className="text-sm leading-6 text-white/70">
+              Access your appointments and manage your profile.
+            </p>
+          </div>
+        </div>
+
+        {/* Nav */}
+        <nav className="mt-5 flex-1 px-4">
+          <div className="space-y-3">
+            {navItems.map(({ name, to, Icon, end }) => (
               <NavLink
                 key={to}
                 to={to}
-                end={to === basePath} // mark dashboard link as exact match
+                end={end}
                 className={({ isActive }) =>
-                  `${navbarStylesDr.baseLink} ${isActive ? navbarStylesDr.activeLink : navbarStylesDr.inactiveLink}`
+                  `flex items-center gap-4 rounded-3xl px-4 py-4 text-[15px] font-medium transition-all duration-200 ${
+                    isActive
+                      ? "bg-white text-[#2563eb] shadow-[0_8px_24px_rgba(255,255,255,0.2)]"
+                      : "bg-white/8 text-white/92 hover:bg-white/14"
+                  }`
                 }
-                onClick={() => setOpen(false)}
               >
-                <span className={navbarStylesDr.linkContent}>
-                  <Icon size={16} className={navbarStylesDr.linkIcon} />
-                  <span className={navbarStylesDr.linkText}>{name}</span>
+                <span
+                  className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
+                    location.pathname === to ||
+                    (end === false && location.pathname.startsWith(to))
+                      ? "bg-[#eef4ff]"
+                      : "bg-white/10"
+                  }`}
+                >
+                  <Icon className="h-5 w-5" />
                 </span>
+                <span>{name}</span>
               </NavLink>
             ))}
           </div>
-        </div>
+        </nav>
 
-        {/* Right side actions */}
-        <div className={navbarStylesDr.rightActions}>
-          {/* Logout button (desktop) */}
-          <button
-            className={navbarStylesDr.logoutButtonDesktop}
-            onClick={() => {
-              // TODO: integrate real logout (clear auth + redirect)
-              window.location.href = "/doctor-admin/login";
-            }}
-          >
-            <LogOut size={16} />
-            <span>Logout</span>
-          </button>
-
-          {/* Hamburger Menu (mobile & tablet) */}
-          <button
-            className={navbarStylesDr.hamburgerButtonMd}
-            onClick={() => setOpen((s) => !s)}
-            aria-label={open ? "Close menu" : "Open menu"}
-            aria-expanded={open}
-          >
-            {open ? <X size={20} /> : <Menu size={20} />}
-          </button>
+        {/* Bottom */}
+        <div className="px-4 pb-4">
+          <div className="mb-3 rounded-3xl border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
+            <p className="text-[15px] font-semibold text-white">Doctor Panel</p>
+            <p className="mt-1 text-sm text-white/70">Manage your account</p>
+          </div>
 
           <button
-            className={navbarStylesDr.hamburgerButtonLg}
-            onClick={() => setOpen((s) => !s)}
-            aria-label={open ? "Close menu" : "Open menu"}
+            onClick={handleLogout}
+            className="flex w-full items-center justify-center gap-3 rounded-3xl bg-white px-4 py-4 text-[15px] font-semibold text-[#2563eb] shadow-sm transition hover:bg-[#f8fbff]"
           >
-            {open ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </div>
-      </nav>
-
-      {/* Mobile & Tablet Menu */}
-      <div className={navbarStylesDr.mobileMenuContainer(open)}>
-        <div className={navbarStylesDr.mobileMenuContent}>
-          {navItems.map(({ name, to, Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === basePath}
-              className={({ isActive }) =>
-                `${navbarStylesDr.mobileBaseLink} ${
-                  isActive
-                    ? navbarStylesDr.mobileActiveLink
-                    : navbarStylesDr.mobileInactiveLink
-                }`
-              }
-              onClick={() => setOpen(false)}
-            >
-              <Icon size={18} className="text-emerald-600" />
-              <span>{name}</span>
-            </NavLink>
-          ))}
-
-          {/* Logout button mobile */}
-          <button
-            className={navbarStylesDr.mobileLogoutButton}
-            onClick={() => {
-              setOpen(false);
-              window.location.href = "/doctor-admin/login";
-            }}
-          >
-            <div className={navbarStylesDr.mobileLogoutContent}>
-              <LogOut size={16} />
-              Logout
-            </div>
+            <LogOut className="h-5 w-5" />
+            Logout
           </button>
         </div>
       </div>
-
-      {/* Spacer so content doesn't hide behind navbar */}
-      <div className={navbarStylesDr.spacer} />
-    </>
+    </aside>
   );
 }

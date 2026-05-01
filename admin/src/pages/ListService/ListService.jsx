@@ -1,13 +1,16 @@
-import React from 'react'
-import Navbar from '../../components/Navbar/Navbar'
-import ListServicePage from '../../components/ListServicePage/ListServicePage'
+import React from "react";
+import ListServicePage from "../../components/ListServicePage/ListServicePage";
+import AdminLayout from "../../components/AdminLayout/AdminLayout";
+
 const ListService = () => {
   return (
-    <div>
-        <Navbar/>
-        <ListServicePage/>
-    </div>
-  )
-}
+    <AdminLayout
+      title="List Services"
+      subtitle="Search, edit, and manage your available services"
+    >
+      <ListServicePage />
+    </AdminLayout>
+  );
+};
 
-export default ListService
+export default ListService;

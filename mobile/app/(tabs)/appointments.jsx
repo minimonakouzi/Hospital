@@ -490,7 +490,6 @@ export default function AppointmentsScreen() {
           </TouchableOpacity>
 
           <Text style={styles.headerTitle}>My Appointments</Text>
-          <Text style={styles.headerBrand}>Medical Portal</Text>
         </View>
 
         <View style={styles.topActions}>
@@ -600,7 +599,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 30,
     paddingBottom: 12,
     flexDirection: "row",
     alignItems: "center",

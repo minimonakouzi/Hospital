@@ -1,332 +1,355 @@
-// ContactPage.jsx
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
+  User,
   Mail,
   Phone,
-  MapPin,
-  MessageSquare,
-  User,
-  SendHorizontal,
+  Building2,
   Stethoscope,
+  MessageSquare,
+  MapPin,
+  Clock3,
+  Send,
 } from "lucide-react";
-import { contactPageStyles } from "../../assets/dummyStyles";
+
+const departments = [
+  "Cardiology",
+  "Pediatrics",
+  "Neurology",
+  "Dermatology",
+  "Orthopedics",
+  "Gynecology",
+  "Dentistry",
+  "Emergency",
+];
+
+const departmentServices = {
+  Cardiology: [
+    "Heart Checkup",
+    "ECG",
+    "Blood Pressure Test",
+    "Cardiac Consultation",
+  ],
+  Pediatrics: ["Child Consultation", "Vaccination", "Growth Monitoring"],
+  Neurology: ["Neurological Consultation", "EEG", "Migraine Assessment"],
+  Dermatology: ["Skin Consultation", "Allergy Check", "Acne Treatment"],
+  Orthopedics: [
+    "Bone Checkup",
+    "Joint Consultation",
+    "Physical Therapy Review",
+  ],
+  Gynecology: [
+    "Women's Health Consultation",
+    "Pregnancy Follow-up",
+    "Ultrasound Review",
+  ],
+  Dentistry: ["Dental Checkup", "Cleaning", "Tooth Pain Consultation"],
+  Emergency: ["Urgent Consultation", "Emergency Support"],
+};
+
+const WHATSAPP_NUMBER = "96178909710";
+
+function inputClass() {
+  return "h-12 w-full rounded-[18px] border border-[#dfe6f4] bg-[#f8fafc] px-4 text-[#0f172a] outline-none transition focus:border-[#b9cdf8] focus:bg-white";
+}
 
 export default function ContactPage() {
-  const initial = {
+  const [form, setForm] = useState({
     name: "",
     email: "",
     phone: "",
     department: "",
     service: "",
     message: "",
-  };
+  });
 
-  const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState({});
-  const [sent, setSent] = useState(false);
 
-  const departments = [
-    "General Physician",
-    "Cardiology",
-    "Orthopedics",
-    "Dermatology",
-    "Pediatrics",
-    "Gynecology",
-  ];
+  const services = useMemo(() => {
+    if (!form.department) return [];
+    return departmentServices[form.department] || [];
+  }, [form.department]);
 
-  const servicesMapping = {
-    "General Physician": [
-      "General Consultation",
-      "Adult Checkup",
-      "Vaccination",
-      "Health Screening",
-    ],
-    Cardiology: [
-      "ECG",
-      "Echocardiography",
-      "Stress Test",
-      "Heart Consultation",
-    ],
-    Orthopedics: ["Fracture Care", "Joint Pain Consultation", "Physiotherapy"],
-    Dermatology: ["Skin Consultation", "Allergy Test", "Acne Treatment"],
-    Pediatrics: ["Child Checkup", "Vaccination (Child)", "Growth Monitoring"],
-    Gynecology: ["Antenatal Care", "Pap Smear", "Ultrasound"],
-  };
-
-  const genericServices = [
-    "General Consultation",
-    "ECG",
-    "Blood Test",
-    "X-Ray",
-    "Ultrasound",
-    "Physiotherapy",
-    "Vaccination",
-  ];
-
-  function validate() {
-    const e = {};
-    if (!form.name.trim()) e.name = "Full name is required";
-    if (!form.email.trim()) e.email = "Email is required";
-    else if (!/^\S+@\S+\.\S+$/.test(form.email))
-      e.email = "Enter a valid email";
-    if (!form.phone.trim()) e.phone = "Phone number is required";
-    else if (!/^[0-9]{8}$/.test(form.phone))
-      e.phone = "Phone number must be exactly 8 digits";
-
-    if (!form.department && !form.service) {
-      e.department = "Please choose a department or service";
-      e.service = "Please choose a department or service";
-    }
-
-    if (!form.message.trim()) e.message = "Please write a short message";
-    setErrors(e);
-    return Object.keys(e).length === 0;
+  function setField(key, value) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setErrors((prev) => ({ ...prev, [key]: "" }));
   }
 
-  function handleChange(e) {
-    const { name, value } = e.target;
-    if (name === "department") {
-      setForm((prev) => ({ ...prev, department: value, service: "" }));
-    } else {
-      setForm((prev) => ({ ...prev, [name]: value }));
+  function validate() {
+    const next = {};
+
+    if (!form.name.trim()) next.name = "Full name is required.";
+    if (!form.email.trim()) {
+      next.email = "Email is required.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      next.email = "Enter a valid email.";
     }
 
-    setErrors((prev) => ({ ...prev, [name]: undefined }));
-
-    if (name === "department" || name === "service") {
-      setErrors((prev) => {
-        const copy = { ...prev };
-        // if either department/service has a value, remove the combined error
-        if (
-          (name === "department" && value) ||
-          (name === "service" && value) ||
-          form.department ||
-          form.service
-        ) {
-          delete copy.department;
-          delete copy.service;
-        }
-        return copy;
-      });
+    if (!form.phone.trim()) {
+      next.phone = "Phone number is required.";
+    } else if (!/^\d{8}$/.test(form.phone.trim())) {
+      next.phone = "Phone number must be 8 digits.";
     }
+
+    if (!form.department) next.department = "Please select a department.";
+    if (!form.service) next.service = "Please select a service.";
+    if (!form.message.trim()) next.message = "Message is required.";
+
+    setErrors(next);
+    return Object.keys(next).length === 0;
   }
 
   function handleSubmit(e) {
     e.preventDefault();
     if (!validate()) return;
 
-    const text = `*Contact Request*\nName: ${form.name}\nEmail: ${
-      form.email
-    }\nPhone: ${form.phone}\nDepartment: ${
-      form.department || "N/A"
-    }\nService: ${form.service || "N/A"}\nMessage: ${form.message}`;
+    const text =
+      `Hello Revive Hospital,%0A%0A` +
+      `Full Name: ${encodeURIComponent(form.name)}%0A` +
+      `Email: ${encodeURIComponent(form.email)}%0A` +
+      `Phone: ${encodeURIComponent(form.phone)}%0A` +
+      `Department: ${encodeURIComponent(form.department)}%0A` +
+      `Service: ${encodeURIComponent(form.service)}%0A` +
+      `Message: ${encodeURIComponent(form.message)}`;
 
-    const url = `https://wa.me/81727941?text=${encodeURIComponent(text)}`;
-    window.open(url, "_blank");
-
-    setForm(initial);
-    setErrors({});
-    setSent(true);
-    setTimeout(() => setSent(false), 4000);
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`, "_blank");
   }
 
-  // show department-specific services on tablet/desktop; generic on phones if no dept selected
-  const availableServices = form.department
-    ? servicesMapping[form.department] || []
-    : genericServices;
-
   return (
-    <div className={contactPageStyles.pageContainer}>
-      {/* subtle background accents (reduced on small screens) */}
-      <div className={contactPageStyles.bgAccent1}></div>
-      <div className={contactPageStyles.bgAccent2}></div>
+    <section className="relative min-h-screen overflow-hidden bg-[#eef6ff] pt-28">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.08),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.10),transparent_24%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#eef6ff_0%,#f8fbff_48%,#eef6ff_100%)]" />
 
-      {/* Container: single column on phones, two columns on tablets (md) and desktop (lg) */}
-      <div className={contactPageStyles.gridContainer}>
-        {/* Left: Contact form */}
-        <div className={contactPageStyles.formContainer}>
-          <h2 className={contactPageStyles.formTitle}>Contact Our Hospital</h2>
-          <p className={contactPageStyles.formSubtitle}>
-            Fill the form — we'll open WhatsApp so you can connect with us
-            instantly.
-          </p>
+      <div className="relative z-10 mx-auto max-w-[1380px] px-4 pb-16 sm:px-6 lg:px-8">
+        <div className="mb-8 overflow-hidden rounded-[34px] border border-white/60 bg-white/70 shadow-[0_18px_50px_rgba(30,64,175,0.08)] backdrop-blur-xl">
+          <div className="grid gap-8 px-6 py-8 md:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:px-10 lg:py-10">
+            {/* Left: form */}
+            <div className="overflow-hidden rounded-[30px] border border-[#dbe6f7] bg-white shadow-sm">
+              <div className="border-b border-[#e5eaf5] bg-[#eef4fb] px-6 py-5">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#2563eb] text-white shadow-sm">
+                    <MessageSquare className="h-5 w-5" />
+                  </div>
 
-          <form onSubmit={handleSubmit} className={contactPageStyles.formSpace}>
-            {/* Name + Email: two columns on small and above */}
-            <div className={contactPageStyles.formGrid}>
-              <div>
-                <label className={contactPageStyles.label}>
-                  <User size={16} /> Full Name
-                </label>
-                <input
-                  name="name"
-                  value={form.name}
-                  onChange={handleChange}
-                  placeholder="Full name"
-                  className={contactPageStyles.input}
-                  aria-invalid={!!errors.name}
-                />
-                {errors.name && (
-                  <p className={contactPageStyles.error}>{errors.name}</p>
-                )}
+                  <div>
+                    <h2 className="text-[2rem] font-bold tracking-tight text-[#0f172a]">
+                      Contact Our Hospital
+                    </h2>
+                    <p className="mt-1 text-sm text-[#64748b]">
+                      Fill the form — we’ll open WhatsApp so you can connect
+                      with us instantly.
+                    </p>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className={contactPageStyles.label}>
-                  <Mail size={16} /> Email
-                </label>
-                <input
-                  name="email"
-                  type="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  placeholder="example@domain.com"
-                  className={contactPageStyles.input}
-                  aria-invalid={!!errors.email}
-                />
-                {errors.email && (
-                  <p className={contactPageStyles.error}>{errors.email}</p>
-                )}
+              <form onSubmit={handleSubmit} className="px-6 py-6">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7c8aa5]">
+                      <User className="h-3.5 w-3.5" />
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Full name"
+                      value={form.name}
+                      onChange={(e) => setField("name", e.target.value)}
+                      className={inputClass()}
+                    />
+                    {errors.name && (
+                      <p className="mt-2 text-xs text-rose-600">
+                        {errors.name}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7c8aa5]">
+                      <Mail className="h-3.5 w-3.5" />
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="example@domain.com"
+                      value={form.email}
+                      onChange={(e) => setField("email", e.target.value)}
+                      className={inputClass()}
+                    />
+                    {errors.email && (
+                      <p className="mt-2 text-xs text-rose-600">
+                        {errors.email}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7c8aa5]">
+                      <Phone className="h-3.5 w-3.5" />
+                      Phone
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="12345678"
+                      value={form.phone}
+                      onChange={(e) => setField("phone", e.target.value)}
+                      className={inputClass()}
+                    />
+                    {errors.phone && (
+                      <p className="mt-2 text-xs text-rose-600">
+                        {errors.phone}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7c8aa5]">
+                      <Building2 className="h-3.5 w-3.5" />
+                      Department
+                    </label>
+                    <select
+                      value={form.department}
+                      onChange={(e) => {
+                        setForm((prev) => ({
+                          ...prev,
+                          department: e.target.value,
+                          service: "",
+                        }));
+                        setErrors((prev) => ({
+                          ...prev,
+                          department: "",
+                          service: "",
+                        }));
+                      }}
+                      className={inputClass()}
+                    >
+                      <option value="">Select Department</option>
+                      {departments.map((dep) => (
+                        <option key={dep} value={dep}>
+                          {dep}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.department && (
+                      <p className="mt-2 text-xs text-rose-600">
+                        {errors.department}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7c8aa5]">
+                      <Stethoscope className="h-3.5 w-3.5" />
+                      Service
+                    </label>
+                    <select
+                      value={form.service}
+                      onChange={(e) => setField("service", e.target.value)}
+                      className={inputClass()}
+                    >
+                      <option value="">
+                        Select Service (or choose Department above)
+                      </option>
+                      {services.map((service) => (
+                        <option key={service} value={service}>
+                          {service}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.service && (
+                      <p className="mt-2 text-xs text-rose-600">
+                        {errors.service}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7c8aa5]">
+                      <MessageSquare className="h-3.5 w-3.5" />
+                      Message
+                    </label>
+                    <textarea
+                      rows={5}
+                      placeholder="Describe your concern briefly..."
+                      value={form.message}
+                      onChange={(e) => setField("message", e.target.value)}
+                      className="min-h-[130px] w-full rounded-[18px] border border-[#dfe6f4] bg-[#f8fafc] px-4 py-3 text-[#0f172a] outline-none transition focus:border-[#b9cdf8] focus:bg-white"
+                    />
+                    {errors.message && (
+                      <p className="mt-2 text-xs text-rose-600">
+                        {errors.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <button
+                    type="submit"
+                    className="inline-flex items-center gap-2 rounded-full bg-[#2563eb] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1d4ed8]"
+                  >
+                    <Send className="h-4 w-4" />
+                    Send via WhatsApp
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Right: info */}
+            <div className="space-y-5">
+              <div className="overflow-hidden rounded-[30px] border border-[#dbe6f7] bg-white shadow-sm">
+                <div className="px-6 py-6">
+                  <h3 className="text-[1.8rem] font-bold tracking-tight text-[#0f172a]">
+                    Visit Our Hospital
+                  </h3>
+
+                  <div className="mt-5 space-y-4 text-sm text-[#334155]">
+                    <div className="flex items-center gap-3">
+                      <MapPin className="h-4 w-4 text-[#2563eb]" />
+                      <span>Lebanon, Beirut</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <Phone className="h-4 w-4 text-[#2563eb]" />
+                      <span>81727941</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <Mail className="h-4 w-4 text-[#2563eb]" />
+                      <span>info@yourhospital.com</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-hidden rounded-[30px] border border-[#dbe6f7] bg-white shadow-sm">
+                <div className="h-[255px] w-full overflow-hidden">
+                  <iframe
+                    title="Hospital Location"
+                    src="https://www.google.com/maps?q=Beirut%20Arab%20University&z=15&output=embed"
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-hidden rounded-[30px] border border-[#dbe6f7] bg-[#eef4fb] shadow-sm">
+                <div className="px-6 py-5">
+                  <h4 className="text-xl font-semibold text-[#0f172a]">
+                    Hospital Hours
+                  </h4>
+                  <div className="mt-3 flex items-center gap-3 text-sm text-[#334155]">
+                    <Clock3 className="h-4 w-4 text-[#2563eb]" />
+                    <span>24/7 Availability</span>
+                  </div>
+                </div>
               </div>
             </div>
-
-            {/* Phone + Department: two columns on small and above */}
-            <div className={contactPageStyles.formGrid}>
-              <div>
-                <label className={contactPageStyles.label}>
-                  <Phone size={16} /> Phone
-                </label>
-                <input
-                  name="phone"
-                  type="tel"
-                  value={form.phone}
-                  onChange={handleChange}
-                  placeholder="12345678"
-                  className={contactPageStyles.input}
-                  maxLength="8"
-                  aria-invalid={!!errors.phone}
-                />
-                {errors.phone && (
-                  <p className={contactPageStyles.error}>{errors.phone}</p>
-                )}
-              </div>
-
-              <div>
-                <label className={contactPageStyles.label}>
-                  <MapPin size={16} /> Department
-                </label>
-                <select
-                  name="department"
-                  value={form.department}
-                  onChange={handleChange}
-                  className={contactPageStyles.input}
-                >
-                  <option value="">Select Department</option>
-                  {departments.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-                {errors.department && (
-                  <p className={contactPageStyles.error}>{errors.department}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Service select */}
-            <div>
-              <label className={contactPageStyles.label}>
-                <Stethoscope size={16} /> Service
-              </label>
-              <select
-                name="service"
-                value={form.service}
-                onChange={handleChange}
-                className={contactPageStyles.input}
-              >
-                <option value="">
-                  Select Service (or choose Department above)
-                </option>
-                {availableServices.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-              {errors.service && (
-                <p className={contactPageStyles.error}>{errors.service}</p>
-              )}
-            </div>
-
-            {/* Message */}
-            <div>
-              <label className={contactPageStyles.label}>
-                <MessageSquare size={16} /> Message
-              </label>
-              <textarea
-                name="message"
-                value={form.message}
-                onChange={handleChange}
-                placeholder="Describe your concern briefly..."
-                rows={4}
-                className={contactPageStyles.textarea}
-                aria-invalid={!!errors.message}
-              />
-              {errors.message && (
-                <p className={contactPageStyles.error}>{errors.message}</p>
-              )}
-            </div>
-
-            {/* Actions: button full width on small, inline on md+ */}
-            <div className={contactPageStyles.buttonContainer}>
-              <button
-                type="submit"
-                className={contactPageStyles.button}
-                aria-label="Send via WhatsApp"
-              >
-                <SendHorizontal size={18} /> <span>Send via WhatsApp</span>
-              </button>
-
-              {sent && (
-                <p className={contactPageStyles.sentMessage}>
-                  Opening WhatsApp and clearing form...
-                </p>
-              )}
-            </div>
-          </form>
-        </div>
-
-        {/* Right: Contact info + Map */}
-        <div className={contactPageStyles.infoContainer}>
-          <div className={contactPageStyles.infoCard}>
-            <h3 className={contactPageStyles.infoTitle}>Visit Our Hospital</h3>
-            <p className={contactPageStyles.infoText}>Lebanon , Beirut</p>
-            <p className={contactPageStyles.infoItem}>
-              <Phone size={16} /> 81727914
-            </p>
-            <p className={contactPageStyles.infoItem}>
-              <Mail size={16} /> info@yourhospital.com
-            </p>
-          </div>
-
-          <iframe
-            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3312.65364346415!2d35.496961299999995!3d33.87281599999999!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x151f1740ef2ed83b%3A0xf1ec1faedb96137f!2sBeirut%20Arab%20University!5e0!3m2!1sen!2slb!4v1774291172248!5m2!1sen!2slb"
-            className={contactPageStyles.map}
-            title="Revive Hospital Map"
-            loading="lazy"
-            allowFullScreen
-          ></iframe>
-
-          <div className={contactPageStyles.hoursContainer}>
-            <h4 className={contactPageStyles.hoursTitle}>Hospital Hours</h4>
-            <p className={contactPageStyles.hoursText}>24/7 Availability</p>
           </div>
         </div>
       </div>
-
-      {/* small animation keyframes */}
-      <style>{contactPageStyles.animationKeyframes}</style>
-    </div>
+    </section>
   );
 }

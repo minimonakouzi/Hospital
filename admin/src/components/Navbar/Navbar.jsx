@@ -16,32 +16,35 @@ import {
   Grid,
   PlusSquare,
   List,
+  LogIn,
+  LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import logoImg from "../../assets/logo.png";
-
-// Clerk hooks
 import { useClerk, useAuth, useUser } from "@clerk/clerk-react";
-import { navbarStyles as ns } from "../../assets/dummyStyles";
 
 export default function AnimatedNavbar() {
   const [open, setOpen] = useState(false);
+  const [showNavbar, setShowNavbar] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
   const navInnerRef = useRef(null);
   const indicatorRef = useRef(null);
+  const navRef = useRef(null);
+
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Clerk
   const clerk = useClerk?.();
   const { getToken, isLoaded: authLoaded } = useAuth();
-  const { isSignedIn, user, isLoaded: userLoaded } = useUser();
+  const { isSignedIn, isLoaded: userLoaded } = useUser();
 
-  /* ---------------- Sliding Active Indicator ---------------- */
   const moveIndicator = useCallback(() => {
     const container = navInnerRef.current;
     const ind = indicatorRef.current;
     if (!container || !ind) return;
 
-    const active = container.querySelector(".nav-item.active");
+    const active = container.querySelector(".admin-nav-item.active");
     if (!active) {
       ind.style.opacity = "0";
       return;
@@ -60,9 +63,7 @@ export default function AnimatedNavbar() {
 
   useLayoutEffect(() => {
     moveIndicator();
-    const t = setTimeout(() => {
-      moveIndicator();
-    }, 120);
+    const t = setTimeout(moveIndicator, 120);
     return () => clearTimeout(t);
   }, [location.pathname, moveIndicator]);
 
@@ -70,19 +71,14 @@ export default function AnimatedNavbar() {
     const container = navInnerRef.current;
     if (!container) return;
 
-    const onScroll = () => {
-      moveIndicator();
-    };
+    const onScroll = () => moveIndicator();
     container.addEventListener("scroll", onScroll, { passive: true });
 
-    const ro = new ResizeObserver(() => {
-      moveIndicator();
-    });
+    const ro = new ResizeObserver(() => moveIndicator());
     ro.observe(container);
     if (container.parentElement) ro.observe(container.parentElement);
 
     window.addEventListener("resize", moveIndicator);
-
     moveIndicator();
 
     return () => {
@@ -92,7 +88,34 @@ export default function AnimatedNavbar() {
     };
   }, [moveIndicator]);
 
-  // Close mobile menu on Escape
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY > lastScrollY && currentScrollY > 80) {
+        setShowNavbar(false);
+      } else {
+        setShowNavbar(true);
+      }
+
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScrollY]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (open && navRef.current && !navRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape" && open) setOpen(false);
@@ -101,24 +124,24 @@ export default function AnimatedNavbar() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  // When user signs in, fetch a token and store it in localStorage
   useEffect(() => {
     let mounted = true;
+
     const storeToken = async () => {
       if (!authLoaded || !userLoaded) return;
+
       if (!isSignedIn) {
-        // clear token on signed out
         try {
           localStorage.removeItem("clerk_token");
-        } catch (e) {
-          /* ignore */
-        }
+        } catch {}
         return;
       }
+
       try {
         if (getToken) {
           const token = await getToken();
           if (!mounted) return;
+
           if (token) {
             try {
               localStorage.setItem("clerk_token", token);
@@ -152,6 +175,7 @@ export default function AnimatedNavbar() {
       console.warn("Clerk signOut not available.");
       return;
     }
+
     try {
       await clerk.signOut();
     } catch (err) {
@@ -159,209 +183,224 @@ export default function AnimatedNavbar() {
     } finally {
       try {
         localStorage.removeItem("clerk_token");
-      } catch (e) {
-        /* ignore */
-      }
-      // redirect to home after sign out
+      } catch {}
       navigate("/");
     }
   };
 
-  return (
-    <header className={ns.header}>
-      <nav className={ns.navContainer}>
-        <div className={ns.flexContainer}>
-          {/* LEFT */}
-          <div className={ns.logoContainer}>
-            <img src={logoImg} alt="Revive" className={ns.logoImage} />
-            <Link to="/">
-              <div className={ns.logoLink}>Revive</div>
-              <div className={ns.logoSubtext}>Healthcare Solutions</div>
-            </Link>
-          </div>
+  const navItems = [
+    { to: "/h", label: "Dashboard", icon: <Home className="h-4 w-4" /> },
+    { to: "/add", label: "Add Doctor", icon: <UserPlus className="h-4 w-4" /> },
+    { to: "/list", label: "List Doctors", icon: <Users className="h-4 w-4" /> },
+    {
+      to: "/appointments",
+      label: "Appointments",
+      icon: <Calendar className="h-4 w-4" />,
+    },
+    {
+      to: "/service-dashboard",
+      label: "Service Dashboard",
+      icon: <Grid className="h-4 w-4" />,
+    },
+    {
+      to: "/add-service",
+      label: "Add Service",
+      icon: <PlusSquare className="h-4 w-4" />,
+    },
+    {
+      to: "/list-service",
+      label: "List Services",
+      icon: <List className="h-4 w-4" />,
+    },
+    {
+      to: "/service-appointments",
+      label: "Service Appointments",
+      icon: <Calendar className="h-4 w-4" />,
+    },
+  ];
 
-          {/* CENTER NAV */}
-          <div className={ns.centerNavContainer}>
-            <div className={ns.glowEffect}>
-              <div className={ns.centerNavInner}>
+  return (
+    <div
+      ref={navRef}
+      className={`fixed inset-x-0 top-0 z-50 transition-transform duration-300 ${
+        showNavbar ? "translate-y-0" : "-translate-y-full"
+      }`}
+    >
+      <div className="mx-auto max-w-[1600px] px-4 pt-4 sm:px-6 lg:px-8">
+        <div className="overflow-hidden rounded-[28px] border border-white/60 bg-white/85 shadow-[0_18px_50px_rgba(30,64,175,0.10)] backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
+            {/* Left */}
+            <Link to="/" className="flex items-center gap-3 shrink-0 min-w-0">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#eef4fb] shadow-sm">
+                <img
+                  src={logoImg}
+                  alt="Revive logo"
+                  className="h-8 w-8 object-contain"
+                />
+              </div>
+
+              <div className="hidden sm:block min-w-0">
+                <h1 className="truncate text-[1.05rem] font-bold tracking-tight text-[#0f172a]">
+                  Revive<span className="text-[#2563eb]">+</span>
+                </h1>
+                <p className="truncate text-[11px] text-[#64748b]">
+                  Admin Control
+                </p>
+              </div>
+            </Link>
+
+            {/* Center desktop nav - only on very wide screens */}
+            <div className="hidden xl:flex min-w-0 flex-1 justify-center px-4">
+              <div className="relative max-w-full overflow-hidden rounded-full border border-[#dbe6f7] bg-[#f8fbff] px-2 py-2">
                 <div
                   ref={navInnerRef}
-                  tabIndex={0}
-                  className={ns.centerNavScrollContainer}
-                  style={{ WebkitOverflowScrolling: "touch" }}
+                  className="relative flex max-w-[980px] items-center gap-2 overflow-x-auto whitespace-nowrap scroll-smooth"
+                  style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                 >
-                  <CenterNavItem
-                    to="/h"
-                    label="Dashboard"
-                    icon={<Home size={16} />}
+                  <div
+                    ref={indicatorRef}
+                    className="pointer-events-none absolute bottom-0 left-0 h-full rounded-full bg-white shadow-sm transition-all duration-300"
+                    style={{ width: 0, opacity: 0 }}
                   />
-                  <CenterNavItem
-                    to="/add"
-                    label="Add Doctor"
-                    icon={<UserPlus size={16} />}
-                  />
-                  <CenterNavItem
-                    to="/list"
-                    label="List Doctors"
-                    icon={<Users size={16} />}
-                  />
-                  <CenterNavItem
-                    to="/appointments"
-                    label="Appointments"
-                    icon={<Calendar size={16} />}
-                  />
-                  <CenterNavItem
-                    to="/service-dashboard"
-                    label="Service Dashboard"
-                    icon={<Grid size={16} />}
-                  />
-                  <CenterNavItem
-                    to="/add-service"
-                    label="Add Service"
-                    icon={<PlusSquare size={16} />}
-                  />
-                  <CenterNavItem
-                    to="/list-service"
-                    label="List Services"
-                    icon={<List size={16} />}
-                  />
-                  <CenterNavItem
-                    to="/service-appointments"
-                    label="Service Appointments"
-                    icon={<Calendar size={16} />}
-                  />
+
+                  {navItems.map((item) => (
+                    <CenterNavItem
+                      key={item.to}
+                      to={item.to}
+                      label={item.label}
+                      icon={item.icon}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* RIGHT */}
-          <div className={ns.rightContainer}>
-            {/* Auth buttons */}
-            {isSignedIn ? (
-              <button
-                onClick={handleSignOut}
-                className={ns.signOutButton + " " + ns.cursorPointer}
-              >
-                Sign Out
-              </button>
-            ) : (
-              <div className="hidden lg:flex items-center gap-2">
-                <button
-                  onClick={handleOpenSignIn}
-                  className={ns.loginButton + " " + ns.cursorPointer}
-                >
-                  Login
-                </button>
-              </div>
-            )}
-
-            {/* MOBILE MENU ICON */}
-            <button
-              className={ns.mobileMenuButton}
-              onClick={() => setOpen((v) => !v)}
-              aria-expanded={open}
-              aria-controls="mobile-menu"
-            >
-              {open ? <X size={18} /> : <Menu size={18} />}
-            </button>
-          </div>
-        </div>
-
-        {/* When mobile menu is open, render an overlay that closes the menu when clicked. */}
-        {open && (
-          <div className={ns.mobileOverlay} onClick={() => setOpen(false)} />
-        )}
-
-        {/* MOBILE MENU */}
-        {open && (
-          <div className={ns.mobileMenuContainer} id="mobile-menu">
-            <div className={ns.mobileMenuInner}>
-              <MobileItem
-                to="/h"
-                label="Dashboard"
-                icon={<Home size={16} />}
-                onClick={() => setOpen(false)}
-              />
-
-              <MobileItem
-                to="/add"
-                label="Add Doctor"
-                icon={<UserPlus size={16} />}
-                onClick={() => setOpen(false)}
-              />
-              <MobileItem
-                to="/list"
-                label="List Doctors"
-                icon={<Users size={16} />}
-                onClick={() => setOpen(false)}
-              />
-              <MobileItem
-                to="/appointments"
-                label="Appointments"
-                icon={<Calendar size={16} />}
-                onClick={() => setOpen(false)}
-              />
-
-              <MobileItem
-                to="/service-dashboard"
-                label="Service Dashboard"
-                icon={<Grid size={16} />}
-                onClick={() => setOpen(false)}
-              />
-              <MobileItem
-                to="/add-service"
-                label="Add Service"
-                icon={<PlusSquare size={16} />}
-                onClick={() => setOpen(false)}
-              />
-              <MobileItem
-                to="/list-service"
-                label="List Services"
-                icon={<List size={16} />}
-                onClick={() => setOpen(false)}
-              />
-              <MobileItem
-                to="/service-appointments"
-                label="Service Appointments"
-                icon={<Calendar size={16} />}
-                onClick={() => setOpen(false)}
-              />
-
-              <div className={ns.mobileAuthContainer}>
+            {/* Right */}
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="hidden xl:flex items-center gap-2">
                 {isSignedIn ? (
                   <button
-                    onClick={() => {
-                      handleSignOut();
-                      setOpen(false);
-                    }}
-                    className={ns.mobileSignOutButton}
+                    onClick={handleSignOut}
+                    className="inline-flex items-center gap-2 rounded-full border border-[#dbe6f7] bg-white px-4 py-2 text-sm font-semibold text-[#2563eb] shadow-sm transition hover:bg-[#f8fbff]"
                   >
+                    <LogOut className="h-4 w-4" />
                     Sign Out
                   </button>
                 ) : (
-                  <div className="space-y-2">
+                  <button
+                    onClick={handleOpenSignIn}
+                    className="inline-flex items-center gap-2 rounded-full border border-[#dbe6f7] bg-white px-4 py-2 text-sm font-semibold text-[#2563eb] shadow-sm transition hover:bg-[#f8fbff]"
+                  >
+                    <LogIn className="h-4 w-4" />
+                    Login
+                  </button>
+                )}
+              </div>
+
+              {/* Mobile / tablet menu button appears earlier */}
+              <button
+                className="xl:hidden inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#dbe6f7] bg-white text-[#2563eb] shadow-sm"
+                onClick={() => setOpen((v) => !v)}
+                aria-expanded={open}
+                aria-controls="mobile-menu"
+              >
+                {open ? <X size={18} /> : <Menu size={18} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Tablet shortcut row */}
+          <div className="hidden md:flex xl:hidden items-center gap-2 border-t border-[#eef2f7] px-4 py-3 overflow-x-auto">
+            {navItems.slice(0, 5).map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end
+                className={({ isActive }) =>
+                  `inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
+                    isActive
+                      ? "bg-[#eff6ff] text-[#2563eb]"
+                      : "bg-white text-[#334155] border border-[#dbe6f7]"
+                  }`
+                }
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+          </div>
+
+          {/* Mobile / tablet menu */}
+          {open && (
+            <div
+              className="border-t border-[#eef2f7] xl:hidden"
+              id="mobile-menu"
+            >
+              <div className="space-y-2 px-4 py-4">
+                <div className="grid gap-2">
+                  {navItems.map((item) => (
+                    <MobileItem
+                      key={item.to}
+                      to={item.to}
+                      label={item.label}
+                      icon={item.icon}
+                      onClick={() => setOpen(false)}
+                    />
+                  ))}
+                </div>
+
+                <div className="pt-3">
+                  {isSignedIn ? (
+                    <button
+                      onClick={() => {
+                        handleSignOut();
+                        setOpen(false);
+                      }}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#2563eb] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1d4ed8]"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sign Out
+                    </button>
+                  ) : (
                     <button
                       onClick={() => {
                         handleOpenSignIn();
                         setOpen(false);
                       }}
-                      className={ns.mobileLoginButton + " " + ns.cursorPointer}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#2563eb] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#1d4ed8]"
                     >
+                      <LogIn className="h-4 w-4" />
                       Login
                     </button>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] px-4 py-3">
+                  <div className="mb-2 flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-[#2563eb]" />
+                    <p className="text-sm font-semibold text-[#0f172a]">
+                      Admin Controls
+                    </p>
                   </div>
-                )}
+                  <p className="text-sm leading-6 text-[#64748b]">
+                    Access doctors, appointments, services, and dashboard tools.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </nav>
-    </header>
+          )}
+        </div>
+      </div>
+
+      <style>{`
+        .admin-nav-item::-webkit-scrollbar,
+        [style*="scrollbarWidth"]::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
+    </div>
   );
 }
-
-/* ---------- Helper Components ---------- */
 
 function CenterNavItem({ to, icon, label }) {
   return (
@@ -369,13 +408,13 @@ function CenterNavItem({ to, icon, label }) {
       to={to}
       end
       className={({ isActive }) =>
-        `nav-item ${isActive ? "active" : ""} ${ns.centerNavItemBase} ${
-          isActive ? ns.centerNavItemActive : ns.centerNavItemInactive
+        `admin-nav-item relative z-10 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold transition ${
+          isActive ? "active text-[#2563eb]" : "text-[#334155] hover:bg-white"
         }`
       }
     >
-      <span>{icon}</span>
-      <span className="font-medium">{label}</span>
+      {icon}
+      <span>{label}</span>
     </NavLink>
   );
 }
@@ -385,14 +424,17 @@ function MobileItem({ to, icon, label, onClick }) {
     <NavLink
       to={to}
       onClick={onClick}
+      end
       className={({ isActive }) =>
-        `${ns.mobileItemBase} ${
-          isActive ? ns.mobileItemActive : ns.mobileItemInactive
+        `flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition ${
+          isActive
+            ? "bg-[#eff6ff] text-[#2563eb]"
+            : "text-[#334155] hover:bg-[#f8fbff]"
         }`
       }
     >
       {icon}
-      <span className="font-medium text-sm">{label}</span>
+      <span>{label}</span>
     </NavLink>
   );
 }

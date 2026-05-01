@@ -1,42 +1,70 @@
-// AddService.jsx
-import React, { useState, useRef, useEffect } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Image as ImageIcon,
-  Plus,
-  Trash2,
-  CheckCircle,
-  XCircle,
   Calendar,
-  Clock,
-  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  Clock3,
+  ImagePlus,
+  Loader2,
+  RotateCcw,
+  ShieldCheck,
+  Trash2,
+  Upload,
+  XCircle,
 } from "lucide-react";
-import { addServiceStyles } from "../../assets/dummyStyles";
 
-export default function AddService({ apiBase, serviceId }) {
-  const API_BASE = apiBase || "http://localhost:4000";
+function formatDisplayDate(iso) {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  const dateObj = new Date(Number(y), Number(m) - 1, Number(d));
+  const monthNames = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  const day = String(Number(d));
+  const month = monthNames[dateObj.getMonth()] || "";
+  return `${day} ${month} ${y}`;
+}
 
-  const fileRef = useRef(null);
-  const [imagePreview, setImagePreview] = useState(null); // either objectURL or remote imageUrl
-  const [imageFile, setImageFile] = useState(null); // File when user chooses a new one
-  const [hasExistingImage, setHasExistingImage] = useState(false); // true if fetched service had an imageUrl
-  const [removeImage, setRemoveImage] = useState(false); // user wants to remove existing image
+function slotToMinutes(slot) {
+  if (!slot) return 0;
+  let hh = Number(slot.hour || 0);
+  const mm = Number(slot.minute || 0);
+  const ampm = String(slot.ampm || "AM").toUpperCase();
 
-  const [serviceName, setServiceName] = useState("");
-  const [about, setAbout] = useState("");
-  const [price, setPrice] = useState("");
-  const [availability, setAvailability] = useState("available");
+  if (ampm === "AM" && hh === 12) hh = 0;
+  else if (ampm === "PM" && hh !== 12) hh += 12;
 
-  const [instructions, setInstructions] = useState([""]);
-  const [slots, setSlots] = useState([]);
+  return hh * 60 + mm;
+}
 
-  // Date/time controls for adding a slot
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // local midnight today
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth(); // 0-11
-  const currentDate = today.getDate();
+function toSlotLabel(slot) {
+  return `${String(slot.hour).padStart(2, "0")}:${String(slot.minute).padStart(
+    2,
+    "0",
+  )} ${slot.ampm}`;
+}
 
-  const years = Array.from({ length: 5 }).map((_, i) => currentYear + i);
+function toBackendSlotString(slot) {
+  return `${formatDisplayDate(slot.date)} • ${String(slot.hour).padStart(
+    2,
+    "0",
+  )}:${String(slot.minute).padStart(2, "0")} ${slot.ampm}`;
+}
+
+function parseBackendSlots(rawSlots = []) {
+  if (!Array.isArray(rawSlots)) return [];
+
   const months = [
     "Jan",
     "Feb",
@@ -51,755 +79,865 @@ export default function AddService({ apiBase, serviceId }) {
     "Nov",
     "Dec",
   ];
-  const hours = Array.from({ length: 12 }).map((_, i) =>
-    String(i + 1).padStart(2, "0"),
-  );
-  const minutes = Array.from({ length: 12 }).map((_, i) =>
-    String(i * 5).padStart(2, "0"),
-  );
-  const ampm = ["AM", "PM"];
 
-  // initial values as strings matching options
-  const [slotDay, setSlotDay] = useState(String(currentDate));
-  const [slotMonth, setSlotMonth] = useState(String(currentMonth)); // store month index
-  const [slotYear, setSlotYear] = useState(String(currentYear));
-  const [slotHour, setSlotHour] = useState("11");
+  return rawSlots
+    .map((raw, idx) => {
+      const value = String(raw || "").trim();
+
+      const custom = value.match(
+        /^(\d{1,2})\s+([A-Za-z]{3})\s+(\d{4})\s*•\s*(\d{1,2}):(\d{2})\s*(AM|PM)$/i,
+      );
+      if (custom) {
+        const day = String(Number(custom[1])).padStart(2, "0");
+        const monthIndex = months.findIndex(
+          (m) => m.toLowerCase() === custom[2].toLowerCase(),
+        );
+        const month = String(monthIndex + 1).padStart(2, "0");
+        const year = custom[3];
+        return {
+          id: `slot-${idx}-${Date.now()}`,
+          date: `${year}-${month}-${day}`,
+          hour: String(Number(custom[4])).padStart(2, "0"),
+          minute: String(Number(custom[5])).padStart(2, "0"),
+          ampm: custom[6].toUpperCase(),
+        };
+      }
+
+      const iso = value.match(
+        /^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2}))?/,
+      );
+      if (iso) {
+        const year = iso[1];
+        const month = iso[2];
+        const day = iso[3];
+        let hh = Number(iso[4] || 10);
+        const mm = String(Number(iso[5] || 0)).padStart(2, "0");
+        let ampm = "AM";
+
+        if (hh === 0) {
+          hh = 12;
+          ampm = "AM";
+        } else if (hh === 12) {
+          ampm = "PM";
+        } else if (hh > 12) {
+          hh -= 12;
+          ampm = "PM";
+        }
+
+        return {
+          id: `slot-${idx}-${Date.now()}`,
+          date: `${year}-${month}-${day}`,
+          hour: String(hh).padStart(2, "0"),
+          minute: mm,
+          ampm,
+        };
+      }
+
+      return null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return slotToMinutes(a) - slotToMinutes(b);
+    });
+}
+
+function FieldLabel({ children, required = false }) {
+  return (
+    <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+      {children} {required ? <span className="text-rose-500">*</span> : null}
+    </label>
+  );
+}
+
+function InputBase({
+  as = "input",
+  className = "",
+  icon = null,
+  rightIcon = null,
+  ...props
+}) {
+  const Component = as;
+  return (
+    <div className="relative">
+      {icon ? (
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+          {icon}
+        </span>
+      ) : null}
+
+      <Component
+        {...props}
+        className={[
+          "w-full rounded-2xl border border-slate-200 bg-[#f7f9fc] text-[13px] text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white",
+          as === "textarea" ? "min-h-[120px] px-4 py-3" : "h-11 px-4",
+          icon ? "pl-10" : "",
+          rightIcon ? "pr-10" : "",
+          className,
+        ].join(" ")}
+      />
+
+      {rightIcon ? (
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+          {rightIcon}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+export default function AddService({ apiBase, serviceId }) {
+  const API_BASE = apiBase || "http://localhost:4000";
+  const fileInputRef = useRef(null);
+
+  const [form, setForm] = useState({
+    serviceName: "",
+    about: "",
+    price: "",
+    availability: "available",
+    imageFile: null,
+    imagePreview: "",
+    instructions: [""],
+    slots: [],
+  });
+
+  const [slotDate, setSlotDate] = useState("");
+  const [slotHour, setSlotHour] = useState("");
   const [slotMinute, setSlotMinute] = useState("00");
-  const [slotAmPm, setSlotAmPm] = useState("AM");
+  const [slotAmpm, setSlotAmpm] = useState("AM");
 
-  const [submitting, setSubmitting] = useState(false);
-  const [toast, setToast] = useState(null);
+  const [hasExistingImage, setHasExistingImage] = useState(false);
+  const [removeExistingImage, setRemoveExistingImage] = useState(false);
+
+  const [toast, setToast] = useState({
+    show: false,
+    type: "success",
+    message: "",
+  });
+
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
-  // compute days for selected month/year (respecting month length)
-  const selectedYearNum = Number(slotYear);
-  const selectedMonthNum = Number(slotMonth);
-  const daysInSelectedMonth = new Date(
-    selectedYearNum,
-    selectedMonthNum + 1,
-    0,
-  ).getDate();
-  const days = Array.from({ length: daysInSelectedMonth }).map((_, i) =>
-    String(i + 1),
-  );
+  const [today] = useState(() => {
+    const d = new Date();
+    const tzOffset = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - tzOffset * 60000);
+    return local.toISOString().split("T")[0];
+  });
 
-  // clamp selected day if month/year changes to a smaller month
+  const slotCount = useMemo(() => form.slots.length, [form.slots]);
+
   useEffect(() => {
-    if (Number(slotDay) > daysInSelectedMonth) {
-      setSlotDay(String(daysInSelectedMonth));
-    }
-    // if user selected a year/month that is earlier than today (shouldn't happen since we disable),
-    // ensure the day is at least today's date for the same month/year
-    // (we mostly rely on disabling month/day options below)
-  }, [slotMonth, slotYear, daysInSelectedMonth]); // eslint-disable-line
+    if (!toast.show) return;
+    const t = setTimeout(() => {
+      setToast((prev) => ({ ...prev, show: false }));
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [toast.show]);
 
-  // ----- Fetch service when editing -----
   useEffect(() => {
     let mounted = true;
+
     async function loadService() {
       if (!serviceId) return;
+
       try {
+        setLoading(true);
         const res = await fetch(`${API_BASE}/api/services/${serviceId}`);
+        const body = await res.json().catch(() => null);
+
         if (!res.ok) {
-          const txt = await res.text().catch(() => "");
-          console.warn("Failed to fetch service:", res.status, txt);
-          showToast(
-            "error",
-            "Load failed",
-            "Could not load service for editing.",
-          );
+          showToast("error", body?.message || "Could not load service.");
           return;
         }
-        const payload = await res.json().catch(() => null);
-        const data = payload?.data || payload;
-        if (!data) return;
-        if (!mounted) return;
 
-        setServiceName(data.name || "");
-        setAbout(data.about || data.description || "");
-        setPrice(data.price != null ? String(data.price) : "");
-        setAvailability(data.available ? "available" : "unavailable");
-        setInstructions(
-          Array.isArray(data.instructions) && data.instructions.length
-            ? data.instructions
-            : [""],
-        );
-        setSlots(Array.isArray(data.slots) ? data.slots : []);
-        // image: show remote image URL as preview
-        if (data.imageUrl) {
-          setImagePreview(data.imageUrl);
-          setHasExistingImage(true);
-          setRemoveImage(false);
-        } else {
-          setImagePreview(null);
-          setHasExistingImage(false);
-        }
+        const data = body?.data || body;
+        if (!data || !mounted) return;
+
+        const imageUrl = data.imageUrl || data.image || "";
+
+        setForm({
+          serviceName: data.name || "",
+          about: data.about || data.description || "",
+          price:
+            data.price !== undefined && data.price !== null
+              ? String(data.price)
+              : "",
+          availability: data.available ? "available" : "unavailable",
+          imageFile: null,
+          imagePreview: imageUrl,
+          instructions:
+            Array.isArray(data.instructions) && data.instructions.length
+              ? data.instructions
+              : [""],
+          slots: Array.isArray(data.slots)
+            ? parseBackendSlots(data.slots)
+            : data.slots && typeof data.slots === "object"
+              ? Object.entries(data.slots)
+                  .flatMap(([date, times]) =>
+                    (Array.isArray(times) ? times : []).map((time, idx) => {
+                      const m = String(time).match(
+                        /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i,
+                      );
+                      return {
+                        id: `slot-map-${date}-${idx}`,
+                        date,
+                        hour: m ? String(Number(m[1])).padStart(2, "0") : "10",
+                        minute: m
+                          ? String(Number(m[2])).padStart(2, "0")
+                          : "00",
+                        ampm: m ? m[3].toUpperCase() : "AM",
+                      };
+                    }),
+                  )
+                  .sort((a, b) => {
+                    if (a.date !== b.date) return a.date.localeCompare(b.date);
+                    return slotToMinutes(a) - slotToMinutes(b);
+                  })
+              : [],
+        });
+
+        setHasExistingImage(Boolean(imageUrl));
+        setRemoveExistingImage(false);
       } catch (err) {
-        console.error("loadService error:", err);
-        showToast("error", "Network error", "Could not load service.");
+        console.error("load service error:", err);
+        showToast("error", "Could not load service.");
+      } finally {
+        if (mounted) setLoading(false);
       }
     }
+
     loadService();
+
     return () => {
       mounted = false;
     };
   }, [serviceId, API_BASE]);
 
-  // ----- Image change -----
-  function handleImageChange(e) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    // if previous preview is an object URL revoke it
-    if (imagePreview && imagePreview.startsWith("blob:")) {
-      try {
-        URL.revokeObjectURL(imagePreview);
-      } catch (err) {}
-    }
-    setImageFile(f);
-    setImagePreview(URL.createObjectURL(f));
-    // if user chooses a new file, we should no longer be removing the existing image
-    setRemoveImage(false);
-    setHasExistingImage(false);
+  function showToast(type, message) {
+    setToast({ show: true, type, message });
   }
 
-  // ----- Instructions helpers -----
+  function setField(key, value) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setErrors((prev) => ({ ...prev, [key]: false }));
+  }
+
+  function handleImage(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (form.imagePreview && form.imageFile) {
+      try {
+        URL.revokeObjectURL(form.imagePreview);
+      } catch {}
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      imageFile: file,
+      imagePreview: URL.createObjectURL(file),
+    }));
+
+    setHasExistingImage(false);
+    setRemoveExistingImage(false);
+    setErrors((prev) => ({ ...prev, image: false }));
+  }
+
+  function removeImage() {
+    if (form.imagePreview && form.imageFile) {
+      try {
+        URL.revokeObjectURL(form.imagePreview);
+      } catch {}
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      imageFile: null,
+      imagePreview: "",
+    }));
+
+    if (serviceId && hasExistingImage) {
+      setRemoveExistingImage(true);
+      setHasExistingImage(false);
+    }
+
+    if (fileInputRef.current) {
+      try {
+        fileInputRef.current.value = "";
+      } catch {}
+    }
+  }
+
+  function updateInstruction(index, value) {
+    setForm((prev) => ({
+      ...prev,
+      instructions: prev.instructions.map((item, i) =>
+        i === index ? value : item,
+      ),
+    }));
+    setErrors((prev) => ({ ...prev, instructions: false }));
+  }
+
   function addInstruction() {
-    setInstructions((s) => [...s, ""]);
-  }
-  function updateInstruction(i, v) {
-    setInstructions((s) => s.map((x, idx) => (idx === i ? v : x)));
-  }
-  function removeInstruction(i) {
-    setInstructions((s) => s.filter((_, idx) => idx !== i));
+    setForm((prev) => ({
+      ...prev,
+      instructions: [...prev.instructions, ""],
+    }));
   }
 
-  // ----- Reset form -----
-  function resetForm() {
-    if (imagePreview && imagePreview.startsWith("blob:")) {
-      try {
-        URL.revokeObjectURL(imagePreview);
-      } catch (err) {}
-    }
-    setImagePreview(null);
-    setImageFile(null);
-    setHasExistingImage(false);
-    setRemoveImage(false);
-    setServiceName("");
-    setAbout("");
-    setPrice("");
-    setAvailability("available");
-    setInstructions([""]);
-    setSlots([]);
-    setErrors({});
+  function removeInstruction(index) {
+    setForm((prev) => {
+      const next = prev.instructions.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        instructions: next.length ? next : [""],
+      };
+    });
   }
 
-  function showToast(type, title, message) {
-    setToast({ type, title, message });
-    setTimeout(() => setToast(null), 3500);
-  }
-
-  // helper: convert selected 12h components to a Date object (local)
-  function selectedDateTime() {
-    const d = Number(slotDay);
-    const m = Number(slotMonth);
-    const y = Number(slotYear);
-    let h = Number(slotHour);
-    const mm = Number(slotMinute);
-    const ap = slotAmPm;
-
-    // convert 12h to 24h
-    if (ap === "AM") {
-      if (h === 12) h = 0;
-    } else {
-      if (h !== 12) h = h + 12;
-    }
-
-    return new Date(y, m, d, h, mm, 0, 0);
-  }
-
-  function isSelectedDateTimeInPast() {
-    const sel = selectedDateTime();
-    return sel.getTime() <= Date.now();
-  }
-
-  // ----- Slots -----
-  function addSlot() {
-    // build formatted string as before
-    const m = months[Number(slotMonth)];
-    const d = String(slotDay).padStart(2, "0");
-    const y = slotYear;
-    const h = String(slotHour).padStart(2, "0");
-    const mm = slotMinute;
-    const ap = slotAmPm;
-    const formatted = `${d} ${m} ${y} • ${h}:${mm} ${ap}`;
-
-    // prevent duplicates
-    if (slots.includes(formatted)) {
-      showToast(
-        "error",
-        "Duplicate Slot",
-        "This time slot has already been added. Please select a different time.",
-      );
+  function addSlotToForm() {
+    if (!slotDate || !slotHour) {
+      showToast("error", "Select date and time first.");
       return;
     }
 
-    // block past date/time
-    if (isSelectedDateTimeInPast()) {
-      showToast(
-        "error",
-        "Past Time",
-        "You cannot add a time slot in the past. Please select a future date/time.",
-      );
-      setErrors((e) => ({ ...e, slots: true }));
+    if (slotDate < today) {
+      showToast("error", "Cannot add a slot in the past.");
       return;
     }
 
-    setSlots((s) => [...s, formatted]);
-    setErrors((e) => ({ ...e, slots: false }));
-    showToast("success", "Slot Added", `Time slot added: ${formatted}`);
+    const newSlot = {
+      id: `slot-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      date: slotDate,
+      hour: String(slotHour).padStart(2, "0"),
+      minute: String(slotMinute).padStart(2, "0"),
+      ampm: slotAmpm,
+    };
+
+    const duplicate = form.slots.some(
+      (s) =>
+        s.date === newSlot.date &&
+        s.hour === newSlot.hour &&
+        s.minute === newSlot.minute &&
+        s.ampm === newSlot.ampm,
+    );
+
+    if (duplicate) {
+      showToast("error", "This slot already exists.");
+      return;
+    }
+
+    if (slotDate === today) {
+      const now = new Date();
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+      const slotMinutes = slotToMinutes(newSlot);
+      if (slotMinutes <= nowMinutes) {
+        showToast("error", "Cannot add a time that already passed today.");
+        return;
+      }
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      slots: [...prev.slots, newSlot].sort((a, b) => {
+        if (a.date !== b.date) return a.date.localeCompare(b.date);
+        return slotToMinutes(a) - slotToMinutes(b);
+      }),
+    }));
+
+    setSlotHour("");
+    setSlotMinute("00");
+    setSlotAmpm("AM");
+    setErrors((prev) => ({ ...prev, slots: false }));
   }
 
-  function removeSlot(i) {
-    const removedSlot = slots[i];
-    setSlots((s) => s.filter((_, idx) => idx !== i));
-    showToast("info", "Slot Removed", `Removed: ${removedSlot}`);
+  function removeSlot(id) {
+    setForm((prev) => ({
+      ...prev,
+      slots: prev.slots.filter((s) => s.id !== id),
+    }));
   }
 
-  // ----- Validation -----
   function validate() {
-    const newErrors = {};
-    // When creating: require imageFile or existing image
-    if (!imageFile && !hasExistingImage) newErrors.image = true;
-    if (!serviceName.trim()) newErrors.serviceName = true;
-    if (!about.trim()) newErrors.about = true;
-    if (!String(price).trim()) newErrors.price = true;
-    if (!instructions.some((ins) => ins.trim())) newErrors.instructions = true;
-    if (!slots.length) newErrors.slots = true;
+    const nextErrors = {
+      serviceName: !form.serviceName.trim(),
+      about: !form.about.trim(),
+      price: !String(form.price).trim(),
+      instructions: !form.instructions.some((x) => String(x).trim()),
+      slots: form.slots.length === 0,
+      image:
+        !serviceId && !form.imageFile && !form.imagePreview
+          ? true
+          : !form.imageFile && !form.imagePreview && !hasExistingImage,
+    };
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(nextErrors);
+    return !Object.values(nextErrors).some(Boolean);
   }
 
-  // ----- Submit (create or update) -----
   async function handleSubmit(e) {
     e.preventDefault();
+
     if (!validate()) {
-      showToast(
-        "error",
-        "Missing Fields",
-        "Please fill all required fields before submitting.",
-      );
+      showToast("error", "Please fill all required fields.");
       return;
     }
 
-    setSubmitting(true);
-
     try {
+      setLoading(true);
+
       const fd = new FormData();
-      fd.append("name", serviceName);
-      fd.append("about", about);
-      const numericPrice = String(price).replace(/[^\d.-]/g, "");
-      fd.append("price", numericPrice === "" ? "0" : numericPrice);
-      fd.append("availability", availability);
-      // arrays serialized as JSON
-      fd.append("instructions", JSON.stringify(instructions));
-      fd.append("slots", JSON.stringify(slots));
+      fd.append("name", form.serviceName.trim());
+      fd.append("about", form.about.trim());
+      fd.append("price", String(form.price).trim());
+      fd.append("availability", form.availability);
 
-      // Image handling:
-      // - If user selected a new file -> append under "image"
-      // - If user checked removeImage -> add removeImage flag
-      if (imageFile) {
-        fd.append("image", imageFile);
-      } else if (removeImage) {
-        fd.append("removeImage", "true");
-      }
+      const cleanedInstructions = form.instructions
+        .map((x) => String(x).trim())
+        .filter(Boolean);
 
+      fd.append("instructions", JSON.stringify(cleanedInstructions));
+      fd.append(
+        "slots",
+        JSON.stringify(form.slots.map((slot) => toBackendSlotString(slot))),
+      );
+
+      if (form.imageFile) fd.append("image", form.imageFile);
+      if (serviceId && removeExistingImage) fd.append("removeImage", "true");
+
+      const method = serviceId ? "PUT" : "POST";
       const url = serviceId
         ? `${API_BASE}/api/services/${serviceId}`
         : `${API_BASE}/api/services`;
-      const method = serviceId ? "PUT" : "POST";
 
-      const res = await fetch(url, { method, body: fd });
-      const data = await res.json().catch(() => null);
+      const res = await fetch(url, {
+        method,
+        body: fd,
+      });
+
+      const body = await res.json().catch(() => null);
 
       if (!res.ok) {
-        const msg = data?.message || `Server error (${res?.status || "?"})`;
-        showToast("error", "Save Failed", msg);
-        setSubmitting(false);
-        return;
+        throw new Error(body?.message || "Failed to save service.");
       }
 
       showToast(
         "success",
-        serviceId ? "Service Updated" : "Service Added",
-        `${serviceName} saved with ${slots.length} slot(s).`,
+        serviceId
+          ? "Service updated successfully."
+          : "Service added successfully.",
       );
 
-      // If created new, reset form. If edited, update preview states to reflect server response
       if (!serviceId) {
-        resetForm();
-        if (fileRef.current) fileRef.current.value = null;
-      } else {
-        // update local state to reflect server returned object (if available)
-        const saved = data?.data || null;
-        if (saved) {
-          setHasExistingImage(Boolean(saved.imageUrl));
-          setImagePreview(saved.imageUrl || null);
-          setImageFile(null);
-          setRemoveImage(false);
+        if (form.imagePreview && form.imageFile) {
+          try {
+            URL.revokeObjectURL(form.imagePreview);
+          } catch {}
+        }
+
+        setForm({
+          serviceName: "",
+          about: "",
+          price: "",
+          availability: "available",
+          imageFile: null,
+          imagePreview: "",
+          instructions: [""],
+          slots: [],
+        });
+
+        setHasExistingImage(false);
+        setRemoveExistingImage(false);
+        setSlotDate("");
+        setSlotHour("");
+        setSlotMinute("00");
+        setSlotAmpm("AM");
+
+        if (fileInputRef.current) {
+          try {
+            fileInputRef.current.value = "";
+          } catch {}
         }
       }
     } catch (err) {
-      console.error("service submit error:", err);
-      showToast("error", "Network error", "Could not reach server.");
+      console.error("submit service error:", err);
+      showToast("error", err.message || "Something went wrong.");
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   }
 
-  // ----- UI -----
   return (
-    <div className={addServiceStyles.container.main}>
-      {/* Toast Notification */}
-      <div className={addServiceStyles.toast.container}>
-        {toast && (
-          <div
-            className={`${addServiceStyles.toast.toastBase} ${
-              toast.type === "error"
-                ? addServiceStyles.toast.toastError
-                : toast.type === "info"
-                  ? addServiceStyles.toast.toastInfo
-                  : addServiceStyles.toast.toastSuccess
-            } animate-slideIn`}
-          >
-            <div className={addServiceStyles.toast.iconContainer(toast.type)}>
-              {toast.type === "error" ? (
-                <AlertTriangle className="w-5 h-5" />
-              ) : toast.type === "info" ? (
-                <Clock className="w-5 h-5" />
-              ) : (
-                <CheckCircle className="w-5 h-5" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className={addServiceStyles.toast.title}>{toast.title}</div>
-              <div className={addServiceStyles.toast.message}>
-                {toast.message}
-              </div>
-            </div>
-            <button
-              onClick={() => setToast(null)}
-              className={addServiceStyles.buttons.toastClose}
-            >
-              <XCircle className="w-4 h-4 text-gray-400 hover:text-gray-600" />
-            </button>
+    <div className="w-full">
+      {toast.show ? (
+        <div
+          className={`fixed right-4 top-4 z-50 flex items-start gap-3 rounded-2xl border px-4 py-3 shadow-lg ${
+            toast.type === "success"
+              ? "border-blue-200 bg-blue-50 text-blue-700"
+              : "border-rose-200 bg-rose-50 text-rose-700"
+          }`}
+        >
+          <div className="mt-0.5">
+            {toast.type === "success" ? (
+              <CheckCircle2 className="h-5 w-5" />
+            ) : (
+              <XCircle className="h-5 w-5" />
+            )}
           </div>
-        )}
-      </div>
-
-      <form onSubmit={handleSubmit} className={addServiceStyles.container.form}>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
-          <div>
-            <h1 className={addServiceStyles.header.title}>
-              {serviceId ? "Edit Service" : "Add Service"}
-            </h1>
-            <p className={addServiceStyles.header.subtitle}>
-              Create a beautiful service card with unique time slots
-            </p>
-          </div>
-          <div className={addServiceStyles.headerActions}>
-            <button
-              type="button"
-              onClick={resetForm}
-              className={addServiceStyles.buttons.reset}
-            >
-              Reset
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className={addServiceStyles.buttons.submit}
-            >
-              {submitting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4" />
-                  {serviceId ? "Update Service" : "Save Service"}
-                </>
-              )}
-            </button>
-          </div>
+          <div className="text-sm font-medium">{toast.message}</div>
         </div>
+      ) : null}
 
-        <div className={addServiceStyles.grids.main}>
-          {/* left column - image */}
-          <div className="lg:col-span-1 md:col-span-1 col-span-1 flex flex-col items-center">
-            <div
-              className={addServiceStyles.imageUpload.container(errors.image)}
-            >
-              <div className={addServiceStyles.imageUpload.preview}>
-                {imagePreview ? (
-                  // if preview is remote url or object URL
-                  <img
-                    src={imagePreview}
-                    alt="preview"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className={addServiceStyles.imageUpload.placeholder}>
-                    <ImageIcon className="w-10 h-10" />
-                    <div className="mt-2 text-sm">Service image (required)</div>
-                  </div>
-                )}
+      <div className="mx-auto max-w-7xl">
+        <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 bg-[#eef4ff] px-6 py-7 sm:px-8">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm">
+                <ShieldCheck className="h-5 w-5" />
               </div>
 
-              <div className="w-full flex gap-2 items-center">
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  className={addServiceStyles.buttons.uploadImage}
-                >
-                  <Plus className="w-4 h-4" />{" "}
-                  {imagePreview ? "Replace Image" : "Upload Image"}
-                </button>
-
-                {(imagePreview || hasExistingImage) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // If current preview is a blob URL, revoke it
-                      if (imagePreview && imagePreview.startsWith("blob:")) {
-                        try {
-                          URL.revokeObjectURL(imagePreview);
-                        } catch (err) {}
-                      }
-                      setImagePreview(null);
-                      setImageFile(null);
-                      // mark that user wants to remove the existing image
-                      if (hasExistingImage) {
-                        setRemoveImage(true);
-                        setHasExistingImage(false);
-                      }
-                      if (fileRef.current) fileRef.current.value = null;
-                    }}
-                    className={addServiceStyles.buttons.removeImage}
-                  >
-                    <Trash2 className="w-4 h-4 text-red-500" />
-                  </button>
-                )}
+              <div>
+                <h2 className="text-[1.9rem] font-bold tracking-tight text-slate-900">
+                  {serviceId
+                    ? "Update Hospital Service"
+                    : "Onboard New Hospital Service"}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Configure service information, patient instructions, pricing,
+                  and availability slots.
+                </p>
               </div>
-
-              {/* option to remove existing image explicitly when editing */}
-              {hasExistingImage && (
-                <div className="w-full text-xs text-gray-600 mt-2 flex items-center gap-2">
-                  <input
-                    id="remove-img"
-                    type="checkbox"
-                    checked={removeImage}
-                    onChange={(e) => {
-                      setRemoveImage(Boolean(e.target.checked));
-                      if (e.target.checked) {
-                        setImagePreview(null);
-                        setImageFile(null);
-                        setHasExistingImage(false);
-                      }
-                    }}
-                    className="rounded"
-                  />
-                  <label htmlFor="remove-img">Remove existing image</label>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* right column - main fields */}
-          <div className="lg:col-span-2 md:col-span-1 col-span-1 space-y-6">
-            <div className={addServiceStyles.grids.formFields}>
-              <div>
-                <label className={addServiceStyles.labels.standard}>
-                  Service name
-                </label>
-                <input
-                  value={serviceName}
-                  onChange={(e) => setServiceName(e.target.value)}
-                  placeholder="e.g. General Consultation"
-                  className={addServiceStyles.formFields.input(
-                    errors.serviceName,
-                  )}
-                />
-              </div>
+          <form onSubmit={handleSubmit} className="px-6 py-8 sm:px-8">
+            <div className="grid grid-cols-1 gap-8 xl:grid-cols-[280px_minmax(0,1fr)]">
+              <aside className="xl:sticky xl:top-6 xl:self-start">
+                <FieldLabel required>Service Image</FieldLabel>
 
-              <div>
-                <label className={addServiceStyles.labels.standard}>
-                  Price
-                </label>
-                <input
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="$500"
-                  className={addServiceStyles.formFields.input(errors.price)}
-                  inputMode="numeric"
-                />
-
-                <div className="mt-3">
-                  <label className={addServiceStyles.labels.standard}>
-                    Availability
-                  </label>
-                  <select
-                    value={availability}
-                    onChange={(e) => setAvailability(e.target.value)}
-                    className={addServiceStyles.formFields.select}
-                  >
-                    <option value="available">Available</option>
-                    <option value="unavailable">Unavailable</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className={addServiceStyles.labels.standard}>
-                About this service
-              </label>
-              <textarea
-                value={about}
-                onChange={(e) => setAbout(e.target.value)}
-                placeholder="Short description"
-                rows={4}
-                className={addServiceStyles.formFields.textarea(errors.about)}
-              />
-            </div>
-
-            {/* instructions */}
-            <div>
-              <div className="flex items-center justify-between">
-                <label className={addServiceStyles.labels.standard}>
-                  Instructions (point wise)
-                </label>
-                <button
-                  type="button"
-                  onClick={addInstruction}
-                  className={addServiceStyles.buttons.addInstruction}
-                >
-                  <Plus className="w-4 h-4" /> Add
-                </button>
-              </div>
-
-              <div
-                className={addServiceStyles.instructions.container(
-                  errors.instructions,
-                )}
-              >
-                {instructions.map((ins, idx) => (
-                  <div key={idx} className={addServiceStyles.instructions.item}>
-                    <div className={addServiceStyles.icon.number}>
-                      {idx + 1}.
-                    </div>
-                    <input
-                      value={ins}
-                      onChange={(e) => updateInstruction(idx, e.target.value)}
-                      placeholder={`Instruction ${idx + 1}`}
-                      className={addServiceStyles.instructions.input}
-                    />
-                    {instructions.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeInstruction(idx)}
-                        className={addServiceStyles.instructions.removeButton}
-                      >
-                        <Trash2
-                          className={addServiceStyles.icon.removeInstruction}
+                <div className="rounded-[24px] border border-slate-200 bg-[#f8faff] p-4">
+                  <div className="rounded-[20px] border border-dashed border-slate-300 bg-white px-4 py-6 text-center">
+                    {form.imagePreview ? (
+                      <div className="relative mx-auto h-40 w-40">
+                        <img
+                          src={form.imagePreview}
+                          alt="Service preview"
+                          className="h-full w-full rounded-3xl object-cover ring-1 ring-slate-200"
                         />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* slot controls */}
-            <div className={addServiceStyles.slots.container(errors.slots)}>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2 text-emerald-700 font-medium">
-                  <Calendar className="w-5 h-5" /> Slots & Schedule
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="text-sm text-gray-500">
-                    {slots.length} slot{slots.length !== 1 ? "s" : ""} added
-                  </div>
-                </div>
-              </div>
-
-              <div className={addServiceStyles.grids.timeGrid}>
-                <div className="min-w-0">
-                  <label className={addServiceStyles.labels.small}>Day</label>
-                  <select
-                    value={slotDay}
-                    onChange={(e) => setSlotDay(e.target.value)}
-                    className={addServiceStyles.formFields.smallSelect}
-                  >
-                    {days.map((d) => {
-                      const dNum = Number(d);
-                      const disabled =
-                        Number(slotYear) === currentYear &&
-                        Number(slotMonth) === currentMonth &&
-                        dNum < currentDate;
-                      return (
-                        <option key={d} value={d} disabled={disabled}>
-                          {d}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-
-                <div className="min-w-0">
-                  <label className={addServiceStyles.labels.small}>Month</label>
-                  <select
-                    value={slotMonth}
-                    onChange={(e) => setSlotMonth(e.target.value)}
-                    className={addServiceStyles.formFields.smallSelect}
-                  >
-                    {months.map((m, idx) => {
-                      const disabled =
-                        Number(slotYear) === currentYear && idx < currentMonth;
-                      return (
-                        <option key={m} value={String(idx)} disabled={disabled}>
-                          {m}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-
-                <div className="min-w-0">
-                  <label className={addServiceStyles.labels.small}>Year</label>
-                  <select
-                    value={slotYear}
-                    onChange={(e) => setSlotYear(e.target.value)}
-                    className={addServiceStyles.formFields.smallSelect}
-                  >
-                    {years.map((y) => (
-                      <option key={y} value={String(y)}>
-                        {y}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className={addServiceStyles.grids.timeSubGrid}>
-                  <div className="min-w-0">
-                    <label className={addServiceStyles.labels.small}>
-                      Hour
-                    </label>
-                    <select
-                      value={slotHour}
-                      onChange={(e) => setSlotHour(e.target.value)}
-                      className={addServiceStyles.formFields.timeSelect}
-                    >
-                      {hours.map((h) => (
-                        <option key={h} value={h}>
-                          {h}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="min-w-0">
-                    <label className={addServiceStyles.labels.small}>
-                      Minute
-                    </label>
-                    <select
-                      value={slotMinute}
-                      onChange={(e) => setSlotMinute(e.target.value)}
-                      className={addServiceStyles.formFields.timeSelect}
-                    >
-                      {minutes.map((m) => (
-                        <option key={m} value={m}>
-                          {m}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="min-w-0">
-                    <label className={addServiceStyles.labels.small}>
-                      AM/PM
-                    </label>
-                    <select
-                      value={slotAmPm}
-                      onChange={(e) => setSlotAmPm(e.target.value)}
-                      className={addServiceStyles.formFields.ampmSelect}
-                    >
-                      {ampm.map((a) => (
-                        <option key={a} value={a}>
-                          {a}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <button
-                  type="button"
-                  onClick={addSlot}
-                  className={addServiceStyles.buttons.addSlot}
-                >
-                  <Plus className="w-4 h-4" /> Add This Time Slot
-                </button>
-              </div>
-
-              <div>
-                <div className="text-xs text-gray-500 mb-2">
-                  Added Slots ({slots.length})
-                </div>
-
-                <div className={addServiceStyles.grids.slotsGrid}>
-                  {slots.length === 0 ? (
-                    <div className="text-sm text-gray-400 italic px-4 py-2">
-                      No slots added yet. Select a time and click "Add This Time
-                      Slot"
-                    </div>
-                  ) : (
-                    slots.map((s, idx) => (
-                      <div key={s} className={addServiceStyles.slots.slotItem}>
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Clock className={addServiceStyles.icon.clock} />
-                          <div className={addServiceStyles.slots.slotText}>
-                            {s}
-                          </div>
-                        </div>
                         <button
                           type="button"
-                          onClick={() => removeSlot(idx)}
-                          className={addServiceStyles.buttons.slotRemove}
+                          onClick={removeImage}
+                          className="absolute -right-2 -top-2 rounded-full bg-rose-500 p-2 text-white shadow"
                         >
-                          <Trash2 className={addServiceStyles.icon.trash} />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
-                    ))
-                  )}
+                    ) : (
+                      <div className="mx-auto flex h-40 w-40 items-center justify-center rounded-3xl bg-[#eef4ff] text-blue-600">
+                        <ImagePlus className="h-11 w-11" />
+                      </div>
+                    )}
+
+                    <div className="mt-5 text-sm font-semibold text-slate-700">
+                      Upload service image
+                    </div>
+                    <div className="mt-1 text-xs text-slate-400">
+                      Supported formats: JPG, PNG, WEBP
+                    </div>
+
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImage}
+                      className="hidden"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="mt-5 inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                    >
+                      <Upload className="h-4 w-4" />
+                      {form.imagePreview ? "Change image" : "Choose image"}
+                    </button>
+                  </div>
+
+                  {errors.image ? (
+                    <p className="mt-3 text-xs text-rose-500">
+                      Service image is required.
+                    </p>
+                  ) : null}
+                </div>
+              </aside>
+
+              <div className="space-y-8">
+                <section>
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                    <div>
+                      <FieldLabel required>Service Name</FieldLabel>
+                      <InputBase
+                        value={form.serviceName}
+                        onChange={(e) =>
+                          setField("serviceName", e.target.value)
+                        }
+                        placeholder="e.g. MRI Scan"
+                        className={errors.serviceName ? "border-rose-300" : ""}
+                      />
+                    </div>
+
+                    <div>
+                      <FieldLabel required>Availability</FieldLabel>
+                      <InputBase
+                        as="select"
+                        value={form.availability}
+                        onChange={(e) =>
+                          setField("availability", e.target.value)
+                        }
+                        className={`appearance-none ${errors.availability ? "border-rose-300" : ""}`}
+                        rightIcon={<ChevronDown className="h-4 w-4" />}
+                      >
+                        <option value="available">Available</option>
+                        <option value="unavailable">Unavailable</option>
+                      </InputBase>
+                    </div>
+
+                    <div>
+                      <FieldLabel required>Service Price ($)</FieldLabel>
+                      <InputBase
+                        type="number"
+                        min="0"
+                        value={form.price}
+                        onChange={(e) => setField("price", e.target.value)}
+                        placeholder="0.00"
+                        className={errors.price ? "border-rose-300" : ""}
+                      />
+                    </div>
+
+                    <div>
+                      <FieldLabel>Service Type</FieldLabel>
+                      <InputBase placeholder="Hospital service" disabled />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <FieldLabel required>Service Description</FieldLabel>
+                      <InputBase
+                        as="textarea"
+                        value={form.about}
+                        onChange={(e) => setField("about", e.target.value)}
+                        placeholder="Describe the service, procedure, and what patients should expect."
+                        className={errors.about ? "border-rose-300" : ""}
+                      />
+                    </div>
+                  </div>
+                </section>
+
+                <section className="rounded-[24px] border border-slate-200 bg-[#fbfcfe] p-5 sm:p-6">
+                  <div className="mb-5">
+                    <h3 className="text-base font-semibold text-slate-900">
+                      Patient Instructions
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Add any preparation notes or important guidance.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    {form.instructions.map((item, index) => (
+                      <div key={index} className="flex items-start gap-3">
+                        <div className="flex-1">
+                          <InputBase
+                            as="textarea"
+                            rows={2}
+                            value={item}
+                            onChange={(e) =>
+                              updateInstruction(index, e.target.value)
+                            }
+                            placeholder={`Instruction ${index + 1}`}
+                            className={`min-h-[86px] w-full resize-y ${errors.instructions ? "border-rose-300" : ""}`}
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => removeInstruction(index)}
+                          className="mt-3 shrink-0 rounded-full bg-rose-50 p-2.5 text-rose-600 transition hover:bg-rose-100"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={addInstruction}
+                      className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
+                    >
+                      <Upload className="h-4 w-4" />
+                      Add Instruction
+                    </button>
+                  </div>
+                </section>
+
+                <section className="rounded-[24px] border border-slate-200 bg-[#fbfcfe] p-5 sm:p-6">
+                  <div className="mb-5 flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white">
+                      <Calendar className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-semibold text-slate-900">
+                        Availability Slots
+                      </h3>
+                      <p className="mt-1 text-sm text-slate-500">
+                        Add available booking times for this service.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+                    <InputBase
+                      type="date"
+                      min={today}
+                      value={slotDate}
+                      onChange={(e) => setSlotDate(e.target.value)}
+                    />
+
+                    <InputBase
+                      as="select"
+                      value={slotHour}
+                      onChange={(e) => setSlotHour(e.target.value)}
+                      className="appearance-none"
+                      rightIcon={<ChevronDown className="h-4 w-4" />}
+                    >
+                      <option value="">Hour</option>
+                      {Array.from({ length: 12 }).map((_, i) => {
+                        const v = String(i + 1).padStart(2, "0");
+                        return (
+                          <option key={v} value={v}>
+                            {v}
+                          </option>
+                        );
+                      })}
+                    </InputBase>
+
+                    <InputBase
+                      as="select"
+                      value={slotMinute}
+                      onChange={(e) => setSlotMinute(e.target.value)}
+                      className="appearance-none"
+                      rightIcon={<ChevronDown className="h-4 w-4" />}
+                    >
+                      {Array.from({ length: 12 }).map((_, i) => {
+                        const v = String(i * 5).padStart(2, "0");
+                        return (
+                          <option key={v} value={v}>
+                            {v}
+                          </option>
+                        );
+                      })}
+                    </InputBase>
+
+                    <InputBase
+                      as="select"
+                      value={slotAmpm}
+                      onChange={(e) => setSlotAmpm(e.target.value)}
+                      className="appearance-none"
+                      rightIcon={<ChevronDown className="h-4 w-4" />}
+                    >
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </InputBase>
+
+                    <button
+                      type="button"
+                      onClick={addSlotToForm}
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700"
+                    >
+                      <Clock3 className="h-4 w-4" />
+                      Add Slot
+                    </button>
+                  </div>
+
+                  {errors.slots ? (
+                    <p className="mt-3 text-xs text-rose-500">
+                      Add at least one slot.
+                    </p>
+                  ) : null}
+
+                  <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
+                    {form.slots.length ? (
+                      form.slots.map((slot) => (
+                        <div
+                          key={slot.id}
+                          className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                        >
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold text-slate-800">
+                              {formatDisplayDate(slot.date)}
+                            </div>
+                            <div className="mt-1 text-xs text-slate-500">
+                              {toSlotLabel(slot)}
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => removeSlot(slot.id)}
+                            className="ml-3 rounded-full bg-rose-50 p-2 text-rose-600 transition hover:bg-rose-100"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="col-span-full text-sm text-slate-500">
+                        No slots added yet.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mt-4 text-sm text-slate-500">
+                    Total slots:{" "}
+                    <span className="font-semibold text-slate-800">
+                      {slotCount}
+                    </span>
+                  </div>
+                </section>
+
+                <div className="flex justify-center pt-1">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className={`inline-flex min-w-[230px] items-center justify-center gap-2 rounded-full px-8 py-3.5 text-sm font-semibold shadow-sm transition ${
+                      loading
+                        ? "cursor-not-allowed bg-blue-300 text-white"
+                        : "bg-blue-600 text-white hover:bg-blue-700"
+                    }`}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : serviceId ? (
+                      <>
+                        <RotateCcw className="h-4 w-4" />
+                        Update Service
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="h-4 w-4" />
+                        Create Service
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
             </div>
-          </div>
+          </form>
         </div>
-      </form>
-
-      <style>{addServiceStyles.customCSS}</style>
+      </div>
     </div>
   );
 }

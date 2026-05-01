@@ -1,15 +1,20 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  CheckCircle,
-  XCircle,
-  Plus,
-  Trash2,
-  User,
   Calendar,
+  Camera,
+  CheckCircle2,
   Eye,
-  EyeClosed,
+  EyeOff,
+  ImagePlus,
+  Loader2,
+  MapPin,
+  Plus,
+  ShieldCheck,
+  Stethoscope,
+  Trash2,
+  UserRoundPlus,
+  XCircle,
 } from "lucide-react";
-import { doctorDetailStyles as s } from "../../assets/dummyStyles";
 
 function timeStringToMinutes(t) {
   if (!t) return 0;
@@ -20,7 +25,6 @@ function timeStringToMinutes(t) {
   return h * 60 + m;
 }
 
-// format an ISO date (YYYY-MM-DD) to "D Mon YYYY" (e.g. "3 Dec 2025")
 function formatDateISO(iso) {
   if (!iso) return "";
   const [y, m, d] = iso.split("-");
@@ -31,8 +35,8 @@ function formatDateISO(iso) {
     "Mar",
     "Apr",
     "May",
-    "June",
-    "July",
+    "Jun",
+    "Jul",
     "Aug",
     "Sep",
     "Oct",
@@ -44,10 +48,34 @@ function formatDateISO(iso) {
   return `${day} ${month} ${y}`;
 }
 
-export default function DoctorDetailPage() {
-  const [doctorList, setDoctorList] = useState([]);
+function getFlatSlots(scheduleObj) {
+  const arr = [];
+  Object.keys(scheduleObj)
+    .sort()
+    .forEach((date) => {
+      scheduleObj[date].forEach((time) => {
+        arr.push({ date, time });
+      });
+    });
+  return arr;
+}
+
+function FieldLabel({ children, required = false }) {
+  return (
+    <label className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+      {children} {required ? <span className="text-rose-500">*</span> : null}
+    </label>
+  );
+}
+
+function InputShell({ children }) {
+  return <div className="relative">{children}</div>;
+}
+
+export default function AddPage() {
   const fileInputRef = useRef(null);
 
+  const [doctorList, setDoctorList] = useState([]);
   const [form, setForm] = useState({
     name: "",
     specialization: "",
@@ -77,121 +105,122 @@ export default function DoctorDetailPage() {
     type: "success",
     message: "",
   });
+
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // compute today's date in local timezone as YYYY-MM-DD (used for min on date input)
   const [today] = useState(() => {
     const d = new Date();
-    // convert to local midnight and then to ISO date part
-    const tzOffset = d.getTimezoneOffset(); // minutes
+    const tzOffset = d.getTimezoneOffset();
     const local = new Date(d.getTime() - tzOffset * 60000);
     return local.toISOString().split("T")[0];
   });
 
   useEffect(() => {
     if (!toast.show) return;
-    const t = setTimeout(() => setToast((s) => ({ ...s, show: false })), 3000);
+    const t = setTimeout(() => {
+      setToast((prev) => ({ ...prev, show: false }));
+    }, 3000);
     return () => clearTimeout(t);
   }, [toast.show]);
 
-  const showToast = (type, message) => setToast({ show: true, type, message });
+  const showToast = (type, message) => {
+    setToast({ show: true, type, message });
+  };
+
+  const slotCount = useMemo(
+    () => getFlatSlots(form.schedule).length,
+    [form.schedule],
+  );
 
   function handleImage(e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
-    // revoke previous preview if it exists
+
     if (form.imagePreview && form.imageFile) {
       try {
         URL.revokeObjectURL(form.imagePreview);
-      } catch (err) {}
+      } catch {}
     }
 
-    setForm((p) => ({
-      ...p,
+    setForm((prev) => ({
+      ...prev,
       imageFile: file,
       imagePreview: URL.createObjectURL(file),
     }));
   }
 
   function removeImage() {
-    // revoke object URL if we created one
     if (form.imagePreview && form.imageFile) {
       try {
         URL.revokeObjectURL(form.imagePreview);
-      } catch (err) {}
+      } catch {}
     }
 
-    setForm((p) => ({ ...p, imageFile: null, imagePreview: "" }));
+    setForm((prev) => ({
+      ...prev,
+      imageFile: null,
+      imagePreview: "",
+    }));
 
     if (fileInputRef.current) {
       try {
         fileInputRef.current.value = "";
-      } catch (err) {}
+      } catch {}
     }
   }
 
   function addSlotToForm() {
     if (!slotDate || !slotHour) {
-      showToast("error", "Select date + time");
+      showToast("error", "Select date and time first.");
       return;
     }
 
-    // Prevent past dates
     if (slotDate < today) {
-      showToast("error", "Cannot add a slot in the past");
+      showToast("error", "Cannot add a slot in the past.");
       return;
     }
 
     const time = `${slotHour}:${slotMinute} ${slotAmpm}`;
 
-    // If date is today, prevent times in the past
     if (slotDate === today) {
       const now = new Date();
       const nowMinutes = now.getHours() * 60 + now.getMinutes();
       const slotMinutes = timeStringToMinutes(time);
       if (slotMinutes <= nowMinutes) {
-        showToast("error", "Cannot add a time that has already passed today");
+        showToast("error", "Cannot add a time that already passed today.");
         return;
       }
     }
 
-    setForm((f) => {
-      const sched = { ...f.schedule };
+    setForm((prev) => {
+      const sched = { ...prev.schedule };
       if (!sched[slotDate]) sched[slotDate] = [];
       if (!sched[slotDate].includes(time)) sched[slotDate].push(time);
 
       sched[slotDate] = sched[slotDate].sort(
-        (a, b) => timeStringToMinutes(a) - timeStringToMinutes(b)
+        (a, b) => timeStringToMinutes(a) - timeStringToMinutes(b),
       );
-      return { ...f, schedule: sched };
+
+      return { ...prev, schedule: sched };
     });
 
     setSlotHour("");
     setSlotMinute("00");
+    setSlotAmpm("AM");
   }
 
   function removeSlot(date, time) {
-    setForm((f) => {
-      const sched = { ...f.schedule };
+    setForm((prev) => {
+      const sched = { ...prev.schedule };
       sched[date] = sched[date].filter((t) => t !== time);
       if (!sched[date].length) delete sched[date];
-      return { ...f, schedule: sched };
+      return { ...prev, schedule: sched };
     });
   }
 
-  function getFlatSlots(s) {
-    const arr = [];
-    Object.keys(s)
-      .sort()
-      .forEach((d) => {
-        s[d].forEach((t) => arr.push({ date: d, time: t }));
-      });
-    return arr;
-  }
-
   function validate(f) {
-    const req = [
+    const requiredFields = [
       "name",
       "specialization",
       "experience",
@@ -206,7 +235,10 @@ export default function DoctorDetailPage() {
       "password",
     ];
 
-    for (let k of req) if (!f[k]) return false;
+    for (const k of requiredFields) {
+      if (!f[k]) return false;
+    }
+
     if (!f.imageFile) return false;
     if (!Object.keys(f.schedule).length) return false;
 
@@ -217,14 +249,19 @@ export default function DoctorDetailPage() {
     e.preventDefault();
 
     if (!validate(form)) {
-      showToast("error", "Fill all fields + upload image + add slot");
+      showToast(
+        "error",
+        "Fill all fields, upload image, and add at least one slot.",
+      );
       return;
     }
-    const r = Number(form.rating);
-    if (Number.isNaN(r) || r < 1 || r > 5) {
-      showToast("error", "Rating must be a number between 1 and 5");
+
+    const ratingNumber = Number(form.rating);
+    if (Number.isNaN(ratingNumber) || ratingNumber < 1 || ratingNumber > 5) {
+      showToast("error", "Rating must be between 1 and 5.");
       return;
     }
+
     setLoading(true);
 
     try {
@@ -243,10 +280,11 @@ export default function DoctorDetailPage() {
       fd.append("availability", form.availability || "Available");
       fd.append("email", form.email);
       fd.append("password", form.password);
-
       fd.append("schedule", JSON.stringify(form.schedule || {}));
 
-      if (form.imageFile) fd.append("image", form.imageFile);
+      if (form.imageFile) {
+        fd.append("image", form.imageFile);
+      }
 
       const API_BASE = "http://localhost:4000/api";
 
@@ -264,25 +302,28 @@ export default function DoctorDetailPage() {
         return;
       }
 
-      showToast("success", "Doctor Added Successfully!");
+      showToast("success", "Doctor added successfully.");
 
       if (data?.token) {
         try {
           localStorage.setItem("token", data.token);
-        } catch (err) {}
+        } catch {}
       }
 
       const doctorFromServer = data?.data
         ? data.data
-        : { id: Date.now(), ...form, imageUrl: form.imagePreview };
+        : {
+            id: Date.now(),
+            ...form,
+            imageUrl: form.imagePreview,
+          };
 
       setDoctorList((old) => [doctorFromServer, ...old]);
 
-      // cleanup: revoke object URL if used
       if (form.imagePreview && form.imageFile) {
         try {
           URL.revokeObjectURL(form.imagePreview);
-        } catch (err) {}
+        } catch {}
       }
 
       setForm({
@@ -304,364 +345,642 @@ export default function DoctorDetailPage() {
         password: "",
       });
 
-      if (fileInputRef.current) {
-        try {
-          fileInputRef.current.value = "";
-        } catch (err) {}
-      }
-
       setSlotDate("");
       setSlotHour("");
       setSlotMinute("00");
-      setShowPassword(false);
+      setSlotAmpm("AM");
+
+      if (fileInputRef.current) {
+        try {
+          fileInputRef.current.value = "";
+        } catch {}
+      }
     } catch (err) {
-      console.error("submit error:", err);
-      showToast("error", "Network or server error");
+      console.error("Add doctor error:", err);
+      showToast("error", "Network error while adding doctor.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className={s.pageContainer}>
-      {/* HEADER */}
-      <div className={s.maxWidthContainerLg + " " + s.headerContainer}>
-        <div className={s.headerFlexContainer}>
-          <div className={s.headerIconContainer}>
-            <User className="text-white" size={32} />
-          </div>
-          <h1 className={s.headerTitle}>
-            Add New Doctor
-          </h1>
+    <div className="mx-auto max-w-7xl">
+      {/* Toast */}
+      {toast.show && (
+        <div
+          className={`mb-4 flex items-center gap-3 rounded-2xl border px-4 py-3 shadow-sm ${
+            toast.type === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-rose-200 bg-rose-50 text-rose-700"
+          }`}
+        >
+          {toast.type === "success" ? (
+            <CheckCircle2 className="h-5 w-5" />
+          ) : (
+            <XCircle className="h-5 w-5" />
+          )}
+          <span className="text-sm font-medium">{toast.message}</span>
         </div>
+      )}
+
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-[2rem] font-bold tracking-tight text-slate-900">
+          Onboard New Medical Professional
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Configure credentials, professional details, and availability slots.
+        </p>
       </div>
 
-      {/* FORM */}
-      <div className={s.maxWidthContainer + " " + s.formContainer}>
-        <form
-          onSubmit={handleAdd}
-          className={s.formGrid}
-        >
-          {/* IMAGE UPLOAD */}
-          <div className="md:col-span-2">
-            <label className={s.label}>
-              Upload Profile Image
-            </label>
+      {/* Main card */}
+      <div className="overflow-hidden rounded-[28px] border border-blue-100 bg-white shadow-sm">
+        {/* Top strip */}
+        <div className="border-b border-blue-100 bg-gradient-to-r from-blue-50 to-sky-50 px-6 py-5">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm">
+              <UserRoundPlus className="h-5 w-5" />
+            </div>
 
-            <div className="flex flex-wrap items-center gap-4">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImage}
-                className={s.fileInput}
-              />
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Doctor Profile Details
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Provide accurate information to build a complete doctor profile.
+              </p>
+            </div>
+          </div>
+        </div>
 
-              {form.imagePreview && (
-                <div className="relative group">
-                  <img
-                    src={form.imagePreview}
-                    alt="preview"
-                    className={s.imagePreview}
+        {/* Form */}
+        <form onSubmit={handleAdd} className="px-6 py-6">
+          {/* Upload + first info rows */}
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+            {/* Image upload */}
+            <div className="xl:col-span-3">
+              <FieldLabel required>Profile Image</FieldLabel>
+
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center">
+                  {form.imagePreview ? (
+                    <div className="w-full">
+                      <img
+                        src={form.imagePreview}
+                        alt="Doctor preview"
+                        className="mx-auto h-36 w-36 rounded-2xl object-cover ring-1 ring-blue-100"
+                      />
+
+                      <div className="mt-4 flex items-center justify-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="inline-flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
+                        >
+                          <Camera className="h-4 w-4" />
+                          Change
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={removeImage}
+                          className="inline-flex items-center gap-2 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-100"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                        <ImagePlus className="h-7 w-7" />
+                      </div>
+
+                      <div className="mt-4 text-sm font-medium text-slate-700">
+                        Upload doctor photo
+                      </div>
+                      <div className="mt-1 text-xs text-slate-400">
+                        Supported formats: JPG, PNG, WEBP
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="mt-4 rounded-2xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+                      >
+                        Choose from library
+                      </button>
+                    </>
+                  )}
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImage}
+                    className="hidden"
                   />
+                </div>
+              </div>
+            </div>
 
-                  <button
-                    type="button"
-                    onClick={removeImage}
-                    className={s.removeImageButton + " " + s.cursorPointer}
-                    aria-label="Remove image"
+            {/* Main fields */}
+            <div className="xl:col-span-9">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <div>
+                  <FieldLabel required>Full Name</FieldLabel>
+                  <InputShell>
+                    <input
+                      className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
+                      placeholder="Dr. Jonathan Doe"
+                      value={form.name}
+                      onChange={(e) =>
+                        setForm((prev) => ({ ...prev, name: e.target.value }))
+                      }
+                    />
+                  </InputShell>
+                </div>
+
+                <div>
+                  <FieldLabel required>Specialization</FieldLabel>
+                  <select
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:bg-white"
+                    value={form.specialization}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        specialization: e.target.value,
+                      }))
+                    }
                   >
-                    <XCircle size={14} />
-                  </button>
+                    <option value="">Select medical field...</option>
+                    <option value="Cardiology">Cardiology</option>
+                    <option value="Dentistry">Dentistry</option>
+                    <option value="Dermatology">Dermatology</option>
+                    <option value="Endocrinology">Endocrinology</option>
+                    <option value="ENT">ENT</option>
+                    <option value="General Medicine">General Medicine</option>
+                    <option value="Gynecology">Gynecology</option>
+                    <option value="Neurology">Neurology</option>
+                    <option value="Orthopedics">Orthopedics</option>
+                    <option value="Pediatrics">Pediatrics</option>
+                    <option value="Psychiatry">Psychiatry</option>
+                    <option value="Radiology">Radiology</option>
+                    <option value="Urology">Urology</option>
+                  </select>
+                </div>
+
+                <div>
+                  <FieldLabel required>Practice Location</FieldLabel>
+                  <div className="relative">
+                    <MapPin className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
+                      placeholder="Medical Center, Wing A"
+                      value={form.location}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          location: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <FieldLabel required>Years of Experience</FieldLabel>
+                  <input
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
+                    placeholder="e.g. 10 years"
+                    value={form.experience}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        experience: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+
+                <div>
+                  <FieldLabel required>Official Email Address</FieldLabel>
+                  <input
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
+                    placeholder="doctor@revive.com"
+                    type="email"
+                    value={form.email}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, email: e.target.value }))
+                    }
+                  />
+                </div>
+
+                <div>
+                  <FieldLabel required>Consultation Fee ($)</FieldLabel>
+                  <input
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
+                    placeholder="0.00"
+                    type="number"
+                    min={0}
+                    value={form.fee}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, fee: e.target.value }))
+                    }
+                  />
+                </div>
+
+                <div>
+                  <FieldLabel required>Qualifications</FieldLabel>
+                  <input
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
+                    placeholder="MBBS, MD, DCH..."
+                    value={form.qualifications}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        qualifications: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+
+                <div>
+                  <FieldLabel required>Password</FieldLabel>
+                  <div className="relative">
+                    <input
+                      className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 pr-12 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
+                      placeholder="Doctor password"
+                      type={showPassword ? "text" : "password"}
+                      value={form.password}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          password: e.target.value,
+                        }))
+                      }
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl p-2 text-slate-500 transition hover:bg-slate-100"
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <FieldLabel required>Patients</FieldLabel>
+                  <input
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
+                    placeholder="e.g. 2k+"
+                    value={form.patients}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, patients: e.target.value }))
+                    }
+                  />
+                </div>
+
+                <div>
+                  <FieldLabel required>Success Rate</FieldLabel>
+                  <input
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
+                    placeholder="e.g. 98%"
+                    value={form.success}
+                    onChange={(e) =>
+                      setForm((prev) => ({ ...prev, success: e.target.value }))
+                    }
+                  />
+                </div>
+
+                <div>
+                  <FieldLabel required>Rating</FieldLabel>
+                  <input
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
+                    placeholder="1.0 - 5.0"
+                    type="number"
+                    min={1}
+                    max={5}
+                    step={0.1}
+                    value={form.rating}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "") {
+                        setForm((prev) => ({ ...prev, rating: "" }));
+                        return;
+                      }
+
+                      const n = Number(v);
+                      if (Number.isNaN(n)) return;
+
+                      const clamped = Math.max(1, Math.min(5, n));
+                      const fixed = Math.round(clamped * 10) / 10;
+
+                      setForm((prev) => ({
+                        ...prev,
+                        rating: fixed.toString(),
+                      }));
+                    }}
+                    onBlur={() => {
+                      setForm((prev) => {
+                        if (!prev.rating) return prev;
+                        const n = Number(prev.rating);
+                        if (Number.isNaN(n)) return { ...prev, rating: "" };
+
+                        const clamped = Math.max(1, Math.min(5, n));
+                        return { ...prev, rating: clamped.toFixed(1) };
+                      });
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <FieldLabel>Availability</FieldLabel>
+                  <select
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:bg-white"
+                    value={form.availability}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        availability: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="Available">Available</option>
+                    <option value="Unavailable">Unavailable</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Biography */}
+          <div className="mt-6">
+            <FieldLabel required>Professional Biography</FieldLabel>
+            <textarea
+              rows={4}
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
+              placeholder="Briefly describe the doctor's background, achievements, and patient care philosophy..."
+              value={form.about}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, about: e.target.value }))
+              }
+            />
+          </div>
+
+          {/* Availability */}
+          <div className="mt-6 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-100 text-blue-700">
+                  <Calendar className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-blue-700">
+                    Availability Management
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Add one or more schedule slots for the doctor.
+                  </p>
+                </div>
+              </div>
+
+              <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Must have one schedule slot
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4 xl:grid-cols-5">
+              <div>
+                <FieldLabel required>Date</FieldLabel>
+                <input
+                  type="date"
+                  value={slotDate}
+                  min={today}
+                  onChange={(e) => setSlotDate(e.target.value)}
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-blue-300"
+                />
+              </div>
+
+              <div>
+                <FieldLabel required>Start Hour</FieldLabel>
+                <select
+                  value={slotHour}
+                  onChange={(e) => setSlotHour(e.target.value)}
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-blue-300"
+                >
+                  <option value="">-- : --</option>
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <option key={i} value={String(i + 1).padStart(2, "0")}>
+                      {String(i + 1).padStart(2, "0")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <FieldLabel>Minute</FieldLabel>
+                <select
+                  value={slotMinute}
+                  onChange={(e) => setSlotMinute(e.target.value)}
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-blue-300"
+                >
+                  {Array.from({ length: 60 }).map((_, i) => (
+                    <option key={i} value={String(i).padStart(2, "0")}>
+                      {String(i).padStart(2, "0")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <FieldLabel>Status</FieldLabel>
+                <select
+                  value={slotAmpm}
+                  onChange={(e) => setSlotAmpm(e.target.value)}
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-blue-300"
+                >
+                  <option>AM</option>
+                  <option>PM</option>
+                </select>
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  onClick={addSlotToForm}
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Slot
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-5">
+              {slotCount === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-4 text-sm text-slate-400">
+                  No schedule slot added yet. Add a date and time to create
+                  availability.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {getFlatSlots(form.schedule).map((slot) => (
+                    <div
+                      key={`${slot.date}-${slot.time}`}
+                      className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-slate-800">
+                          {formatDateISO(slot.date)}
+                        </div>
+                        <div className="mt-1 text-xs text-slate-500">
+                          {slot.time}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => removeSlot(slot.date, slot.time)}
+                        className="rounded-xl p-2 text-rose-600 transition hover:bg-rose-50"
+                        aria-label="Remove slot"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
           </div>
 
-          <input
-            className={s.inputBase}
-            placeholder="Full Name"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
-
-          <input
-            className={s.inputBase}
-            placeholder="Specialization"
-            value={form.specialization}
-            onChange={(e) =>
-              setForm({ ...form, specialization: e.target.value })
-            }
-          />
-
-          <input
-            className={s.inputBase}
-            placeholder="Location"
-            value={form.location}
-            onChange={(e) => setForm({ ...form, location: e.target.value })}
-          />
-
-          <input
-            className={s.inputBase}
-            placeholder="Experience"
-            value={form.experience}
-            onChange={(e) => setForm({ ...form, experience: e.target.value })}
-          />
-
-          <input
-            className={s.inputBase}
-            placeholder="Qualifications"
-            value={form.qualifications}
-            onChange={(e) =>
-              setForm({ ...form, qualifications: e.target.value })
-            }
-          />
-
-          <input
-            className={s.inputBase}
-            placeholder="Consultation Fee"
-            value={form.fee}
-            onChange={(e) => setForm({ ...form, fee: e.target.value })}
-          />
-
-          <input
-            className={s.inputBase}
-            placeholder="Rating (1.0 - 5.0)"
-            type="number"
-            min={1}
-            max={5}
-            step={0.1}
-            value={form.rating}
-            onChange={(e) => {
-              const v = e.target.value;
-
-              // allow clearing
-              if (v === "") {
-                setForm((p) => ({ ...p, rating: "" }));
-                return;
-              }
-
-              const n = Number(v);
-              if (Number.isNaN(n)) return;
-
-              // clamp between 1 and 5
-              const clamped = Math.max(1, Math.min(5, n));
-
-              // keep only 1 decimal place
-              const fixed = Math.round(clamped * 10) / 10;
-
-              setForm((p) => ({ ...p, rating: fixed.toString() }));
-            }}
-            onBlur={() => {
-              // force 1 decimal place on blur
-              setForm((p) => {
-                if (!p.rating) return p;
-                const n = Number(p.rating);
-                if (Number.isNaN(n)) return { ...p, rating: "" };
-
-                const clamped = Math.max(1, Math.min(5, n));
-                return { ...p, rating: clamped.toFixed(1) };
-              });
-            }}
-          />
-
-          <input
-            className={s.inputBase}
-            placeholder="Patients"
-            value={form.patients}
-            onChange={(e) => setForm({ ...form, patients: e.target.value })}
-          />
-
-          <input
-            className={s.inputBase}
-            placeholder="Success Rate"
-            value={form.success}
-            onChange={(e) => setForm({ ...form, success: e.target.value })}
-          />
-
-          <input
-            className={s.inputBase}
-            placeholder="Doctor Email"
-            type="email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-          />
-
-          {/* PASSWORD */}
-          <div className="relative">
-            <input
-              className={s.inputBase + " " + s.inputWithIcon}
-              placeholder="Doctor Password"
-              type={showPassword ? "text" : "password"}
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((s) => !s)}
-              className={s.passwordToggleButton + " " + s.cursorPointer}
-              aria-label={showPassword ? "Hide password" : "Show password"}
-            >
-              {showPassword ? <Eye size={18} /> : <EyeClosed size={18} />}
-            </button>
-          </div>
-
-          <select
-            className={s.inputBase}
-            value={form.availability}
-            onChange={(e) => setForm({ ...form, availability: e.target.value })}
-          >
-            <option value="Available">Available</option>
-            <option value="Unavailable">Unavailable</option>
-          </select>
-
-          <textarea
-            className={s.textareaBase + " md:col-span-2"}
-            rows={3}
-            placeholder="About doctor"
-            value={form.about}
-            onChange={(e) => setForm({ ...form, about: e.target.value })}
-          />
-
-          {/* SCHEDULE */}
-          <div className={s.scheduleContainer + " md:col-span-2"}>
-            <div className={s.scheduleHeader}>
-              <Calendar className="text-emerald-600" />
-              <p className={s.scheduleTitle}>
-                Add Schedule Slots
-              </p>
+          {/* Bottom actions */}
+          <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-slate-400">
+              Main categories preserved: doctor profile, credentials,
+              professional details, availability, and image.
             </div>
 
-            <div className={s.scheduleInputsContainer}>
-              <input
-                type="date"
-                value={slotDate}
-                min={today}
-                onChange={(e) => setSlotDate(e.target.value)}
-                className={s.scheduleDateInput}
-              />
-
-              <select
-                value={slotHour}
-                onChange={(e) => setSlotHour(e.target.value)}
-                className={s.scheduleTimeSelect}
-              >
-                <option value="">Hour</option>
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <option key={i} value={String(i + 1)}>
-                    {i + 1}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={slotMinute}
-                onChange={(e) => setSlotMinute(e.target.value)}
-                className={s.scheduleTimeSelect}
-              >
-                {Array.from({ length: 60 }).map((_, i) => (
-                  <option key={i} value={String(i).padStart(2, "0")}>
-                    {String(i).padStart(2, "0")}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={slotAmpm}
-                onChange={(e) => setSlotAmpm(e.target.value)}
-                className={s.scheduleTimeSelect}
-              >
-                <option>AM</option>
-                <option>PM</option>
-              </select>
-
+            <div className="flex flex-col gap-3 sm:flex-row">
               <button
                 type="button"
-                onClick={addSlotToForm}
-                className={s.addSlotButton + " " + s.cursorPointer}
+                onClick={() => {
+                  if (loading) return;
+
+                  if (form.imagePreview && form.imageFile) {
+                    try {
+                      URL.revokeObjectURL(form.imagePreview);
+                    } catch {}
+                  }
+
+                  setForm({
+                    name: "",
+                    specialization: "",
+                    imageFile: null,
+                    imagePreview: "",
+                    experience: "",
+                    qualifications: "",
+                    location: "",
+                    about: "",
+                    fee: "",
+                    success: "",
+                    patients: "",
+                    rating: "",
+                    schedule: {},
+                    availability: "Available",
+                    email: "",
+                    password: "",
+                  });
+
+                  setSlotDate("");
+                  setSlotHour("");
+                  setSlotMinute("00");
+                  setSlotAmpm("AM");
+
+                  if (fileInputRef.current) {
+                    try {
+                      fileInputRef.current.value = "";
+                    } catch {}
+                  }
+                }}
+                className="h-12 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
               >
-                <Plus size={18} /> Add Slot
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                onClick={handleAdd}
+                disabled={loading}
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-6 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Registering...
+                  </>
+                ) : (
+                  <>
+                    <Stethoscope className="h-4 w-4" />
+                    Register Doctor Profile
+                  </>
+                )}
               </button>
             </div>
-
-            <div className={s.slotsGrid}>
-              {getFlatSlots(form.schedule).map(({ date, time }) => (
-                <div
-                  key={date + time}
-                  className={s.slotItem + " " + s.cursorPointer}
-                >
-                  <span>
-                    {formatDateISO(date)} — {time}
-                  </span>
-                  <button
-                    onClick={() => removeSlot(date, time)}
-                    className="text-rose-500"
-                    aria-label={`Remove slot ${date} ${time}`}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className={s.submitButtonContainer}>
-            <button
-              type="submit"
-              disabled={loading}
-              className={s.submitButton + " " + s.cursorPointer + " " + 
-                (loading ? s.submitButtonDisabled : s.submitButtonEnabled)}
-            >
-              {loading ? "Adding..." : "Add Doctor to Team"}
-            </button>
           </div>
         </form>
       </div>
 
-      {/* TOAST */}
-      {toast.show && (
-        <div
-          className={s.toastContainer + " " + 
-            (toast.type === "success" ? s.toastSuccess : s.toastError)}
-        >
-          {toast.type === "success" ? (
-            <CheckCircle size={22} />
-          ) : (
-            <XCircle size={22} />
-          )}
-          <span>{toast.message}</span>
-        </div>
-      )}
-
-      {/* LIST VIEW (simple) */}
-      <div className={s.doctorListContainer}>
-        {doctorList.length ? (
-          <div className={s.doctorListGrid}>
-            {doctorList.map((d) => (
+      {/* Optional recently added preview */}
+      {doctorList.length > 0 && (
+        <div className="mt-6 rounded-[24px] border border-blue-100 bg-white p-5 shadow-sm">
+          <h3 className="text-lg font-semibold text-slate-900">
+            Recently Added
+          </h3>
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {doctorList.slice(0, 3).map((doctor, index) => (
               <div
-                key={d.id || d._id}
-                className={s.doctorCard}
+                key={doctor.id || doctor._id || index}
+                className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
               >
-                <div className={s.doctorCardContent}>
-                  <img
-                    src={d.imageUrl || d.imagePreview}
-                    alt={d.name}
-                    className={s.doctorImage}
-                  />
-                  <div>
-                    <div className={s.doctorName}>{d.name}</div>
-                    <div className={s.doctorSpecialization}>
-                      {d.specialization}
+                <div className="flex items-center gap-3">
+                  {doctor.imageUrl ? (
+                    <img
+                      src={doctor.imageUrl}
+                      alt={doctor.name}
+                      className="h-12 w-12 rounded-2xl object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 font-semibold text-blue-700">
+                      {String(doctor.name || "D")
+                        .slice(0, 2)
+                        .toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold text-slate-900">
+                      {doctor.name}
+                    </div>
+                    <div className="truncate text-sm text-slate-500">
+                      {doctor.specialization}
                     </div>
                   </div>
                 </div>
               </div>
             ))}
           </div>
-        ) : (
-          <p className={s.emptyState}>No doctors yet</p>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

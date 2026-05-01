@@ -1,254 +1,162 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import {
+  MapPin,
+  Mail,
+  Phone,
   Facebook,
-  Twitter,
   Instagram,
   Linkedin,
   Youtube,
-  Mail,
-  Phone,
-  MapPin,
-  ArrowRight,
-  Send,
-  Stethoscope,
-  Activity,
+  Twitter,
 } from "lucide-react";
 import logo from "../../assets/logo.png";
-import { footerStyles } from "../../assets/dummyStyles";
 
-const Footer = () => {
-  const currentYear = new Date().getFullYear();
-
-  const quickLinks = [
-    { name: "Home", href: "/" },
-    { name: "Doctors", href: "/doctors" },
-    { name: "Services", href: "/services" },
-    { name: "Contact", href: "/contact" },
-    { name: "Appointments", href: "/appointments" },
-  ];
-
-  const services = [
-    { name: "Blood Pressure Check", href: "/services" },
-    { name: "Blood Sugar Test", href: "/services" },
-    { name: "Full Blood Count", href: "/services" },
-    { name: "X-Ray Scan", href: "/services" },
-    { name: "Blood Sugar Test", href: "/services" },
-  ];
-
-  const socialLinks = [
-    {
-      Icon: Facebook,
-      color: footerStyles.facebookColor,
-      name: "Facebook",
-      //href: "https://www.facebook.com/people/Hexagon-Digital-Services/61567156598660/",
-    },
-    {
-      Icon: Twitter,
-      color: footerStyles.twitterColor,
-      name: "Twitter",
-      //href: "https://www.linkedin.com/company/hexagondigtial-services/",
-    },
-    {
-      Icon: Instagram,
-      color: footerStyles.instagramColor,
-      name: "Instagram",
-      //href: "http://instagram.com/hexagondigitalservices?igsh=MWp2NG1oNTlibWVnZA%3D%3D",
-    },
-    {
-      Icon: Linkedin,
-      color: footerStyles.linkedinColor,
-      name: "LinkedIn",
-      //href: "https://www.linkedin.com/company/hexagondigtial-services/",
-    },
-    {
-      Icon: Youtube,
-      color: footerStyles.youtubeColor,
-      name: "YouTube",
-      //href: "https://youtube.com/@hexagondigitalservices?si=lxEFYNCP42t6AoDJ",
-    },
-  ];
-
+export default function Footer() {
   return (
-    <footer className={footerStyles.footerContainer}>
-      {/* Floating Medical Icons */}
-      <div className={footerStyles.floatingIcon1}>
-        <Stethoscope className={footerStyles.stethoscopeIcon} />
-      </div>
+    <footer className="relative mt-16 overflow-hidden border-t border-white/50 bg-[#eef6ff]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.08),transparent_22%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.08),transparent_22%)]" />
 
-      <div
-        className={footerStyles.floatingIcon2}
-        style={{ animationDelay: "3s" }}
-      >
-        <Activity className={footerStyles.activityIcon} />
-      </div>
-
-      {/* Main Footer Content */}
-      <div className={footerStyles.mainContent}>
-        <div className={footerStyles.gridContainer}>
-          {/* Company Info & Logo */}
-          <div className={footerStyles.companySection}>
-            <div className={footerStyles.logoContainer}>
-              <div className={footerStyles.logoWrapper}>
-                <div className={footerStyles.logoImageContainer}>
+      <div className="relative z-10 mx-auto max-w-[1380px] px-4 py-8 sm:px-6 lg:px-8">
+        <div className="overflow-hidden rounded-[30px] border border-white/60 bg-white/70 shadow-[0_18px_50px_rgba(30,64,175,0.08)] backdrop-blur-xl">
+          <div className="grid grid-cols-1 gap-8 px-6 py-8 md:grid-cols-2 lg:grid-cols-4 lg:px-8">
+            {/* Brand */}
+            <div>
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#eef4fb] shadow-sm">
                   <img
                     src={logo}
-                    alt="MedBook Logo"
-                    className={footerStyles.logoImage}
+                    alt="Revive"
+                    className="h-8 w-8 object-contain"
                   />
                 </div>
+
+                <div>
+                  <h3 className="text-lg font-bold tracking-tight text-[#0f172a]">
+                    Revive<span className="text-[#2563eb]">+</span>
+                  </h3>
+                  <p className="text-xs text-[#64748b]">Healthcare Solutions</p>
+                </div>
               </div>
 
-              <div>
-                <h2 className={footerStyles.companyName}>Revive</h2>
+              <div className="mt-5 space-y-3 text-sm text-[#475569]">
+                <div className="flex items-center gap-3">
+                  <Phone className="h-4 w-4 text-[#2563eb]" />
+                  <span>+961 81727941</span>
+                </div>
 
-                <p className={footerStyles.companyTagline}>
-                  Healthcare Solutions
-                </p>
+                <div className="flex items-center gap-3">
+                  <Mail className="h-4 w-4 text-[#2563eb]" />
+                  <span>monakouzi1@gmail.com</span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <MapPin className="h-4 w-4 text-[#2563eb]" />
+                  <span>Ajaltoun, Lebanon</span>
+                </div>
               </div>
             </div>
 
-            <p className={footerStyles.companyDescription}>
-              Your trusted partner in healthcare innovation. We're committed to
-              providing exceptional medical care with cutting-edge technology
-              and compassionate service.
-            </p>
+            {/* Quick Links */}
+            <div>
+              <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7c8aa5]">
+                Quick Links
+              </h4>
 
-            <div className={footerStyles.contactContainer}>
-              <div className={footerStyles.contactItem}>
-                <div className={footerStyles.contactIconWrapper}>
-                  <Phone className={footerStyles.contactIcon} />
-                </div>
-                <span className={footerStyles.contactText}>+961 81727941</span>
-              </div>
-              <div className={footerStyles.contactItem}>
-                <div className={footerStyles.contactIconWrapper}>
-                  <Mail className={footerStyles.contactIcon} />
-                </div>
-                <span className={footerStyles.contactText}>
-                  monakouzi1@gmail.com
-                </span>
-              </div>
-              <div className={footerStyles.contactItem}>
-                <div className={footerStyles.contactIconWrapper}>
-                  <MapPin className={footerStyles.contactIcon} />
-                </div>
-                <span className={footerStyles.contactText}>
-                  Beirut , Lebanon
-                </span>
+              <div className="mt-4 space-y-3">
+                <Link
+                  to="/"
+                  className="block text-sm text-[#334155] transition hover:text-[#2563eb]"
+                >
+                  Home
+                </Link>
+                <Link
+                  to="/doctors"
+                  className="block text-sm text-[#334155] transition hover:text-[#2563eb]"
+                >
+                  Doctors
+                </Link>
+                <Link
+                  to="/services"
+                  className="block text-sm text-[#334155] transition hover:text-[#2563eb]"
+                >
+                  Services
+                </Link>
+                <Link
+                  to="/contact"
+                  className="block text-sm text-[#334155] transition hover:text-[#2563eb]"
+                >
+                  Contact
+                </Link>
+                <Link
+                  to="/appointments"
+                  className="block text-sm text-[#334155] transition hover:text-[#2563eb]"
+                >
+                  Appointments
+                </Link>
               </div>
             </div>
-          </div>
 
-          {/* Quick Links */}
-          <div className={footerStyles.linksSection}>
-            <h3 className={footerStyles.sectionTitle}>Quick Links</h3>
-            <ul className={footerStyles.linksList}>
-              {quickLinks.map((link, index) => (
-                <li key={link.name} className={footerStyles.linkItem}>
-                  <a
-                    href={link.href}
-                    className={footerStyles.quickLink}
-                    aria-label={link.name}
-                    style={{ animationDelay: `${index * 60}ms` }}
-                  >
-                    <div className={footerStyles.quickLinkIconWrapper}>
-                      <ArrowRight className={footerStyles.quickLinkIcon} />
-                    </div>
-                    <span>{link.name}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
+            {/* Services */}
+            <div>
+              <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7c8aa5]">
+                Our Services
+              </h4>
 
-          {/* Services */}
-          <div className={footerStyles.linksSection}>
-            <h3 className={footerStyles.sectionTitle}>Our Services</h3>
-            <ul className={footerStyles.linksList}>
-              {services.map((service, index) => (
-                <li key={service.name}>
-                  <a href={service.href} className={footerStyles.serviceLink}>
-                    <div className={footerStyles.serviceIcon} />
-                    <span>{service.name}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
+              <div className="mt-4 space-y-3">
+                <p className="text-sm text-[#334155]">Blood Pressure Check</p>
+                <p className="text-sm text-[#334155]">Blood Sugar Test</p>
+                <p className="text-sm text-[#334155]">Full Blood Count</p>
+                <p className="text-sm text-[#334155]">X-Ray Scan</p>
+                <p className="text-sm text-[#334155]">Thyroid Test</p>
+              </div>
+            </div>
 
-          {/* Newsletter & Social */}
-          <div className={footerStyles.newsletterSection}>
-            <h3 className={footerStyles.newsletterTitle}>Stay Connected</h3>
-            <p className={footerStyles.newsletterDescription}>
-              Subscribe for health tips, medical updates, and wellness insights
-              delivered to your inbox.
-            </p>
+            {/* Stay Connected */}
+            <div>
+              <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7c8aa5]">
+                Stay Connected
+              </h4>
 
-            {/* Newsletter form */}
-            <div className={footerStyles.newsletterForm}>
-              {/* Mobile newsletter */}
-              <div className={footerStyles.mobileNewsletterContainer}>
+              <div className="mt-4 space-y-3">
                 <input
-                  type="email"
-                  placeholder="Enter your email"
-                  className={footerStyles.emailInput}
-                  aria-label="Email"
+                  type="text"
+                  placeholder="Email Sgur"
+                  className="h-11 w-full rounded-full border border-[#dbe6f7] bg-[#f8fbff] px-4 text-sm text-[#0f172a] outline-none"
                 />
-                <button className={footerStyles.mobileSubscribeButton}>
-                  <Send className={footerStyles.mobileButtonIcon} />
-                  Subscribe
-                </button>
+                <input
+                  type="text"
+                  placeholder="Email Sgur"
+                  className="h-11 w-full rounded-full border border-[#dbe6f7] bg-[#f8fbff] px-4 text-sm text-[#0f172a] outline-none"
+                />
               </div>
 
-              {/* Desktop newsletter */}
-              <div className={footerStyles.desktopNewsletterContainer}>
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  className={footerStyles.desktopEmailInput}
-                  aria-label="Email"
-                />
-                <button className={footerStyles.desktopSubscribeButton}>
-                  <Send className={footerStyles.desktopButtonIcon} />
-                  <span className={footerStyles.desktopButtonText}>
-                    Subscribe
-                  </span>
-                </button>
-              </div>
-
-              {/* Social icons */}
-              <div className={footerStyles.socialContainer}>
-                {socialLinks.map(({ Icon, color, name, href }, index) => (
-                  <a
-                    key={name}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={footerStyles.socialLink}
-                    aria-label={name}
-                    style={{ animationDelay: `${index * 120}ms` }}
+              <div className="mt-5 flex flex-wrap gap-2">
+                {[
+                  { icon: Facebook, label: "Facebook" },
+                  { icon: Twitter, label: "Twitter" },
+                  { icon: Instagram, label: "Instagram" },
+                  { icon: Linkedin, label: "LinkedIn" },
+                  { icon: Youtube, label: "YouTube" },
+                ].map(({ icon: Icon, label }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-[#dbe6f7] bg-white text-[#64748b] transition hover:border-[#bfd3fa] hover:text-[#2563eb]"
+                    aria-label={label}
                   >
-                    <div className={footerStyles.socialIconBackground} />
-                    <Icon className={`${footerStyles.socialIcon} ${color}`} />
-                  </a>
+                    <Icon className="h-4 w-4" />
+                  </button>
                 ))}
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Bottom */}
-        <div className={footerStyles.bottomSection}>
-          <div className={footerStyles.copyright}>
-            <span>© {currentYear} Revive Healthcare.</span>
+          <div className="border-t border-[#e8eef8] px-6 py-4 text-center text-xs text-[#94a3b8] lg:px-8">
+            © 2025 Revive Healthcare Solutions
           </div>
         </div>
       </div>
-
-      {/* Animation Styles */}
-      <style>{footerStyles.animationStyles}</style>
     </footer>
   );
-};
-
-export default Footer;
+}

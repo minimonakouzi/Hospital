@@ -1,13 +1,21 @@
-import React from 'react'
-import Navbar from "../../doctor/Navbar/Navbar"
-import DashboardPage from "../../doctor/DashboardPage/DashboardPage"
+import React from "react";
+import Navbar from "../../doctor/Navbar/Navbar";
+import DashboardPage from "../../doctor/DashboardPage/DashboardPage";
+
 const DHome = () => {
   return (
-    <div>
-        <Navbar/>
-        <DashboardPage/>
-    </div>
-  )
-}
+    <div className="h-screen overflow-hidden bg-[#f8fafc]">
+      <div className="flex h-full">
+        <div className="shrink-0">
+          <Navbar />
+        </div>
 
-export default DHome
+        <main className="min-w-0 flex-1 overflow-y-auto">
+          <DashboardPage />
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default DHome;

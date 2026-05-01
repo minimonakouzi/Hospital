@@ -9,14 +9,11 @@ import {
   CheckCircle,
   XCircle,
   Bell,
+  Search,
+  Stethoscope,
+  FlaskConical,
 } from "lucide-react";
 import { useAuth, useUser } from "@clerk/clerk-react";
-import {
-  appointmentPageStyles,
-  cardStyles,
-  badgeStyles,
-  iconSize,
-} from "../../assets/dummyStyles";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const API = axios.create({ baseURL: API_BASE });
@@ -100,54 +97,199 @@ function computeStatus(item) {
   return item.confirmed ? "Confirmed" : "Pending";
 }
 
+function formatDateNice(dateStr) {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  if (!isNaN(d)) {
+    return d.toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  }
+  return dateStr;
+}
+
+function normalizeRescheduled(rt) {
+  if (!rt) return null;
+  if (rt.date && rt.time) return { date: rt.date, time: rt.time };
+  if (
+    rt.date &&
+    (rt.hour !== undefined || rt.minute !== undefined || rt.ampm)
+  ) {
+    const hour = rt.hour ?? 0;
+    const minute = rt.minute ?? 0;
+    const ampm = rt.ampm ?? "";
+    return { date: rt.date, time: `${hour}:${pad(minute)} ${ampm}` };
+  }
+  return {
+    date: rt.date || rt?.dateString || "",
+    time:
+      rt.time ||
+      (rt.hour
+        ? `${rt.hour}:${pad(rt.minute || 0)} ${rt.ampm || ""}`
+        : rt?.timeString || ""),
+  };
+}
+
+function getInitials(name = "") {
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "DR";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+}
+
 /* -------------------- Badges -------------------- */
-const PaymentBadge = ({ payment }) => {
+function PaymentBadge({ payment }) {
   return payment === "Online" ? (
-    <span className={badgeStyles.paymentBadge.online}>
-      <CreditCard className={iconSize.small} /> Online
+    <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+      <CreditCard className="h-3.5 w-3.5" /> Online
     </span>
   ) : (
-    <span className={badgeStyles.paymentBadge.cash}>
-      <Wallet className={iconSize.small} /> Cash
+    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+      <Wallet className="h-3.5 w-3.5" /> Cash
     </span>
   );
-};
+}
 
-const StatusBadge = ({ itemStatus }) => {
+function StatusBadge({ itemStatus }) {
   if (itemStatus === "Completed")
     return (
-      <span className={badgeStyles.statusBadge.completed}>
-        <CheckCircle className={iconSize.small} /> Completed
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+        <CheckCircle className="h-3.5 w-3.5" /> Completed
       </span>
     );
 
   if (itemStatus === "Confirmed")
     return (
-      <span className={badgeStyles.statusBadge.confirmed}>
-        <Bell className={iconSize.small} /> Confirmed
+      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+        <Bell className="h-3.5 w-3.5" /> Confirmed
       </span>
     );
 
   if (itemStatus === "Pending")
     return (
-      <span className={badgeStyles.statusBadge.pending}>
-        <Clock className={iconSize.small} /> Pending
+      <span className="inline-flex items-center gap-1 rounded-full bg-yellow-50 px-3 py-1 text-xs font-semibold text-yellow-700">
+        <Clock className="h-3.5 w-3.5" /> Pending
       </span>
     );
 
   if (itemStatus === "Canceled")
     return (
-      <span className={badgeStyles.statusBadge.canceled}>
-        <XCircle className={iconSize.small} /> Canceled
+      <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
+        <XCircle className="h-3.5 w-3.5" /> Canceled
       </span>
     );
 
   return (
-    <span className={badgeStyles.statusBadge.default}>
-      <CalendarDays className={iconSize.small} /> Rescheduled
+    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+      <CalendarDays className="h-3.5 w-3.5" /> Rescheduled
     </span>
   );
-};
+}
+
+/* -------------------- Cards -------------------- */
+function EmptyState({ text }) {
+  return (
+    <div className="rounded-[26px] border border-[#dbe6f7] bg-white/80 px-6 py-12 text-center text-[#64748b] shadow-sm">
+      {text}
+    </div>
+  );
+}
+
+function Avatar({ image, label }) {
+  if (image) {
+    return (
+      <img
+        src={image}
+        alt={label}
+        className="h-20 w-20 rounded-full border-4 border-[#e7f0ff] object-cover shadow-sm"
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-[#e7f0ff] bg-[#eef4fb] text-xl font-bold text-[#2563eb] shadow-sm">
+      {getInitials(label)}
+    </div>
+  );
+}
+
+function DoctorAppointmentCard({ item }) {
+  return (
+    <article className="overflow-hidden rounded-[30px] border border-white/60 bg-white/85 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-[0_22px_55px_rgba(15,23,42,0.11)]">
+      <div className="p-5">
+        <div className="flex justify-center">
+          <Avatar image={item.image} label={item.doctor} />
+        </div>
+
+        <div className="mt-4 text-center">
+          <h3 className="text-[1.65rem] font-bold leading-tight text-[#0f172a]">
+            {item.doctor}
+          </h3>
+          <p className="mt-1 text-sm text-[#2563eb]">
+            {item.specialization || "-"}
+          </p>
+        </div>
+
+        <div className="mt-5 space-y-3">
+          <div className="flex items-center justify-center gap-2 rounded-full border border-[#dbe6f7] bg-[#f8fbff] px-4 py-3 text-sm font-medium text-[#334155]">
+            <CalendarDays className="h-4 w-4 text-[#2563eb]" />
+            {formatDateNice(item.date)}
+          </div>
+
+          <div className="flex items-center justify-center gap-2 rounded-full border border-[#dbe6f7] bg-[#f8fbff] px-4 py-3 text-sm font-medium text-[#334155]">
+            <Clock className="h-4 w-4 text-[#2563eb]" />
+            {item.time}
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+          <PaymentBadge payment={item.payment} />
+          <StatusBadge itemStatus={item.status} />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function ServiceAppointmentCard({ item }) {
+  return (
+    <article className="overflow-hidden rounded-[30px] border border-white/60 bg-white/85 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-[0_22px_55px_rgba(15,23,42,0.11)]">
+      <div className="p-5">
+        <div className="flex justify-center">
+          <Avatar image={item.image} label={item.name} />
+        </div>
+
+        <div className="mt-4 text-center">
+          <h3 className="text-[1.55rem] font-bold leading-tight text-[#0f172a]">
+            {item.name}
+          </h3>
+          <p className="mt-2 text-2xl font-bold text-[#2563eb]">
+            ${item.price}
+          </p>
+        </div>
+
+        <div className="mt-5 space-y-3">
+          <div className="flex items-center justify-center gap-2 rounded-full border border-[#dbe6f7] bg-[#f8fbff] px-4 py-3 text-sm font-medium text-[#334155]">
+            <CalendarDays className="h-4 w-4 text-[#2563eb]" />
+            {formatDateNice(item.date)}
+          </div>
+
+          <div className="flex items-center justify-center gap-2 rounded-full border border-[#dbe6f7] bg-[#f8fbff] px-4 py-3 text-sm font-medium text-[#334155]">
+            <Clock className="h-4 w-4 text-[#2563eb]" />
+            {item.time}
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+          <PaymentBadge payment={item.payment} />
+          <StatusBadge itemStatus={item.status} />
+        </div>
+      </div>
+    </article>
+  );
+}
 
 /* -------------------- Component -------------------- */
 export default function AppointmentPage() {
@@ -160,11 +302,8 @@ export default function AppointmentPage() {
   const [doctorAppts, setDoctorAppts] = useState([]);
   const [serviceAppts, setServiceAppts] = useState([]);
 
-  const [appointmentsRaw, setAppointmentsRaw] = useState({
-    doctors: [],
-    services: [],
-  });
   const [error, setError] = useState(null);
+  const [query, setQuery] = useState("");
 
   /* -------------------- Fetch Doctor Appointments -------------------- */
   const loadDoctorAppointments = useCallback(async () => {
@@ -175,20 +314,14 @@ export default function AppointmentPage() {
     let token = null;
     try {
       token = await getToken();
-      console.log(
-        "Clerk token (frontend):",
-        token ? `${token.slice(0, 20)}...` : null,
-      );
     } catch (err) {
       console.error("Failed to get Clerk token (frontend):", err);
     }
 
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    console.log("Outgoing headers for /api/appointments/me:", headers);
 
     try {
       const resp = await API.get("/api/appointments/me", { headers });
-      console.log("Response from /api/appointments/me:", resp?.data);
 
       const fetched =
         resp?.data?.appointments ?? resp?.data?.data ?? resp?.data ?? [];
@@ -203,7 +336,6 @@ export default function AppointmentPage() {
       });
 
       setDoctorAppts(doctors);
-      setAppointmentsRaw((p) => ({ ...p, doctors: doctors }));
     } catch (err) {
       console.error(
         "Error calling /api/appointments/me:",
@@ -212,12 +344,10 @@ export default function AppointmentPage() {
 
       if (user?.id) {
         try {
-          console.log("Attempting debug request with ?createdBy=", user.id);
           const debugResp = await API.get(
             `/api/appointments/me?createdBy=${user.id}`,
             { headers },
           );
-          console.log("Debug fallback response:", debugResp?.data);
 
           const fetched =
             debugResp?.data?.appointments ??
@@ -232,7 +362,6 @@ export default function AppointmentPage() {
               !a.serviceId,
           );
           setDoctorAppts(doctors);
-          setAppointmentsRaw((p) => ({ ...p, doctors }));
         } catch (err2) {
           console.error(
             "Debug fallback failed (doctors):",
@@ -241,7 +370,7 @@ export default function AppointmentPage() {
           setError((prev) =>
             prev
               ? prev + " | Doctors failed"
-              : "Failed to load doctor appointments. Check console.",
+              : "Failed to load doctor appointments.",
           );
           setDoctorAppts([]);
         }
@@ -249,7 +378,7 @@ export default function AppointmentPage() {
         setError((prev) =>
           prev
             ? prev + " | No user id for doctors"
-            : "Failed to load doctor appointments and no user id available for debug fallback.",
+            : "Failed to load doctor appointments.",
         );
         setDoctorAppts([]);
       }
@@ -270,20 +399,17 @@ export default function AppointmentPage() {
     } catch (err) {
       console.error("Failed to get Clerk token (frontend): err", err);
     }
+
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    console.log("Outgoing headers for /api/service-appointments/me:", headers);
 
     try {
       const resp = await API.get("/api/service-appointments/me", { headers });
-      console.log("Response from /api/service-appointments/me:", resp?.data);
 
       const fetched =
         resp?.data?.appointments ?? resp?.data?.data ?? resp?.data ?? [];
       const arr = Array.isArray(fetched) ? fetched : [];
-      console.log(arr);
 
       setServiceAppts(arr);
-      setAppointmentsRaw((p) => ({ ...p, services: arr }));
     } catch (err) {
       console.error(
         "Error calling /api/service-appointments/me:",
@@ -292,12 +418,10 @@ export default function AppointmentPage() {
 
       if (user?.id) {
         try {
-          console.log("Attempting debug request with ?createdBy=", user.id);
           const debugResp = await API.get(
             `/api/service-appointments/me?createdBy=${user.id}`,
             { headers },
           );
-          console.log("Debug fallback response (services):", debugResp?.data);
 
           const fetched =
             debugResp?.data?.appointments ??
@@ -306,7 +430,6 @@ export default function AppointmentPage() {
             [];
           const arr = Array.isArray(fetched) ? fetched : [];
           setServiceAppts(arr);
-          setAppointmentsRaw((p) => ({ ...p, services: arr }));
         } catch (err2) {
           console.error(
             "Debug fallback failed (services):",
@@ -315,7 +438,7 @@ export default function AppointmentPage() {
           setError((prev) =>
             prev
               ? prev + " | Services failed"
-              : "Failed to load service appointments. Check console.",
+              : "Failed to load service appointments.",
           );
           setServiceAppts([]);
         }
@@ -323,7 +446,7 @@ export default function AppointmentPage() {
         setError((prev) =>
           prev
             ? prev + " | No user id for services"
-            : "Failed to load service appointments and no user id available for debug fallback.",
+            : "Failed to load service appointments.",
         );
         setServiceAppts([]);
       }
@@ -345,28 +468,6 @@ export default function AppointmentPage() {
   ]);
 
   /* -------------------- Normalization for UI -------------------- */
-  function normalizeRescheduled(rt) {
-    if (!rt) return null;
-    if (rt.date && rt.time) return { date: rt.date, time: rt.time };
-    if (
-      rt.date &&
-      (rt.hour !== undefined || rt.minute !== undefined || rt.ampm)
-    ) {
-      const hour = rt.hour ?? 0;
-      const minute = rt.minute ?? 0;
-      const ampm = rt.ampm ?? "";
-      return { date: rt.date, time: `${hour}:${pad(minute)} ${ampm}` };
-    }
-    return {
-      date: rt.date || rt?.dateString || "",
-      time:
-        rt.time ||
-        (rt.hour
-          ? `${rt.hour}:${pad(rt.minute || 0)} ${rt.ampm || ""}`
-          : rt?.timeString || ""),
-    };
-  }
-
   const appointmentData = useMemo(() => {
     return doctorAppts
       .map((a) => {
@@ -387,7 +488,6 @@ export default function AppointmentPage() {
           (a.patientName && String(a.patientName).trim()) ||
           "Doctor";
 
-        const patientName = a.patientName || a.patient || "Patient";
         const specialization =
           doctorObj.specialization || a.specialization || a.speciality || "";
         const experience = doctorObj.experience || a.experience || "";
@@ -417,7 +517,6 @@ export default function AppointmentPage() {
           id,
           image,
           doctor: doctorName,
-          patientName,
           specialization,
           experience,
           date,
@@ -444,10 +543,10 @@ export default function AppointmentPage() {
           s.serviceImage ||
           "";
         const name = s.serviceName || svc.name || svc.title || "Service";
-        const patientName = s.patientName || s.patient || "Patient";
         const price = s.fees ?? s.amount ?? s.price ?? 0;
         const date = s.date || "";
         let time = s.time || "";
+
         if (!time) {
           if (s.hour !== undefined && s.minute !== undefined && s.ampm) {
             time = `${s.hour}:${pad(s.minute)} ${s.ampm}`;
@@ -461,148 +560,168 @@ export default function AppointmentPage() {
           s.status ||
           (s.payment && s.payment.status === "Paid" ? "Confirmed" : "Pending");
 
-        const rescheduledTo = normalizeRescheduled(s.rescheduledTo || null);
-
         return {
           id,
           image,
           name,
-          patientName,
           price,
           date,
           time,
           payment,
           status,
-          rescheduledTo,
         };
       })
       .map((x) => ({ ...x, status: computeStatus(x) }));
   }, [serviceAppts]);
 
-  /* -------------------- Render -------------------- */
+  const filteredDoctors = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return appointmentData;
+    return appointmentData.filter(
+      (item) =>
+        (item.doctor || "").toLowerCase().includes(q) ||
+        (item.specialization || "").toLowerCase().includes(q),
+    );
+  }, [appointmentData, query]);
+
+  const filteredServices = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return serviceData;
+    return serviceData.filter((item) =>
+      (item.name || "").toLowerCase().includes(q),
+    );
+  }, [serviceData, query]);
+
   return (
-    <div className={appointmentPageStyles.pageContainer}>
+    <section className="relative min-h-screen overflow-hidden bg-[#eef6ff] pt-28">
       <Toaster position="top-right" />
-      <div className={appointmentPageStyles.maxWidthContainer}>
-        {/* ------------ DOCTOR APPOINTMENTS ------------ */}
-        <h1 className={appointmentPageStyles.doctorTitle}>
-          Your Doctor Appointments
-        </h1>
 
-        {loadingDoctors && (
-          <div className={appointmentPageStyles.loadingText}>
-            Loading doctors...
-          </div>
-        )}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.08),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.10),transparent_24%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#eef6ff_0%,#f8fbff_48%,#eef6ff_100%)]" />
 
-        {!loadingDoctors && appointmentData.length === 0 && (
-          <div className={appointmentPageStyles.emptyStateText}>
-            No doctor appointments found.
-          </div>
-        )}
-
-        <div className={appointmentPageStyles.doctorGrid}>
-          {appointmentData.map((item) => (
-            <div key={item.id} className={cardStyles.doctorCard}>
-              <div className={cardStyles.doctorImageContainer}>
-                <img
-                  src={item.image || "/placeholder-doctor.png"}
-                  alt={item.doctor}
-                  className={cardStyles.image}
-                  loading="lazy"
-                />
+      <div className="relative z-10 mx-auto max-w-[1380px] px-4 pb-16 sm:px-6 lg:px-8">
+        {/* hero */}
+        <div className="mb-8 overflow-hidden rounded-[34px] border border-white/60 bg-white/70 shadow-[0_18px_50px_rgba(30,64,175,0.08)] backdrop-blur-xl">
+          <div className="grid items-center gap-8 px-6 py-8 md:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:px-10 lg:py-10">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#d9e6fb] bg-white px-4 py-2 text-sm font-medium text-[#2563eb]">
+                <CalendarDays className="h-4 w-4" />
+                Your Medical Bookings
               </div>
 
-              <h2 className={cardStyles.doctorName}>{item.doctor}</h2>
+              <h1 className="mt-5 text-4xl font-bold tracking-tight text-[#0f172a] md:text-5xl">
+                Appointments & Services
+              </h1>
 
-              <div className={cardStyles.specialization}>
-                {item.specialization}{" "}
-                {item.experience ? `• ${item.experience}` : ""}
-              </div>
-
-              <p className={cardStyles.dateContainer}>
-                <CalendarDays className={iconSize.medium} /> {item.date}
+              <p className="mt-4 max-w-2xl text-base leading-8 text-[#64748b]">
+                Review your booked doctor appointments and services in the same
+                clean Revive theme, without changing any backend behavior.
               </p>
-
-              <p className={cardStyles.timeContainer}>
-                <Clock className={iconSize.medium} /> {item.time}
-              </p>
-
-              <div className={cardStyles.badgesContainer}>
-                <PaymentBadge payment={item.payment} />
-                <StatusBadge itemStatus={item.status} />
-              </div>
-
-              {item.status === "Rescheduled" && item.rescheduledTo ? (
-                <div className={cardStyles.rescheduledText}>
-                  Rescheduled to{" "}
-                  <span className={cardStyles.rescheduledSpan}>
-                    {item.rescheduledTo.date} : {item.rescheduledTo.time}
-                  </span>
-                </div>
-              ) : null}
             </div>
-          ))}
+
+            <div className="rounded-[28px] border border-[#dbe6f7] bg-[#eef4fb] p-5 shadow-inner">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#2563eb] shadow-sm">
+                  <Search className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-[#0f172a]">
+                    Search Bookings
+                  </h2>
+                  <p className="mt-1 text-sm text-[#64748b]">
+                    Search by doctor, specialization, or service.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 flex gap-3">
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]" />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search your bookings..."
+                    className="h-12 w-full rounded-[18px] border border-[#dbe6f7] bg-white pl-11 pr-4 text-sm text-[#0f172a] outline-none transition focus:border-[#bfd3fa]"
+                  />
+                </div>
+
+                <button
+                  onClick={() => setQuery("")}
+                  className="h-12 rounded-[18px] border border-[#dbe6f7] bg-white px-5 text-sm font-semibold text-[#334155]"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* ------------ SERVICE BOOKINGS ------------ */}
-        <h2 className={appointmentPageStyles.serviceTitle}>
-          Your Booked Services
-        </h2>
-
-        {loadingServices && (
-          <div className={appointmentPageStyles.serviceLoadingText}>
-            Loading service bookings...
-          </div>
-        )}
-
-        {!loadingServices && serviceData.length === 0 && (
-          <div className={appointmentPageStyles.serviceEmptyStateText}>
-            No service bookings found.
-          </div>
-        )}
-
-        <div className={appointmentPageStyles.serviceGrid}>
-          {serviceData.map((srv) => (
-            <div key={srv.id} className={cardStyles.serviceCard}>
-              <div className={cardStyles.serviceImageContainer}>
-                <img
-                  src={srv.image || "/placeholder-service.png"}
-                  alt={srv.name}
-                  className={cardStyles.image}
-                  loading="lazy"
-                />
-              </div>
-
-              <h3 className={cardStyles.serviceName}>{srv.name}</h3>
-
-              <p className={cardStyles.price}>${srv.price}</p>
-
-              <p className={cardStyles.serviceDateContainer}>
-                <CalendarDays className={iconSize.medium} /> {srv.date}
-              </p>
-
-              <p className={cardStyles.serviceTimeContainer}>
-                <Clock className={iconSize.medium} /> {srv.time}
-              </p>
-
-              <div className={cardStyles.badgesContainer}>
-                <PaymentBadge payment={srv.payment} />
-                <StatusBadge itemStatus={srv.status} />
-              </div>
-
-              {srv.status === "Rescheduled" && srv.rescheduledTo ? (
-                <div className={cardStyles.serviceRescheduledText}>
-                  Rescheduled to{" "}
-                  <span className={cardStyles.rescheduledSpan}>
-                    {srv.rescheduledTo.date} : {srv.rescheduledTo.time}
-                  </span>
-                </div>
-              ) : null}
+        {/* Doctor appointments */}
+        <div className="mb-12">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#2563eb] shadow-sm">
+              <Stethoscope className="h-5 w-5" />
             </div>
-          ))}
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight text-[#0f172a]">
+                Your Doctor Appointments
+              </h2>
+              <p className="mt-1 text-sm text-[#64748b]">
+                {filteredDoctors.length} appointment
+                {filteredDoctors.length === 1 ? "" : "s"} found
+              </p>
+            </div>
+          </div>
+
+          {loadingDoctors ? (
+            <EmptyState text="Loading doctor appointments..." />
+          ) : filteredDoctors.length === 0 ? (
+            <EmptyState text="No doctor appointments found." />
+          ) : (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+              {filteredDoctors.map((item) => (
+                <DoctorAppointmentCard key={item.id} item={item} />
+              ))}
+            </div>
+          )}
         </div>
+
+        {/* Service appointments */}
+        <div>
+          <div className="mb-6 flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#2563eb] shadow-sm">
+              <FlaskConical className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight text-[#0f172a]">
+                Your Booked Services
+              </h2>
+              <p className="mt-1 text-sm text-[#64748b]">
+                {filteredServices.length} service
+                {filteredServices.length === 1 ? "" : "s"} found
+              </p>
+            </div>
+          </div>
+
+          {loadingServices ? (
+            <EmptyState text="Loading service appointments..." />
+          ) : filteredServices.length === 0 ? (
+            <EmptyState text="No booked services found." />
+          ) : (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+              {filteredServices.map((item) => (
+                <ServiceAppointmentCard key={item.id} item={item} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {error && (
+          <div className="mt-8 rounded-[24px] border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
+            {error}
+          </div>
+        )}
       </div>
-    </div>
+    </section>
   );
 }

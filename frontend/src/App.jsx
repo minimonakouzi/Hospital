@@ -51,9 +51,9 @@ const ScrollButton = () => {
   return (
     <button
       onClick={scrollTop}
-      className={`fixed right-4 bottom-6 z-50 w-11 h-11 rounded-full flex items-center justify-center 
+      className={`fixed right-4 bottom-6 z-50 h-11 w-11 rounded-full flex items-center justify-center 
       bg-emerald-600 text-white shadow-lg transition-all duration-300 
-      ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"} 
+      ${visible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"} 
       hover:scale-110 hover:shadow-xl`}
       title="Go to top"
     >
@@ -64,7 +64,6 @@ const ScrollButton = () => {
 
 /* ================= Main App ================= */
 const App = () => {
-  // Lock horizontal overflow globally
   useEffect(() => {
     document.body.style.overflowX = "hidden";
     document.documentElement.style.overflowX = "hidden";
@@ -78,7 +77,8 @@ const App = () => {
     <>
       <ScrollToTop />
 
-      <div className="overflow-x-hidden bg-white text-gray-900">
+      {/* changed bg-white -> bg-transparent */}
+      <div className="overflow-x-hidden bg-transparent text-gray-900">
         <Routes>
           {/* Public */}
           <Route path="/" element={<Home />} />
@@ -90,7 +90,7 @@ const App = () => {
           <Route path="/appointments" element={<Appointments />} />
           <Route path="/doctor-admin/login" element={<Login />} />
 
-          {/* ✅ STRIPE PAYMENT ROUTES */}
+          {/* Stripe payment routes */}
           <Route path="/appointment/success" element={<VerifyPaymentPage />} />
           <Route path="/appointment/cancel" element={<VerifyPaymentPage />} />
 

@@ -480,7 +480,7 @@ export default function BookAppointmentScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.pageHeader}>
-          <Ionicons name="calendar-outline" size={18} color="#1C4DFF" />
+          <Ionicons name="calendar-outline" size={25} color="#000000" />
           <Text style={styles.pageHeaderText}>Book Your Appointment</Text>
         </View>
 
@@ -831,7 +831,7 @@ const styles = StyleSheet.create({
   pageHeaderText: {
     fontSize: 24,
     fontWeight: "800",
-    color: "#1C4DFF",
+    color: "#000000",
   },
   topDoctorCard: {
     backgroundColor: "#FFFFFF",

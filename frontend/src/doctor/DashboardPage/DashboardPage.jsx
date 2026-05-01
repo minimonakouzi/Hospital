@@ -1,20 +1,22 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useParams, useLocation } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   Calendar,
   CheckCircle,
   XCircle,
-  Users,
+  DollarSign,
+  Activity,
+  Search,
   Phone,
-  BadgeIndianRupee,
+  Clock3,
 } from "lucide-react";
-import { dashboardStyles } from "../../assets/dummyStyles";
 
-const API_BASE = "http://localhost:4000"; // override by passing apiBase prop
+const API_BASE = "http://localhost:4000";
+const ITEMS_PER_PAGE = 3;
 
 /* -------------------------
-   Helpers: date/time + status mapping
-   ------------------------- */
+   Helpers
+------------------------- */
 function parseDateTime(date, time) {
   return new Date(`${date}T${time}:00`);
 }
@@ -67,9 +69,9 @@ function to24Hour(timeStr) {
   let hh = Number(m[1]);
   const mm = m[2];
   const ampm = m[3];
-  if (!ampm) {
-    return `${String(hh).padStart(2, "0")}:${mm}`;
-  }
+
+  if (!ampm) return `${String(hh).padStart(2, "0")}:${mm}`;
+
   const up = ampm.toUpperCase();
   if (up === "AM") {
     if (hh === 12) hh = 0;
@@ -87,16 +89,14 @@ function to12HourFrom24(hhmm) {
   return `${String(h12)}:${String(mm).padStart(2, "0")} ${ampm}`;
 }
 
-/* -------------------------
-   Normalizer: backend -> frontend shape used in this page
-   ------------------------- */
 function normalizeAppointment(a) {
   if (!a) return null;
+
   const id = a._id || a.id || String(Math.random()).slice(2);
   const patient = a.patientName || a.patient || a.name || "Unknown";
   const age = a.age ?? a.patientAge ?? "";
   const gender = a.gender || "";
-  // inside normalizeAppointment(a) ...
+
   const doctorName =
     (a.doctorId && typeof a.doctorId === "object" && a.doctorId.name) ||
     a.doctorName ||
@@ -114,9 +114,11 @@ function normalizeAppointment(a) {
     a.speciality ||
     a.specialization ||
     "";
+
   const mobile = a.mobile || a.phone || "";
   const fee = Number(a.fees ?? a.fee ?? a.payment?.amount ?? 0) || 0;
   const date = a.date || (a.slot && a.slot.date) || "";
+
   const rawTime =
     a.time ||
     (a.slot && a.slot.time) ||
@@ -126,10 +128,12 @@ function normalizeAppointment(a) {
           "0",
         )}`
       : "");
+
   const time24 = to24Hour(rawTime);
   const status = backendToFrontendStatus(
     a.status || (a.payment && a.payment.status) || "Pending",
   );
+
   return {
     id,
     patient,
@@ -147,41 +151,287 @@ function normalizeAppointment(a) {
   };
 }
 
+function getInitials(name = "") {
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "PT";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+}
+
 /* -------------------------
-   Component: DashboardPage (fetch + update + reschedule)
-   ------------------------- */
+   UI bits
+------------------------- */
+function MetricCard({ title, value, icon, tint = "bg-blue-50 text-blue-600" }) {
+  return (
+    <div className="rounded-2xl border border-[#e5eaf5] bg-white px-4 py-3 shadow-sm">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8a98b5]">
+            {title}
+          </p>
+          <p className="mt-2 text-[1.4rem] font-bold leading-none text-[#0f172a]">
+            {value}
+          </p>
+        </div>
+
+        <div
+          className={`flex h-9 w-9 items-center justify-center rounded-xl ${tint}`}
+        >
+          {icon}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }) {
+  if (status === "complete") {
+    return (
+      <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-600">
+        Completed
+      </span>
+    );
+  }
+
+  if (status === "confirmed") {
+    return (
+      <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-600">
+        Confirmed
+      </span>
+    );
+  }
+
+  if (status === "cancelled") {
+    return (
+      <span className="inline-flex rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-600">
+        Cancelled
+      </span>
+    );
+  }
+
+  if (status === "rescheduled") {
+    return (
+      <span className="inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-600">
+        Rescheduled
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+      Pending
+    </span>
+  );
+}
+
+function StatusSelect({ appointment, onChange }) {
+  const terminal =
+    appointment.status === "complete" || appointment.status === "cancelled";
+
+  if (appointment.status === "rescheduled") {
+    return (
+      <select
+        value={appointment.status}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-10 w-full rounded-full border border-[#e5eaf5] bg-[#f8fafc] px-3 text-xs text-[#64748b] outline-none"
+      >
+        <option value="rescheduled" disabled>
+          Rescheduled
+        </option>
+        <option value="complete">Completed</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+    );
+  }
+
+  return (
+    <select
+      value={appointment.status}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={terminal}
+      className={`h-10 w-full rounded-full border px-3 text-xs outline-none ${
+        terminal
+          ? "cursor-not-allowed border-[#eef2f7] bg-[#f8fafc] text-[#a0aec0]"
+          : "border-[#e5eaf5] bg-[#f8fafc] text-[#64748b]"
+      }`}
+    >
+      <option value="pending">Pending</option>
+      <option value="confirmed">Confirmed</option>
+      <option value="complete">Completed</option>
+      <option value="cancelled">Cancelled</option>
+    </select>
+  );
+}
+
+function RescheduleButton({ appointment, onReschedule }) {
+  const terminal =
+    appointment.status === "complete" || appointment.status === "cancelled";
+
+  const [editing, setEditing] = useState(false);
+  const [date, setDate] = useState(appointment.date || "");
+  const [time, setTime] = useState(appointment.time || "09:00");
+
+  const minDate = useMemo(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }, []);
+
+  useEffect(() => {
+    const apptRaw = appointment.date ? String(appointment.date) : "";
+    const apptDate = apptRaw.slice(0, 10);
+    setDate(apptDate && apptDate >= minDate ? apptDate : minDate);
+    setTime(appointment.time || "09:00");
+  }, [appointment.date, appointment.time, minDate]);
+
+  function save() {
+    if (!date || !time) return;
+    if (date < minDate) {
+      setDate(minDate);
+      return;
+    }
+    onReschedule(date, time);
+    setEditing(false);
+  }
+
+  function cancel() {
+    const apptRaw = appointment.date ? String(appointment.date) : "";
+    const apptDate = apptRaw.slice(0, 10);
+    setDate(apptDate && apptDate >= minDate ? apptDate : minDate);
+    setTime(appointment.time || "09:00");
+    setEditing(false);
+  }
+
+  if (!editing) {
+    return (
+      <button
+        onClick={() => setEditing(true)}
+        disabled={terminal}
+        className={`h-10 w-full rounded-full px-4 text-xs font-medium ${
+          terminal
+            ? "cursor-not-allowed border border-[#eef2f7] bg-[#f8fafc] text-[#a0aec0]"
+            : "border border-[#e5eaf5] bg-white text-[#64748b] hover:bg-[#f8fafc]"
+        }`}
+      >
+        Reschedule
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <input
+        type="date"
+        value={date}
+        min={minDate}
+        onChange={(e) => setDate(e.target.value)}
+        className="h-10 rounded-full border border-[#e5eaf5] px-3 text-xs text-[#64748b] outline-none"
+      />
+      <input
+        type="time"
+        value={time}
+        onChange={(e) => setTime(e.target.value)}
+        className="h-10 rounded-full border border-[#e5eaf5] px-3 text-xs text-[#64748b] outline-none"
+      />
+      <div className="flex gap-2">
+        <button
+          onClick={save}
+          className="h-10 flex-1 rounded-full bg-[#2563eb] px-4 text-xs font-semibold text-white"
+        >
+          Save
+        </button>
+        <button
+          onClick={cancel}
+          className="h-10 flex-1 rounded-full border border-[#e5eaf5] bg-white px-4 text-xs font-semibold text-[#64748b]"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DesktopRow({ a, onStatusChange, onReschedule }) {
+  return (
+    <div className="grid grid-cols-[2fr_1fr_1fr_0.8fr_0.9fr_1.15fr] items-center gap-4 border-t border-[#eef2f7] px-6 py-3.5">
+      <div className="flex min-w-0 items-center gap-3">
+        {a.doctorImage ? (
+          <img
+            src={a.doctorImage}
+            alt={a.patient}
+            className="h-10 w-10 rounded-full object-cover"
+          />
+        ) : (
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700">
+            {getInitials(a.patient)}
+          </div>
+        )}
+
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-[#0f172a]">
+            {a.patient}
+          </p>
+          <p className="truncate text-[11px] text-[#94a3b8]">
+            {a.age ? `${a.age} yrs` : "yrs"} {a.gender ? `· ${a.gender}` : ""}
+          </p>
+          <p className="mt-0.5 truncate text-[11px] text-[#64748b]">
+            {a.speciality || "-"}
+          </p>
+          <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#3b82f6]">
+            <Phone className="h-3 w-3" />
+            <span className="truncate">{a.mobile || "-"}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="text-sm text-[#0f172a]">{formatDate(a.date)}</div>
+
+      <div className="text-sm text-[#0f172a]">
+        <div className="flex items-center gap-1.5">
+          <Clock3 className="h-3.5 w-3.5 text-[#64748b]" />
+          {formatTimeAMPM(a.time)}
+        </div>
+      </div>
+
+      <div>
+        <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#2563eb]">
+          ${a.fee}
+        </span>
+      </div>
+
+      <div>
+        <StatusBadge status={a.status} />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <StatusSelect appointment={a} onChange={onStatusChange} />
+        <RescheduleButton appointment={a} onReschedule={onReschedule} />
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------
+   Main
+------------------------- */
 export default function DashboardPage({ apiBase }) {
-  const params = useParams();
-  const location = useLocation();
+  const { id: doctorId } = useParams();
+  const API = apiBase || API_BASE;
 
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // resolved API base and doctorId detection order:
-  // 1) prop doctorId
-  // 2) route param :doctorId
-  // 3) query string ?doctorId=
-  // 4) undefined -> fallback to all appointments
-  location.search;
-  const API = apiBase || API_BASE;
-
-  const doctorId = params.id;
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   async function fetchAppointments() {
     setLoading(true);
     setError(null);
+
     try {
-      // If doctorId present, call the doctor-specific endpoint.
-      // Backend route: GET /api/appointments/doctor/:doctorId
-      const basePath = `${API}/api/appointments/doctor/${encodeURIComponent(
-        doctorId,
-      )}`;
-
-      // keep limit modest
-      const url = `${basePath}`;
-      console.log(url);
-
+      const url = `${API}/api/appointments/doctor/${encodeURIComponent(doctorId)}`;
       const res = await fetch(url);
 
       if (!res.ok) {
@@ -190,9 +440,9 @@ export default function DashboardPage({ apiBase }) {
           body?.message || `Failed to fetch appointments (${res.status})`,
         );
       }
+
       const body = await res.json();
 
-      // backend may return appointments array at body.appointments
       const list = Array.isArray(body.appointments)
         ? body.appointments
         : Array.isArray(body)
@@ -215,17 +465,25 @@ export default function DashboardPage({ apiBase }) {
 
   useEffect(() => {
     fetchAppointments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [API, doctorId]);
 
-  // computed values
   const sorted = useMemo(() => {
     return [...appointments].sort(
       (a, b) => parseDateTime(b.date, b.time) - parseDateTime(a.date, a.time),
     );
   }, [appointments]);
 
-  const top8 = sorted.slice(0, 12);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return sorted;
+
+    return sorted.filter(
+      (a) =>
+        (a.patient || "").toLowerCase().includes(q) ||
+        (a.speciality || "").toLowerCase().includes(q) ||
+        String(a.fee || "").includes(q),
+    );
+  }, [sorted, search]);
 
   const totalAppointments = appointments.length;
   const completedAppointments = appointments.filter(
@@ -238,9 +496,25 @@ export default function DashboardPage({ apiBase }) {
     .filter((a) => a.status === "complete")
     .reduce((s, a) => s + (Number(a.fee) || 0), 0);
 
-  /* -------------------------
-     Update status (remote)
-     ------------------------- */
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const paginatedAppointments = useMemo(() => {
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    return filtered.slice(start, start + ITEMS_PER_PAGE);
+  }, [filtered, page]);
+
+  const startLabel =
+    filtered.length === 0 ? 0 : (page - 1) * ITEMS_PER_PAGE + 1;
+  const endLabel = Math.min(page * ITEMS_PER_PAGE, filtered.length);
+
   async function updateStatusRemote(id, newStatusFrontend) {
     const appt = appointments.find((p) => p.id === id);
     if (!appt) return;
@@ -248,7 +522,6 @@ export default function DashboardPage({ apiBase }) {
 
     const backendStatus = frontendToBackendStatus(newStatusFrontend);
 
-    // optimistic update
     setAppointments((prev) =>
       prev.map((p) => (p.id === id ? { ...p, status: newStatusFrontend } : p)),
     );
@@ -259,28 +532,24 @@ export default function DashboardPage({ apiBase }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: backendStatus }),
       });
+
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(
           body?.message || `Status update failed (${res.status})`,
         );
       }
+
       const data = await res.json();
       const updated = data.appointment || data;
 
-      // Merge server update with previous raw appointment so we don't lose fields like doctorImage/doctorId
       setAppointments((prev) =>
         prev.map((p) => {
           if (p.id !== id) return p;
-
-          // Use previous raw data as base, overlay server returned fields
           const mergedRaw = { ...(p.raw || {}), ...(updated || {}) };
-
-          // normalizeAppointment will prefer doctorId.imageUrl, doctorImage, etc.
           const normalized = normalizeAppointment(mergedRaw);
           if (normalized) return normalized;
 
-          // fallback: keep existing p but update status conservatively
           return {
             ...p,
             status: backendToFrontendStatus(updated.status || backendStatus),
@@ -290,7 +559,6 @@ export default function DashboardPage({ apiBase }) {
       );
     } catch (err) {
       console.error("updateStatusRemote:", err);
-      // revert optimistic
       setAppointments((prev) =>
         prev.map((p) => (p.id === id ? { ...p, status: appt.status } : p)),
       );
@@ -298,22 +566,17 @@ export default function DashboardPage({ apiBase }) {
     }
   }
 
-  /* -------------------------
-     Reschedule (remote): send { date, time } where time is "hh:mm AM/PM"
-     ------------------------- */
   async function rescheduleRemote(id, newDate, newTime24) {
     const appt = appointments.find((p) => p.id === id);
     if (!appt) return;
     if (appt.status === "complete" || appt.status === "cancelled") return;
 
-    const hhmm = newTime24;
-    const time12 = to12HourFrom24(hhmm);
+    const time12 = to12HourFrom24(newTime24);
 
-    // optimistic
     setAppointments((prev) =>
       prev.map((p) =>
         p.id === id
-          ? { ...p, date: newDate, time: hhmm, status: "rescheduled" }
+          ? { ...p, date: newDate, time: newTime24, status: "rescheduled" }
           : p,
       ),
     );
@@ -324,28 +587,26 @@ export default function DashboardPage({ apiBase }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ date: newDate, time: time12 }),
       });
+
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.message || `Reschedule failed (${res.status})`);
       }
+
       const data = await res.json();
       const updated = data.appointment || data;
 
       setAppointments((prev) =>
         prev.map((p) => {
           if (p.id !== id) return p;
-
-          // Merge server-provided fields with existing raw so we don't drop images/doctor info
           const mergedRaw = { ...(p.raw || {}), ...(updated || {}) };
-
           const normalized = normalizeAppointment(mergedRaw);
           if (normalized) return normalized;
 
-          // Fallback: apply the optimistic values we already used
           return {
             ...p,
             date: newDate,
-            time: hhmm,
+            time: newTime24,
             status: backendToFrontendStatus(updated.status || "Rescheduled"),
             raw: mergedRaw,
           };
@@ -354,409 +615,260 @@ export default function DashboardPage({ apiBase }) {
     } catch (err) {
       console.error("rescheduleRemote:", err);
       setError(err.message || "Failed to reschedule");
-      // simplest recovery: reload list to restore server state
       await fetchAppointments();
     }
   }
 
-  /* -------------------------
-     UI helpers passed down to controls
-     ------------------------- */
-  function updateStatus(id, newStatus) {
-    updateStatusRemote(id, newStatus);
-  }
-
-  function updateDateTime(id, newDate, newTime) {
-    rescheduleRemote(id, newDate, newTime);
-  }
-
-  // Try to show doctor's name if present in data
-  const doctorNameFromData =
-    appointments[0]?.raw?.doctorId?.name ||
-    appointments[0]?.raw?.doctorName ||
-    null;
-
   return (
-    <div className={dashboardStyles.pageContainer}>
-      <div className={dashboardStyles.contentWrapper}>
-        <div className={dashboardStyles.headerContainer}>
-          <div>
-            <h1 className={dashboardStyles.headerTitle}>
-              {doctorNameFromData
-                ? `${doctorNameFromData} — Dashboard`
-                : doctorId
-                  ? `Doctor Dashboard`
-                  : "Doctor Dashboard"}
-            </h1>
-            <p className={dashboardStyles.headerSubtitle}>
-              {doctorId
-                ? `Showing appointments for doctor ${doctorId}`
-                : "Overview of latest appointments & earnings"}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className={dashboardStyles.headerInfo}>
-              {loading ? "Loading..." : `${appointments.length} total`}
-            </div>
-            <button
-              onClick={() => fetchAppointments()}
-              className={dashboardStyles.refreshButton}
-            >
-              Refresh
-            </button>
-          </div>
+    <div className="min-h-screen bg-[#f8fafc]">
+      <div className="border-b border-[#e9eef7] bg-white px-6 py-5 lg:px-8">
+        <div className="mx-auto max-w-[1320px]">
+          <h1 className="text-[1.9rem] font-bold tracking-tight text-[#0f172a]">
+            Dashboard
+          </h1>
+          <p className="mt-1 text-[0.98rem] text-[#64748b]">
+            Overview of your appointments and earnings
+          </p>
         </div>
+      </div>
 
-        {/* Stat cards */}
-        <div className={dashboardStyles.statsGrid}>
-          <StatCard
-            title="Total Appointments"
-            value={totalAppointments}
-            icon={<Calendar className="w-5 h-5" />}
-            accentTop={dashboardStyles.accentTopEmerald}
-            accentBottom={dashboardStyles.accentBottomEmerald}
-          />
-
-          <StatCard
-            title="Total Earnings"
-            value={`$ ${totalEarnings}`}
-            icon={<BadgeIndianRupee className="w-5 h-5" />}
-            accentTop={dashboardStyles.accentTopAmber}
-            accentBottom={dashboardStyles.accentBottomAmber}
-          />
-
-          <StatCard
-            title="Completed"
-            value={completedAppointments}
-            icon={<CheckCircle className="w-5 h-5" />}
-            accentTop={dashboardStyles.accentTopEmeraldLight}
-            accentBottom={dashboardStyles.accentBottomEmerald}
-          />
-
-          <StatCard
-            title="Cancelled"
-            value={cancelledAppointments}
-            icon={<XCircle className="w-5 h-5" />}
-            accentTop={dashboardStyles.accentTopRose}
-            accentBottom={dashboardStyles.accentBottomRose}
-          />
-        </div>
-
-        <div className={dashboardStyles.appointmentsContainer}>
-          <div className={dashboardStyles.appointmentsHeader}>
-            <h2 className={dashboardStyles.appointmentsTitle}>
-              Latest Appointments
-            </h2>
-            <div className="flex items-center gap-3">
-              <div className={dashboardStyles.appointmentsTotal}>
-                <Users className={dashboardStyles.totalIcon} />
-                <span>{totalAppointments} total</span>
+      <div className="px-4 py-6 lg:px-8">
+        <div className="mx-auto max-w-[1320px]">
+          {/* Metrics */}
+          <div className="rounded-2xl border border-[#e5eaf5] bg-[#eef4fb] px-5 py-4">
+            <div className="mb-3 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white shadow-sm">
+                <Activity className="h-4 w-4 text-[#2563eb]" />
+              </div>
+              <div>
+                <h2 className="text-[1.55rem] font-bold text-[#0f172a]">
+                  Key Metrics
+                </h2>
+                <p className="text-[0.92rem] text-[#64748b]">
+                  Live overview of doctor dashboard statistics
+                </p>
               </div>
             </div>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <MetricCard
+                title="Total Appointments"
+                value={totalAppointments}
+                icon={<Calendar className="h-5 w-5" />}
+                tint="bg-[#e8eefc] text-[#3467d6]"
+              />
+              <MetricCard
+                title="Total Earnings"
+                value={`$${totalEarnings}`}
+                icon={<DollarSign className="h-5 w-5" />}
+                tint="bg-[#e8f7ef] text-[#0f9f6e]"
+              />
+              <MetricCard
+                title="Completed"
+                value={completedAppointments}
+                icon={<CheckCircle className="h-5 w-5" />}
+                tint="bg-[#e7f7fb] text-[#0891b2]"
+              />
+              <MetricCard
+                title="Canceled"
+                value={cancelledAppointments}
+                icon={<XCircle className="h-5 w-5" />}
+                tint="bg-[#fdecef] text-[#e11d48]"
+              />
+            </div>
           </div>
 
-          {/* Cards grid */}
-          <div className={dashboardStyles.cardsGrid}>
-            {top8.map((a) => (
-              <div key={a.id} className={dashboardStyles.appointmentCard}>
-                <div className={dashboardStyles.cardHeader}>
-                  <div className={dashboardStyles.cardAvatar}>
-                    {a.doctorImage ? (
-                      <img
-                        src={a.doctorImage}
-                        alt={a.doctorName}
-                        onError={(e) =>
-                          (e.currentTarget.style.display = "none")
-                        }
-                        className={dashboardStyles.cardAvatarImage}
-                      />
-                    ) : (
-                      <div className={dashboardStyles.cardAvatarFallback}>
-                        {(a.doctorName || "D").charAt(0)}
+          {/* Latest Appointments */}
+          <div className="mt-6 overflow-hidden rounded-[30px] border border-[#e5eaf5] bg-white shadow-sm">
+            <div className="flex flex-col gap-4 px-5 py-5 lg:flex-row lg:items-center lg:justify-between lg:px-6">
+              <div>
+                <h2 className="text-[1.7rem] font-bold tracking-tight text-[#0f172a]">
+                  Latest Appointments
+                </h2>
+                <p className="mt-1 text-[0.95rem] text-[#64748b]">
+                  Manage and view appointment statistics
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search patient / specialization / fee"
+                    className="h-11 w-full rounded-2xl border border-[#e5eaf5] bg-[#f8fafc] py-3 pl-11 pr-10 text-sm text-[#0f172a] outline-none sm:w-[280px] lg:w-[300px]"
+                  />
+                </div>
+
+                <button
+                  onClick={() => setSearch("")}
+                  className="h-11 rounded-2xl border border-[#e5eaf5] bg-[#f8fafc] px-4 text-sm font-medium text-[#334155]"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            <div className="hidden grid-cols-[2fr_1fr_1fr_0.8fr_0.9fr_1.15fr] gap-4 bg-[#f8fafc] px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#7c8aa5] lg:grid">
+              <div>Patient</div>
+              <div>Date</div>
+              <div>Time</div>
+              <div>Fee</div>
+              <div>Status</div>
+              <div>Actions</div>
+            </div>
+
+            {error && (
+              <div className="border-t border-[#eef2f7] px-6 py-4 text-sm text-rose-600">
+                {error}
+              </div>
+            )}
+
+            {loading ? (
+              <div className="border-t border-[#eef2f7] px-6 py-10 text-center text-[#64748b]">
+                Loading appointments...
+              </div>
+            ) : paginatedAppointments.length === 0 ? (
+              <div className="border-t border-[#eef2f7] px-6 py-10 text-center text-[#64748b]">
+                No appointments found.
+              </div>
+            ) : (
+              <>
+                <div className="hidden lg:block">
+                  {paginatedAppointments.map((a) => (
+                    <DesktopRow
+                      key={a.id}
+                      a={a}
+                      onStatusChange={(status) =>
+                        updateStatusRemote(a.id, status)
+                      }
+                      onReschedule={(date, time) =>
+                        rescheduleRemote(a.id, date, time)
+                      }
+                    />
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 p-4 lg:hidden">
+                  {paginatedAppointments.map((a) => (
+                    <div
+                      key={a.id}
+                      className="rounded-[22px] border border-[#e5eaf5] bg-[#fbfdff] p-4"
+                    >
+                      <div className="flex items-start gap-3">
+                        {a.doctorImage ? (
+                          <img
+                            src={a.doctorImage}
+                            alt={a.patient}
+                            className="h-11 w-11 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700">
+                            {getInitials(a.patient)}
+                          </div>
+                        )}
+
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-semibold text-[#0f172a]">
+                            {a.patient}
+                          </p>
+                          <p className="text-xs text-[#94a3b8]">
+                            {a.age ? `${a.age} yrs` : "yrs"}{" "}
+                            {a.gender ? `· ${a.gender}` : ""}
+                          </p>
+                          <p className="mt-1 text-xs text-[#64748b]">
+                            {a.speciality || "-"}
+                          </p>
+                        </div>
                       </div>
-                    )}
-                  </div>
 
-                  <div className={dashboardStyles.cardContent}>
-                    <div className={dashboardStyles.cardPatientName}>
-                      {a.patient}
+                      <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <p className="text-[#94a3b8]">Date</p>
+                          <p className="font-medium text-[#0f172a]">
+                            {formatDate(a.date)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[#94a3b8]">Time</p>
+                          <p className="font-medium text-[#0f172a]">
+                            {formatTimeAMPM(a.time)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[#94a3b8]">Fee</p>
+                          <p className="font-semibold text-[#2563eb]">
+                            ${a.fee}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[#94a3b8]">Phone</p>
+                          <p className="font-medium text-[#3b82f6]">
+                            {a.mobile || "-"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4">
+                        <StatusBadge status={a.status} />
+                      </div>
+
+                      <div className="mt-3 flex flex-col gap-2">
+                        <StatusSelect
+                          appointment={a}
+                          onChange={(status) =>
+                            updateStatusRemote(a.id, status)
+                          }
+                        />
+                        <RescheduleButton
+                          appointment={a}
+                          onReschedule={(date, time) =>
+                            rescheduleRemote(a.id, date, time)
+                          }
+                        />
+                      </div>
                     </div>
-                    <div className={dashboardStyles.cardPatientInfo}>
-                      {a.age} yrs · {a.gender}
-                    </div>
-                    <div className={dashboardStyles.cardDoctorInfo}>
-                      <span className={dashboardStyles.cardDoctorName}>
-                        {a.doctorName}
-                      </span>
-                    </div>
-                    <div className={dashboardStyles.cardSpeciality}>
-                      {a.speciality}
-                    </div>
-                    <div className={dashboardStyles.cardPhoneContainer}>
-                      <Phone className={dashboardStyles.cardPhoneIcon} />
-                      <span>{a.mobile}</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
+              </>
+            )}
 
-                <div className={dashboardStyles.dateTimeContainer}>
-                  <div className={dashboardStyles.dateText}>
-                    {formatDate(a.date)}
-                  </div>
-                  <div className={dashboardStyles.timeText}>
-                    {formatTimeAMPM(a.time)}
-                  </div>
-                </div>
-
-                <div>
-                  <div className={dashboardStyles.cardFooter}>
-                    <div className={dashboardStyles.feeText}>${a.fee}</div>
-
-                    <div className={dashboardStyles.statusContainer}>
-                      <StatusBadge status={a.status} />
-                      <StatusSelect
-                        appointment={a}
-                        onChange={(s) => updateStatus(a.id, s)}
-                      />
-                    </div>
-
-                    <div className="mt-2 w-full">
-                      <RescheduleButton
-                        appointment={a}
-                        onReschedule={(newDate, newTime) =>
-                          updateDateTime(a.id, newDate, newTime)
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
+            <div className="flex flex-col gap-3 border-t border-[#eef2f7] px-5 py-4 text-sm text-[#7c8aa5] sm:flex-row sm:items-center sm:justify-between lg:px-6">
+              <div>
+                Showing {startLabel} to {endLabel} of {filtered.length}{" "}
+                appointments
               </div>
-            ))}
-          </div>
 
-          <div className={dashboardStyles.showMoreContainer}>
-            <Link
-              to={
-                doctorId
-                  ? `/doctor-admin/${doctorId}/appointments`
-                  : "/appointments"
-              }
-              className={dashboardStyles.showMoreButton}
-            >
-              Show more
-            </Link>
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className={`rounded-2xl px-4 py-2 text-sm ${
+                    page === 1
+                      ? "cursor-not-allowed border border-[#eef2f7] bg-[#f8fafc] text-[#c0c8d8]"
+                      : "border border-[#e5eaf5] bg-white text-[#64748b] hover:bg-[#f8fafc]"
+                  }`}
+                >
+                  Previous
+                </button>
+
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages || filtered.length === 0}
+                  className={`rounded-2xl px-4 py-2 text-sm ${
+                    page === totalPages || filtered.length === 0
+                      ? "cursor-not-allowed border border-[#eef2f7] bg-[#f8fafc] text-[#c0c8d8]"
+                      : "border border-[#e5eaf5] bg-white text-[#64748b] hover:bg-[#f8fafc]"
+                  }`}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-/* -----------------------
-   Reusable components (unchanged but using styles)
-   ----------------------- */
-
-function StatCard({
-  title,
-  value,
-  icon,
-  accentTop = dashboardStyles.accentTopEmeraldLight,
-  accentBottom = dashboardStyles.accentBottomEmerald,
-}) {
-  return (
-    <div className={dashboardStyles.statCard}>
-      <div className={dashboardStyles.statContent}>
-        <div className={dashboardStyles.statTextContainer}>
-          <div className={dashboardStyles.statTitle}>{title}</div>
-          <div className={dashboardStyles.statValue}>{value}</div>
-        </div>
-
-        <div
-          className={`${dashboardStyles.statIconContainer} ${accentTop} ${accentBottom}`}
-        >
-          <div className={dashboardStyles.statIcon}>{icon}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StatusBadge({ status }) {
-  const base = dashboardStyles.statusBadgeBase;
-  if (status === "complete")
-    return (
-      <span className={`${base} ${dashboardStyles.statusBadgeComplete}`}>
-        Completed
-      </span>
-    );
-  if (status === "cancelled")
-    return (
-      <span className={`${base} ${dashboardStyles.statusBadgeCancelled}`}>
-        Cancelled
-      </span>
-    );
-  if (status === "confirmed")
-    return (
-      <span className={`${base} ${dashboardStyles.statusBadgeConfirmed}`}>
-        Confirmed
-      </span>
-    );
-  if (status === "rescheduled")
-    return (
-      <span className={`${base} ${dashboardStyles.statusBadgeRescheduled}`}>
-        Rescheduled
-      </span>
-    );
-  return (
-    <span className={`${base} ${dashboardStyles.statusBadgePending}`}>
-      Pending
-    </span>
-  );
-}
-
-function StatusSelect({ appointment, onChange }) {
-  const terminal =
-    appointment.status === "complete" || appointment.status === "cancelled";
-
-  if (appointment.status === "rescheduled") {
-    return (
-      <select
-        value={appointment.status}
-        onChange={(e) => onChange(e.target.value)}
-        className={`${dashboardStyles.statusSelect} ${
-          terminal
-            ? dashboardStyles.statusSelectDisabled
-            : dashboardStyles.statusSelectEnabled
-        }`}
-        title="Change status (only Completed or Cancelled allowed after reschedule)"
-      >
-        <option value="rescheduled" disabled>
-          Rescheduled
-        </option>
-        <option value="complete">Completed</option>
-        <option value="cancelled">Cancelled</option>
-      </select>
-    );
-  }
-
-  const options = [
-    { value: "pending", label: "Pending" },
-    { value: "confirmed", label: "Confirmed" },
-    { value: "complete", label: "Completed" },
-    { value: "cancelled", label: "Cancelled" },
-  ];
-
-  return (
-    <select
-      value={appointment.status}
-      onChange={(e) => onChange(e.target.value)}
-      disabled={terminal}
-      className={`${dashboardStyles.statusSelect} ${
-        terminal
-          ? dashboardStyles.statusSelectDisabled
-          : dashboardStyles.statusSelectEnabled
-      }`}
-      title={terminal ? "Status cannot be changed" : "Change status"}
-    >
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value} className="text-sm">
-          {opt.label}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-function RescheduleButton({ appointment, onReschedule }) {
-  const terminal =
-    appointment.status === "complete" || appointment.status === "cancelled";
-  const [editing, setEditing] = useState(false);
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("09:00");
-
-  // compute minDate as YYYY-MM-DD for today (local timezone)
-  const minDate = React.useMemo(() => {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  }, []);
-
-  React.useEffect(() => {
-    // Normalize appointment.date to yyyy-mm-dd (handles ISO or plain date strings)
-    const apptRaw = appointment.date ? String(appointment.date) : "";
-    const apptDate = apptRaw.slice(0, 10); // safe for "YYYY-MM-DD..." or "YYYY-MM-DD"
-
-    // If appointment date is today or in the future, use it; otherwise use minDate
-    setDate(apptDate && apptDate >= minDate ? apptDate : minDate);
-    setTime(appointment.time || "09:00");
-  }, [appointment.date, appointment.time, minDate]);
-
-  function save() {
-    if (!date || !time) return;
-    // defensive: ensure we never submit a past date
-    if (date < minDate) {
-      setDate(minDate);
-      return;
-    }
-    onReschedule(date, time); // time is 24-hour "HH:MM"
-    setEditing(false);
-  }
-
-  function cancel() {
-    const apptRaw = appointment.date ? String(appointment.date) : "";
-    const apptDate = apptRaw.slice(0, 10);
-    setDate(apptDate && apptDate >= minDate ? apptDate : minDate);
-    setTime(appointment.time || "09:00");
-    setEditing(false);
-  }
-
-  return (
-    <div className="w-full">
-      {!editing ? (
-        <div className="flex justify-end">
-          <button
-            onClick={() => setEditing(true)}
-            disabled={terminal}
-            title={
-              terminal ? "Cannot reschedule completed/cancelled" : "Reschedule"
-            }
-            className={`${dashboardStyles.rescheduleButton} ${
-              terminal
-                ? dashboardStyles.rescheduleButtonDisabled
-                : dashboardStyles.rescheduleButtonEnabled
-            }`}
-          >
-            Reschedule
-          </button>
-        </div>
-      ) : (
-        <div className={dashboardStyles.rescheduleForm}>
-          <input
-            type="date"
-            value={date}
-            min={minDate}
-            onChange={(e) => setDate(e.target.value)}
-            className={dashboardStyles.rescheduleDateInput}
-          />
-          <input
-            type="time"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            className={dashboardStyles.rescheduleTimeInput}
-          />
-          <div className={dashboardStyles.rescheduleButtons}>
-            <button onClick={save} className={dashboardStyles.saveButton}>
-              Save
-            </button>
-            <button onClick={cancel} className={dashboardStyles.cancelButton}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -183,7 +183,7 @@ export const createServiceAppointment = async (req, res) => {
         line_items: [
           {
             price_data: {
-              currency: "inr",
+              currency: "usd",
               product_data: {
                 name: `Service: ${String(resolvedServiceName).slice(0, 60)}`,
                 description: `Appointment on ${base.date} ${base.hour}:${String(base.minute).padStart(2, "0")} ${base.ampm}`,

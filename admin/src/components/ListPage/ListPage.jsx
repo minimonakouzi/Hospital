@@ -1,14 +1,20 @@
-// src/components/AnimatedDoctorList.responsive.jsx
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  Star,
-  BadgeIndianRupee,
-  Trash2,
+  DollarSign,
+  BriefcaseMedical,
+  CalendarDays,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  Filter,
+  MapPin,
   Search,
+  ShieldCheck,
+  Star,
+  Trash2,
+  UserRound,
   Users,
-  EyeClosed,
 } from "lucide-react";
-import { doctorListStyles } from "../../assets/dummyStyles";
 
 function formatDateISO(iso) {
   if (!iso || typeof iso !== "string") return iso;
@@ -22,8 +28,8 @@ function formatDateISO(iso) {
     "Mar",
     "Apr",
     "May",
-    "June",
-    "July",
+    "Jun",
+    "Jul",
     "Aug",
     "Sep",
     "Oct",
@@ -35,47 +41,34 @@ function formatDateISO(iso) {
   return `${day} ${month} ${y}`;
 }
 
-/* ---------- New helpers for normalized + sorted schedule keys ---------- */
-
-/**
- * Normalize any date-like string / Date to YYYY-MM-DD or return null if invalid.
- */
 function normalizeToDateString(d) {
   if (!d) return null;
   const dt = new Date(d);
   if (Number.isNaN(dt.getTime())) return null;
-  return dt.toISOString().split("T")[0]; // YYYY-MM-DD
+  return dt.toISOString().split("T")[0];
 }
 
-/**
- * Build a normalized schedule map: { 'YYYY-MM-DD': [slot, slot2, ...], ... }
- * - preserves array slots or converts non-arrays to []
- */
 function buildScheduleMap(schedule) {
   const map = {};
   if (!schedule || typeof schedule !== "object") return map;
+
   Object.entries(schedule).forEach(([k, v]) => {
     const nd = normalizeToDateString(k) || String(k);
     map[nd] = Array.isArray(v) ? v.slice() : [];
   });
+
   return map;
 }
 
-/**
- * Given a schedule-like object (or array of date strings), return date keys ordered:
- * - past dates first, nearest past → older past
- * - then today & future, earliest → latest
- */
 function getSortedScheduleDates(scheduleLike) {
-  // get keys from either a map object or array
   let keys = [];
+
   if (Array.isArray(scheduleLike)) {
     keys = scheduleLike.map(normalizeToDateString).filter(Boolean);
   } else if (scheduleLike && typeof scheduleLike === "object") {
     keys = Object.keys(scheduleLike).map(normalizeToDateString).filter(Boolean);
   }
 
-  // unique
   keys = Array.from(new Set(keys));
 
   const parsed = keys.map((ds) => ({ ds, date: new Date(ds) }));
@@ -87,18 +80,59 @@ function getSortedScheduleDates(scheduleLike) {
 
   const past = parsed
     .filter((p) => dateVal(p.date) < todayVal)
-    .sort((a, b) => dateVal(b.date) - dateVal(a.date)); // nearest past first
+    .sort((a, b) => dateVal(b.date) - dateVal(a.date));
 
   const future = parsed
     .filter((p) => dateVal(p.date) >= todayVal)
-    .sort((a, b) => dateVal(a.date) - dateVal(b.date)); // earliest first (includes today)
+    .sort((a, b) => dateVal(a.date) - dateVal(b.date));
 
   return [...past, ...future].map((p) => p.ds);
 }
 
-/* --------------------------------------------------------------------- */
+function getInitials(name = "") {
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "DR";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
+}
 
-export default function AnimatedDoctorListResponsive({ apiBase }) {
+function getAvatarTone(index) {
+  const tones = [
+    "bg-blue-100 text-blue-700",
+    "bg-indigo-100 text-indigo-700",
+    "bg-sky-100 text-sky-700",
+    "bg-cyan-100 text-cyan-700",
+    "bg-violet-100 text-violet-700",
+    "bg-emerald-100 text-emerald-700",
+  ];
+  return tones[index % tones.length];
+}
+
+function DoctorAvatar({ doc, index }) {
+  const image = doc.imageUrl || doc.image || "";
+
+  if (image) {
+    return (
+      <img
+        src={image}
+        alt={doc.name || "Doctor"}
+        className="h-14 w-14 rounded-2xl object-cover ring-1 ring-blue-100"
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`flex h-14 w-14 items-center justify-center rounded-2xl font-bold ${getAvatarTone(
+        index,
+      )}`}
+    >
+      {getInitials(doc.name)}
+    </div>
+  );
+}
+
+export default function ListPage({ apiBase }) {
   const API_BASE = apiBase || "http://localhost:4000";
 
   const [doctors, setDoctors] = useState([]);
@@ -108,19 +142,6 @@ export default function AnimatedDoctorListResponsive({ apiBase }) {
   const [filterStatus, setFilterStatus] = useState("all");
   const [loading, setLoading] = useState(false);
 
-  // track if we are on a mobile (tailwind "sm" breakpoint is 640px)
-  const [isMobileScreen, setIsMobileScreen] = useState(false);
-  useEffect(() => {
-    function onResize() {
-      if (typeof window === "undefined") return;
-      setIsMobileScreen(window.innerWidth < 640);
-    }
-    onResize();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-
-  // fetch doctors from backend (robust to different response shapes)
   async function fetchDoctors() {
     setLoading(true);
     try {
@@ -128,14 +149,12 @@ export default function AnimatedDoctorListResponsive({ apiBase }) {
       const body = await res.json().catch(() => null);
 
       if (res.ok && body && body.success) {
-        // accept either body.data (new) or body.doctors (older)
         const list = Array.isArray(body.data)
           ? body.data
           : Array.isArray(body.doctors)
             ? body.doctors
             : [];
 
-        // normalize schedule to plain object and ensure keys normalized
         const normalized = list.map((d) => {
           const scheduleMap = buildScheduleMap(d.schedule || {});
           return {
@@ -143,6 +162,7 @@ export default function AnimatedDoctorListResponsive({ apiBase }) {
             schedule: scheduleMap,
           };
         });
+
         setDoctors(normalized);
       } else {
         console.error("Failed to fetch doctors", { status: res.status, body });
@@ -158,12 +178,12 @@ export default function AnimatedDoctorListResponsive({ apiBase }) {
 
   useEffect(() => {
     fetchDoctors();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = doctors;
+
     if (filterStatus === "available") {
       list = list.filter(
         (d) => (d.availability || "").toString().toLowerCase() === "available",
@@ -173,7 +193,9 @@ export default function AnimatedDoctorListResponsive({ apiBase }) {
         (d) => (d.availability || "").toString().toLowerCase() !== "available",
       );
     }
+
     if (!q) return list;
+
     return list.filter((d) => {
       return (
         (d.name || "").toLowerCase().includes(q) ||
@@ -191,10 +213,10 @@ export default function AnimatedDoctorListResponsive({ apiBase }) {
     setExpanded((prev) => (prev === id ? null : id));
   }
 
-  // delete doctor (calls backend)
   async function removeDoctor(id) {
     const doc = doctors.find((d) => (d._id || d.id) === id);
     if (!doc) return;
+
     const ok = window.confirm(`Delete ${doc.name}? This cannot be undone.`);
     if (!ok) return;
 
@@ -203,11 +225,12 @@ export default function AnimatedDoctorListResponsive({ apiBase }) {
         method: "DELETE",
       });
       const body = await res.json().catch(() => null);
+
       if (!res.ok) {
         alert(body?.message || "Failed to delete");
         return;
       }
-      // remove locally
+
       setDoctors((prev) => prev.filter((p) => (p._id || p.id) !== id));
       if (expanded === id) setExpanded(null);
     } catch (err) {
@@ -223,262 +246,347 @@ export default function AnimatedDoctorListResponsive({ apiBase }) {
   }
 
   return (
-    <div className={doctorListStyles.container}>
-      <header className={doctorListStyles.headerContainer}>
-        <div className={doctorListStyles.headerTopSection}>
-          <div className={doctorListStyles.headerIconContainer}>
-            <div className={doctorListStyles.headerIcon}>
-              <Users size={20} className={doctorListStyles.headerIconSvg} />
+    <div className="space-y-6">
+      {/* Header */}
+      <section className="rounded-[28px] border border-blue-100 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Secure Admin Session
             </div>
-            <div>
-              <h1 className={doctorListStyles.headerTitle}>Find a Doctor</h1>
-              <p className={doctorListStyles.headerSubtitle}>
-                Search by name or specialization
-              </p>
-            </div>
+
+            <h1 className="mt-4 text-[2rem] font-bold tracking-tight text-slate-900">
+              Doctor Directory
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Manage credentials and monitor performance of medical staff.
+            </p>
           </div>
 
-          <div className={doctorListStyles.headerSearchContainer}>
-            <div className={doctorListStyles.searchBox}>
-              <Search size={16} className={doctorListStyles.searchIcon} />
+          <div className="flex w-full flex-col gap-3 lg:flex-row xl:w-auto">
+            <div className="relative w-full xl:w-[320px]">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search doctors, specialization"
-                className={doctorListStyles.searchInput}
+                placeholder="Search doctors, specializations..."
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
               />
             </div>
 
             <button
+              type="button"
+              onClick={() => applyStatusFilter("available")}
+              className={`inline-flex h-12 items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-medium transition ${
+                filterStatus === "available"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              <Filter className="h-4 w-4" />
+              Available
+            </button>
+
+            <button
+              type="button"
+              onClick={() => applyStatusFilter("unavailable")}
+              className={`inline-flex h-12 items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-medium transition ${
+                filterStatus === "unavailable"
+                  ? "border-rose-200 bg-rose-50 text-rose-700"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              <Filter className="h-4 w-4" />
+              Unavailable
+            </button>
+
+            <button
+              type="button"
               onClick={() => {
                 setQuery("");
                 setExpanded(null);
                 setShowAll(false);
                 setFilterStatus("all");
               }}
-              className={doctorListStyles.clearButton}
+              className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
             >
               Clear
             </button>
           </div>
         </div>
+      </section>
 
-        <div className={doctorListStyles.filterContainer}>
-          <button
-            onClick={() => applyStatusFilter("available")}
-            aria-pressed={filterStatus === "available"}
-            className={doctorListStyles.filterButton(
-              filterStatus === "available",
-              "emerald",
-            )}
-          >
-            Available
-          </button>
-
-          <button
-            onClick={() => applyStatusFilter("unavailable")}
-            aria-pressed={filterStatus === "unavailable"}
-            className={doctorListStyles.filterButton(
-              filterStatus === "unavailable",
-              "red",
-            )}
-          >
-            Unavailable
-          </button>
+      {/* Status area */}
+      {loading && (
+        <div className="rounded-[24px] border border-blue-100 bg-white p-6 text-sm text-slate-500 shadow-sm">
+          Loading doctors...
         </div>
-      </header>
+      )}
 
-      <main className={doctorListStyles.gridContainer}>
-        {loading && (
-          <div className={doctorListStyles.loadingContainer}>
-            Loading doctors...
-          </div>
-        )}
-        {!loading && filtered.length === 0 && (
-          <div className={doctorListStyles.noResultsContainer}>
-            No doctors match your search.
-          </div>
-        )}
+      {!loading && filtered.length === 0 && (
+        <div className="rounded-[24px] border border-blue-100 bg-white p-6 text-sm text-slate-500 shadow-sm">
+          No doctors match your search.
+        </div>
+      )}
 
-        {displayed.map((doc) => {
+      {/* Cards */}
+      {!loading &&
+        displayed.map((doc, index) => {
           const id = doc._id || doc.id;
           const isOpen = expanded === id;
-          const isAvailable = doc.availability === "Available";
+          const isAvailable =
+            (doc.availability || "").toString().toLowerCase() === "available";
 
-          // build normalized schedule map and sorted date keys
           const scheduleMap = buildScheduleMap(doc.schedule || {});
           const sortedDates = getSortedScheduleDates(scheduleMap);
 
           return (
-            <article key={id} className={doctorListStyles.article}>
-              <div className={doctorListStyles.articleContent}>
-                <img
-                  src={doc.imageUrl || doc.image || ""}
-                  alt={doc.name}
-                  className={doctorListStyles.doctorImage}
-                />
+            <article
+              key={id}
+              className={`overflow-hidden rounded-[28px] border bg-white shadow-sm transition ${
+                isOpen
+                  ? "border-blue-300 ring-2 ring-blue-100"
+                  : "border-slate-200 hover:border-blue-200"
+              }`}
+            >
+              {/* Summary row */}
+              <div className="p-5 sm:p-6">
+                <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="flex min-w-0 flex-1 items-start gap-4">
+                    <DoctorAvatar doc={doc} index={index} />
 
-                <div className={doctorListStyles.doctorInfoContainer}>
-                  <div className={doctorListStyles.doctorHeader}>
-                    <div className="min-w-0 w-full">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className={doctorListStyles.doctorName}>
-                          {doc.name}
-                        </h3>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                        <h2 className="truncate text-xl font-bold text-slate-900">
+                          {doc.name || "Unknown Doctor"}
+                        </h2>
 
                         <span
-                          className={doctorListStyles.availabilityBadge(
-                            isAvailable,
-                          )}
+                          className={`inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                            isAvailable
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-rose-50 text-rose-700"
+                          }`}
                         >
-                          <span
-                            className={doctorListStyles.availabilityDot(
-                              isAvailable,
-                            )}
-                          />
+                          <span className="h-1.5 w-1.5 rounded-full bg-current" />
                           {isAvailable ? "Available" : "Unavailable"}
                         </span>
                       </div>
 
-                      <div className={doctorListStyles.doctorDetails}>
-                        {doc.specialization} • {doc.experience} years
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                        <span className="font-medium text-blue-700">
+                          {doc.specialization || "General"}
+                        </span>
+                        <span className="text-slate-300">•</span>
+                        <span className="text-slate-500">
+                          {doc.experience || "No experience added"}
+                        </span>
                       </div>
-                    </div>
 
-                    <div className={doctorListStyles.ratingContainer}>
-                      <div className={doctorListStyles.rating}>
-                        <Star size={14} /> {doc.rating}
+                      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Users className="h-3.5 w-3.5" />
+                          {doc.patients || "N/A"} Patients
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <DollarSign className="h-3.5 w-3.5" />
+                          Fee: {doc.fee ?? 0}
+                        </span>
                       </div>
-                      <button
-                        onClick={() => toggle(id)}
-                        aria-expanded={isOpen}
-                        className={doctorListStyles.toggleButton(isOpen)}
-                      >
-                        <EyeClosed size={18} />
-                      </button>
                     </div>
                   </div>
 
-                  <div className={doctorListStyles.statsContainer}>
-                    <div className={doctorListStyles.statsLabel}>Patients</div>
-                    <div className={doctorListStyles.statsValue}>
-                      <Users size={14} /> {doc.patients}
+                  <div className="flex items-center justify-between gap-3 xl:justify-end">
+                    <div className="inline-flex items-center gap-1 rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700">
+                      <Star className="h-4 w-4 fill-current" />
+                      {doc.rating || 0}
                     </div>
 
-                    <div className={doctorListStyles.actionContainer}>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => removeDoctor(id)}
-                          title={`Delete ${doc.name}`}
-                          className={doctorListStyles.deleteButton}
-                        >
-                          <Trash2 size={14} /> Delete
-                        </button>
-
-                        <div className={doctorListStyles.feesLabel}>Fees :</div>
-                        <div className={doctorListStyles.feesValue}>
-                          <BadgeIndianRupee /> {doc.fee}
-                        </div>
-                      </div>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggle(id)}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-blue-50 hover:text-blue-700"
+                      aria-label={
+                        isOpen ? "Collapse doctor card" : "Expand doctor card"
+                      }
+                    >
+                      {isOpen ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
                   </div>
                 </div>
-              </div>
 
-              <div
-                className={doctorListStyles.expandableContent}
-                style={{
-                  maxHeight: isOpen ? (isMobileScreen ? 320 : 600) : 0,
-                  transition:
-                    "max-height 420ms cubic-bezier(.2,.9,.2,1), padding 220ms ease",
-                  paddingTop: isOpen ? 16 : 0,
-                  paddingBottom: isOpen ? 16 : 0,
-                }}
-              >
+                {/* Expanded */}
                 {isOpen && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    <div className={doctorListStyles.aboutSection}>
-                      <h4 className={doctorListStyles.aboutHeading}>About</h4>
-                      <p className={doctorListStyles.aboutText}>{doc.about}</p>
+                  <>
+                    <div className="mt-6 border-t border-slate-100 pt-6">
+                      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+                        {/* Left content */}
+                        <div className="space-y-5 xl:col-span-8">
+                          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                            <div>
+                              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                                Professional Bio
+                              </div>
+                              <p className="text-sm leading-7 text-slate-600">
+                                “{doc.about || "No biography added yet."}”
+                              </p>
+                            </div>
 
-                      <div className="mt-4">
-                        <div className={doctorListStyles.qualificationsHeading}>
-                          Qualifications
-                        </div>
-                        <div className={doctorListStyles.qualificationsText}>
-                          {doc.qualifications}
-                        </div>
-                      </div>
+                            <div>
+                              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                                Practice Details
+                              </div>
 
-                      <div className="mt-4">
-                        <div className={doctorListStyles.scheduleHeading}>
-                          Schedule
-                        </div>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {sortedDates.map((date) => {
-                            const slots = scheduleMap[date] || [];
-                            return (
-                              <div key={date} className="min-w-full md:min-w-0">
-                                <div className={doctorListStyles.scheduleDate}>
-                                  {formatDateISO(date)}
+                              <div className="space-y-3 text-sm text-slate-600">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-slate-500">
+                                    Success Rate:
+                                  </span>
+                                  <span className="font-semibold text-slate-900">
+                                    {doc.success || "N/A"}
+                                  </span>
                                 </div>
-                                <div className="mt-1 flex flex-wrap gap-2">
-                                  {slots.map((s, i) => (
-                                    <span
-                                      key={i}
-                                      className={doctorListStyles.scheduleSlot}
-                                    >
-                                      {s}
-                                    </span>
-                                  ))}
+
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="h-4 w-4 text-rose-500" />
+                                  <span className="font-medium text-slate-500">
+                                    Location:
+                                  </span>
+                                  <span className="font-semibold text-slate-900">
+                                    {doc.location || "No location"}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  <BriefcaseMedical className="h-4 w-4 text-blue-500" />
+                                  <span className="font-medium text-slate-500">
+                                    Qualifications:
+                                  </span>
+                                </div>
+
+                                <div className="pl-6 text-slate-900">
+                                  {doc.qualifications ||
+                                    "No qualifications listed"}
                                 </div>
                               </div>
-                            );
-                          })}
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                              Credentials & Stats
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                                <div className="text-xs uppercase tracking-wide text-slate-400">
+                                  Email
+                                </div>
+                                <div className="mt-2 break-all text-sm font-medium text-slate-900">
+                                  {doc.email || "No email"}
+                                </div>
+                              </div>
+
+                              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                                <div className="text-xs uppercase tracking-wide text-slate-400">
+                                  Patients
+                                </div>
+                                <div className="mt-2 text-sm font-medium text-slate-900">
+                                  {doc.patients || "N/A"}
+                                </div>
+                              </div>
+
+                              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                                <div className="text-xs uppercase tracking-wide text-slate-400">
+                                  Fee
+                                </div>
+                                <div className="mt-2 text-sm font-medium text-slate-900">
+                                  ${doc.fee ?? 0}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right schedule box */}
+                        <div className="xl:col-span-4">
+                          <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+                            <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                              Upcoming Slots
+                            </div>
+
+                            {sortedDates.length === 0 ? (
+                              <div className="text-sm text-slate-400">
+                                No schedule has been added yet.
+                              </div>
+                            ) : (
+                              <div className="space-y-4">
+                                {sortedDates.map((date) => {
+                                  const slots = scheduleMap[date] || [];
+                                  return (
+                                    <div key={date}>
+                                      <div className="mb-2 inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
+                                        <CalendarDays className="h-3.5 w-3.5 text-blue-600" />
+                                        {formatDateISO(date)}
+                                      </div>
+
+                                      <div className="flex flex-wrap gap-2">
+                                        {slots.map((slot, i) => (
+                                          <span
+                                            key={i}
+                                            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700"
+                                          >
+                                            {slot}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    <aside className={doctorListStyles.statsSidebar}>
-                      <div className={doctorListStyles.statsItemHeading}>
-                        Success
-                      </div>
-                      <div className={doctorListStyles.statsItemValue}>
-                        {doc.success}%
-                      </div>
+                    <div className="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                      <button
+                        type="button"
+                        onClick={() => removeDoctor(id)}
+                        className="inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete Profile
+                      </button>
 
-                      <div className={doctorListStyles.statsItemHeading}>
-                        Patients
+                      <div className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white">
+                        Doctor Profile Active
                       </div>
-                      <div className={doctorListStyles.statsItemValue}>
-                        {doc.patients}
-                      </div>
-
-                      <div className={doctorListStyles.statsItemHeading}>
-                        Location
-                      </div>
-                      <div className={doctorListStyles.locationValue}>
-                        {doc.location}
-                      </div>
-                    </aside>
-                  </div>
+                    </div>
+                  </>
                 )}
               </div>
             </article>
           );
         })}
 
-        {filtered.length > 6 && (
-          <div className={doctorListStyles.showMoreContainer}>
-            <button
-              onClick={() => setShowAll((s) => !s)}
-              className={doctorListStyles.showMoreButton}
-            >
-              {showAll ? "Show less" : `Show more (${filtered.length - 4})`}
-            </button>
-          </div>
-        )}
-      </main>
+      {/* Show more */}
+      {!loading && filtered.length > 6 && (
+        <div className="flex justify-center">
+          <button
+            onClick={() => setShowAll((prev) => !prev)}
+            className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+          >
+            {showAll ? "Show less" : `Show more (${filtered.length - 6})`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

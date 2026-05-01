@@ -12,15 +12,13 @@ import {
   Alert,
   Image,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useUser, useAuth } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { getMyAppointments } from "../../services/appointments";
 import { getMyServiceAppointments } from "../../services/serviceAppointments";
-
-const PROFILE_STORAGE_KEY = "patient_profile_v1";
+import { getMyPatientProfile } from "../../services/patientProfile";
 
 function buildDoctorAppointmentDate(dateString, timeString) {
   if (!dateString) return null;
@@ -107,7 +105,10 @@ function normalizeServiceAppointment(item) {
     Number.isFinite(minute) &&
     (ampm === "AM" || ampm === "PM")
   ) {
-    formattedTime = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")} ${ampm}`;
+    formattedTime = `${String(hour).padStart(2, "0")}:${String(minute).padStart(
+      2,
+      "0",
+    )} ${ampm}`;
   }
 
   return {
@@ -169,7 +170,7 @@ export default function HomeScreen() {
   const [appointments, setAppointments] = useState([]);
   const [loadingUpcoming, setLoadingUpcoming] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [localProfileImage, setLocalProfileImage] = useState("");
+  const [profileImageUrl, setProfileImageUrl] = useState("");
 
   const firstName = user?.firstName?.trim() || "";
   const lastName = user?.lastName?.trim() || "";
@@ -193,18 +194,25 @@ export default function HomeScreen() {
   const clerkImage = user?.imageUrl || user?.profileImageUrl || "";
 
   const profileImageSource = useMemo(() => {
-    if (localProfileImage) return { uri: localProfileImage };
+    if (profileImageUrl) return { uri: profileImageUrl };
     if (clerkImage) return { uri: clerkImage };
     return null;
-  }, [localProfileImage, clerkImage]);
+  }, [profileImageUrl, clerkImage]);
 
-  const loadLocalProfile = async () => {
+  const loadPatientProfile = async () => {
     try {
-      const raw = await AsyncStorage.getItem(PROFILE_STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : null;
-      setLocalProfileImage(parsed?.imageUri || "");
-    } catch {
-      setLocalProfileImage("");
+      const token = await getToken({ template: "default", skipCache: true });
+
+      if (!token) {
+        setProfileImageUrl("");
+        return;
+      }
+
+      const profile = await getMyPatientProfile(token);
+      setProfileImageUrl(profile?.imageUrl || "");
+    } catch (error) {
+      console.log("HOME PROFILE LOAD ERROR:", error);
+      setProfileImageUrl("");
     }
   };
 
@@ -239,6 +247,7 @@ export default function HomeScreen() {
         ...doctorAppointments,
         ...serviceAppointments,
       ];
+
       setAppointments(mergedAppointments);
     } catch (error) {
       console.log("HOME APPOINTMENTS ERROR:", error);
@@ -250,13 +259,13 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
-    loadLocalProfile();
+    loadPatientProfile();
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       loadAppointments();
-      loadLocalProfile();
+      loadPatientProfile();
     }, []),
   );
 
@@ -287,6 +296,12 @@ export default function HomeScreen() {
     }
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([loadAppointments(true), loadPatientProfile()]);
+    setRefreshing(false);
+  };
+
   const statusMeta = getStatusMeta(upcomingAppointment?.status);
 
   return (
@@ -298,10 +313,7 @@ export default function HomeScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => loadAppointments(true)}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         <View style={styles.header}>
@@ -511,7 +523,7 @@ const styles = StyleSheet.create({
 
   header: {
     paddingHorizontal: 20,
-    paddingTop: 14,
+    paddingTop: 30,
     paddingBottom: 16,
     flexDirection: "row",
     justifyContent: "space-between",

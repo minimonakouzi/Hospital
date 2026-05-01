@@ -267,7 +267,7 @@ export const createAppointment = async (req, res) => {
         line_items: [
           {
             price_data: {
-              currency: "inr",
+              currency: "usd",
               product_data: { name: `Appointment - ${String(patientName).slice(0, 40)}` },
               unit_amount: Math.round(numericFee * 100),
             },

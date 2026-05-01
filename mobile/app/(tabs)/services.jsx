@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
   contentContainer: { paddingBottom: 30 },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 30,
     paddingBottom: 16,
     flexDirection: "row",
     alignItems: "center",
