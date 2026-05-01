@@ -10,12 +10,14 @@ import Service from "./pages/Service/Service";
 import DoctorDetail from "./pages/DoctorDetail/DoctorDetail";
 import ServiceDetailPage from "./pages/ServiceDetailPage/ServiceDetailPage";
 import Appointments from "./pages/Appointments/Appointments";
+import MedicalRecords from "./pages/MedicalRecords/MedicalRecords";
 import Login from "./pages/Login/Login";
 
 // Doctor Admin
 import DHome from "./pages/DHome/DHome";
 import List from "./pages/List/List";
 import EditProfile from "./pages/EditProfile/EditProfile";
+import ScheduleCalendar from "./pages/ScheduleCalendar/ScheduleCalendar";
 
 // Lucide icon
 import { CircleChevronUp } from "lucide-react";
@@ -88,6 +90,7 @@ const App = () => {
           <Route path="/services" element={<Service />} />
           <Route path="/services/:id" element={<ServiceDetailPage />} />
           <Route path="/appointments" element={<Appointments />} />
+          <Route path="/medical-records" element={<MedicalRecords />} />
           <Route path="/doctor-admin/login" element={<Login />} />
 
           {/* Stripe payment routes */}
@@ -106,6 +109,10 @@ const App = () => {
           {/* Doctor Admin */}
           <Route path="/doctor-admin/:id" element={<DHome />} />
           <Route path="/doctor-admin/:id/appointments" element={<List />} />
+          <Route
+            path="/doctor-admin/:id/schedule-calendar"
+            element={<ScheduleCalendar />}
+          />
           <Route
             path="/doctor-admin/:id/profile/edit"
             element={<EditProfile />}

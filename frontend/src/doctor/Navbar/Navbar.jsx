@@ -3,6 +3,7 @@ import { NavLink, useParams, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   CalendarDays,
+  CalendarClock,
   SquarePen,
   LogOut,
   ShieldCheck,
@@ -25,17 +26,23 @@ export default function Navbar() {
     : "/doctor-admin/login";
 
   const navItems = [
-    { name: "Dashboard", to: `${basePath}`, Icon: LayoutDashboard, end: true },
+    { name: "Dashboard", to: `${basePath}`, icon: LayoutDashboard, end: true },
     {
       name: "Appointments",
       to: `${basePath}/appointments`,
-      Icon: CalendarDays,
+      icon: CalendarDays,
+      end: false,
+    },
+    {
+      name: "Schedule Calendar",
+      to: `${basePath}/schedule-calendar`,
+      icon: CalendarClock,
       end: false,
     },
     {
       name: "Edit Profile",
       to: `${basePath}/profile/edit`,
-      Icon: SquarePen,
+      icon: SquarePen,
       end: false,
     },
   ];
@@ -86,7 +93,7 @@ export default function Navbar() {
         {/* Nav */}
         <nav className="mt-5 flex-1 px-4">
           <div className="space-y-3">
-            {navItems.map(({ name, to, Icon, end }) => (
+            {navItems.map(({ name, to, icon: Icon, end }) => (
               <NavLink
                 key={to}
                 to={to}
@@ -107,7 +114,7 @@ export default function Navbar() {
                       : "bg-white/10"
                   }`}
                 >
-                  <Icon className="h-5 w-5" />
+                  {React.createElement(Icon, { className: "h-5 w-5" })}
                 </span>
                 <span>{name}</span>
               </NavLink>

@@ -10,6 +10,7 @@ import {
   Stethoscope,
   FlaskConical,
   CalendarDays,
+  FileHeart,
   Phone,
   ShieldCheck,
   LogIn,
@@ -566,6 +567,7 @@ export default function Navbar() {
     { label: "Doctors", href: "/doctors", icon: Stethoscope },
     { label: "Services", href: "/services", icon: FlaskConical },
     { label: "Appointments", href: "/appointments", icon: CalendarDays },
+    { label: "Records", href: "/medical-records", icon: FileHeart },
     { label: "Contact", href: "/contact", icon: Phone },
   ];
 
