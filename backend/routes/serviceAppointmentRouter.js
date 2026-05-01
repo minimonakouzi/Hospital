@@ -1,6 +1,7 @@
 // routes/serviceAppointmentRouter.js
 import express from "express";
 import { clerkMiddleware, requireAuth } from "@clerk/express";
+import adminAuth from "../middlewares/adminAuth.js";
 
 import {
   getServiceAppointments,
@@ -16,9 +17,9 @@ import {
 const router = express.Router();
 
 /* FIXED ROUTES FIRST */
-router.get("/", getServiceAppointments);
+router.get("/", clerkMiddleware(), requireAuth(), adminAuth, getServiceAppointments);
 router.get("/confirm", confirmServicePayment);
-router.get("/stats/summary", getServiceAppointmentStats);
+router.get("/stats/summary", clerkMiddleware(), requireAuth(), adminAuth, getServiceAppointmentStats);
 
 router.post("/", clerkMiddleware(), requireAuth(), createServiceAppointment);
 

@@ -9,6 +9,8 @@ import {
   X,
   MoreVertical,
 } from "lucide-react";
+import { useAuth } from "@clerk/clerk-react";
+import { adminAuthHeaders } from "../../utils/adminAuthHeaders";
 
 /* ----------------------
   Config
@@ -85,6 +87,7 @@ function getStatusNote(status) {
   Component
 ------------------------ */
 export default function AppointmentsPage() {
+  const { getToken } = useAuth();
   const isAdmin = true;
 
   const [appointments, setAppointments] = useState([]);
@@ -107,7 +110,9 @@ export default function AppointmentsPage() {
           q ? `&search=${encodeURIComponent(q)}` : ""
         }`;
 
-        const res = await fetch(url);
+        const res = await fetch(url, {
+          headers: await adminAuthHeaders(getToken),
+        });
 
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
@@ -200,7 +205,9 @@ export default function AppointmentsPage() {
 
   async function reloadAppointments() {
     try {
-      const reload = await fetch(`${API_BASE}/api/appointments?limit=200`);
+      const reload = await fetch(`${API_BASE}/api/appointments?limit=200`, {
+        headers: await adminAuthHeaders(getToken),
+      });
       if (!reload.ok) return;
 
       const body = await reload.json();

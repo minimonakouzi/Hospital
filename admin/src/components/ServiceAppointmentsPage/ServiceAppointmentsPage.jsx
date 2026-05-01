@@ -12,6 +12,8 @@ import {
   User,
   X,
 } from "lucide-react";
+import { useAuth } from "@clerk/clerk-react";
+import { adminAuthHeaders } from "../../utils/adminAuthHeaders";
 
 /* ----------------------
   Config
@@ -307,6 +309,7 @@ function ReschedulePanel({ appointment, onReschedule, disabled }) {
   Main Component
 ------------------------ */
 export default function ServiceAppointmentsPage() {
+  const { getToken } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [toasts, setToasts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -341,7 +344,9 @@ export default function ServiceAppointmentsPage() {
 
     try {
       const url = `${API_BASE}/api/service-appointments?limit=500`;
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        headers: await adminAuthHeaders(getToken),
+      });
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));

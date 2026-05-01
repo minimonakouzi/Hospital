@@ -1,6 +1,7 @@
 // routes/appointmentRouter.js
 import express from "express";
 import { clerkMiddleware, requireAuth } from "@clerk/express";
+import adminAuth from "../middlewares/adminAuth.js";
 
 import {
   getAppointments,
@@ -23,13 +24,13 @@ const appointmentRouter = express.Router();
    ========================= */
 
 // list appointments
-appointmentRouter.get("/", getAppointments);
+appointmentRouter.get("/", clerkMiddleware(), requireAuth(), adminAuth, getAppointments);
 
 // stripe confirm
 appointmentRouter.get("/confirm", confirmPayment);
 
 // stats
-appointmentRouter.get("/stats/summary", getStats);
+appointmentRouter.get("/stats/summary", clerkMiddleware(), requireAuth(), adminAuth, getStats);
 
 /* =========================
    AUTHENTICATED ROUTES

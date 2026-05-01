@@ -15,6 +15,8 @@ import {
   UserRoundPlus,
   XCircle,
 } from "lucide-react";
+import { useAuth } from "@clerk/clerk-react";
+import { adminAuthHeaders } from "../../utils/adminAuthHeaders";
 
 function timeStringToMinutes(t) {
   if (!t) return 0;
@@ -73,6 +75,7 @@ function InputShell({ children }) {
 }
 
 export default function AddPage() {
+  const { getToken } = useAuth();
   const fileInputRef = useRef(null);
 
   const [doctorList, setDoctorList] = useState([]);
@@ -290,6 +293,7 @@ export default function AddPage() {
 
       const res = await fetch(`${API_BASE}/doctors`, {
         method: "POST",
+        headers: await adminAuthHeaders(getToken),
         body: fd,
       });
 

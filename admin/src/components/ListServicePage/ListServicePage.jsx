@@ -10,8 +10,11 @@ import {
   Calendar,
   Plus,
 } from "lucide-react";
+import { useAuth } from "@clerk/clerk-react";
+import { adminAuthHeaders } from "../../utils/adminAuthHeaders";
 
 export default function ListServicePage({ apiBase }) {
+  const { getToken } = useAuth();
   const API_BASE = apiBase || "http://localhost:4000";
 
   const [services, setServices] = useState([]);
@@ -514,6 +517,7 @@ export default function ListServicePage({ apiBase }) {
       const id = editForm.id;
       const res = await fetch(`${API_BASE}/api/services/${id}`, {
         method: "PUT",
+        headers: await adminAuthHeaders(getToken),
         body: fd,
       });
       const body = await res.json().catch(() => null);
@@ -567,6 +571,7 @@ export default function ListServicePage({ apiBase }) {
     try {
       const res = await fetch(`${API_BASE}/api/services/${id}`, {
         method: "DELETE",
+        headers: await adminAuthHeaders(getToken),
       });
       const body = await res.json().catch(() => null);
 

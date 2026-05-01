@@ -1,7 +1,10 @@
 // controllers/doctorController.js
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Doctor from "../models/Doctor.js";
 import { uploadToCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
+
+const SALT_ROUNDS = 10;
 
 /* ---------------- Helpers ---------------- */
 
@@ -34,6 +37,10 @@ function parseScheduleInput(s) {
     }
   }
   return dedupeAndSortSchedule(s || {});
+}
+
+function isBcryptHash(value = "") {
+  return /^\$2[aby]\$\d{2}\$/.test(String(value));
 }
 
 function normalizeDocForClient(raw = {}) {
@@ -82,9 +89,11 @@ export async function createDoctor(req, res) {
 
     const schedule = parseScheduleInput(body.schedule);
 
+    const hashedPassword = await bcrypt.hash(body.password, SALT_ROUNDS);
+
     const doc = new Doctor({
       email: emailLC,
-      password: body.password,
+      password: hashedPassword,
       name: body.name,
       specialization: body.specialization || "",
       imageUrl,
@@ -257,7 +266,9 @@ export async function updateDoctor(req, res) {
       existing.email = body.email.toLowerCase();
     }
 
-    if (body.password) existing.password = body.password;
+    if (body.password && String(body.password).trim()) {
+      existing.password = await bcrypt.hash(body.password, SALT_ROUNDS);
+    }
 
     await existing.save();
 
@@ -323,8 +334,20 @@ export async function doctorLogin(req, res) {
     const doc = await Doctor.findOne({ email: email.toLowerCase() }).select("+password");
     if (!doc) return res.status(401).json({ success: false, message: "Invalid credentials" });
 
-    // Direct comparison (NO bcrypt)
-    if (doc.password !== password) return res.status(401).json({ success: false, message: "Invalid credentials" });
+    let passwordMatches = false;
+
+    if (isBcryptHash(doc.password)) {
+      passwordMatches = await bcrypt.compare(password, doc.password);
+    } else {
+      // Backward compatibility for doctors created before password hashing.
+      passwordMatches = doc.password === password;
+      if (passwordMatches) {
+        doc.password = await bcrypt.hash(password, SALT_ROUNDS);
+        await doc.save();
+      }
+    }
+
+    if (!passwordMatches) return res.status(401).json({ success: false, message: "Invalid credentials" });
 
     const secret = process.env.JWT_SECRET;
     if (!secret) return res.status(500).json({ success: false, message: "JWT_SECRET not configured" });

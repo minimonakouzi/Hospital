@@ -15,6 +15,8 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
+import { useAuth } from "@clerk/clerk-react";
+import { adminAuthHeaders } from "../../utils/adminAuthHeaders";
 
 function formatDateISO(iso) {
   if (!iso || typeof iso !== "string") return iso;
@@ -133,6 +135,7 @@ function DoctorAvatar({ doc, index }) {
 }
 
 export default function ListPage({ apiBase }) {
+  const { getToken } = useAuth();
   const API_BASE = apiBase || "http://localhost:4000";
 
   const [doctors, setDoctors] = useState([]);
@@ -223,6 +226,7 @@ export default function ListPage({ apiBase }) {
     try {
       const res = await fetch(`${API_BASE}/api/doctors/${id}`, {
         method: "DELETE",
+        headers: await adminAuthHeaders(getToken),
       });
       const body = await res.json().catch(() => null);
 

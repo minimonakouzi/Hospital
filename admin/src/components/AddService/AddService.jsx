@@ -12,6 +12,8 @@ import {
   Upload,
   XCircle,
 } from "lucide-react";
+import { useAuth } from "@clerk/clerk-react";
+import { adminAuthHeaders } from "../../utils/adminAuthHeaders";
 
 function formatDisplayDate(iso) {
   if (!iso) return "";
@@ -187,6 +189,7 @@ function InputBase({
 }
 
 export default function AddService({ apiBase, serviceId }) {
+  const { getToken } = useAuth();
   const API_BASE = apiBase || "http://localhost:4000";
   const fileInputRef = useRef(null);
 
@@ -513,6 +516,7 @@ export default function AddService({ apiBase, serviceId }) {
 
       const res = await fetch(url, {
         method,
+        headers: await adminAuthHeaders(getToken),
         body: fd,
       });
 

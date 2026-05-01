@@ -10,6 +10,8 @@ import {
   X as CloseIcon,
   Activity,
 } from "lucide-react";
+import { useAuth } from "@clerk/clerk-react";
+import { adminAuthHeaders } from "../../utils/adminAuthHeaders";
 
 const API_BASE = "http://localhost:4000";
 
@@ -116,6 +118,7 @@ function ServiceAvatar({ service }) {
    Main component
    ----------------------- */
 export default function ServiceDashboard({ services: servicesProp = null }) {
+  const { getToken } = useAuth();
   const [services, setServices] = useState(
     Array.isArray(servicesProp) ? servicesProp.map(normalizeService) : [],
   );
@@ -129,7 +132,7 @@ export default function ServiceDashboard({ services: servicesProp = null }) {
   const fetchingRef = useRef(false);
   const pollHandleRef = useRef(null);
 
-  function buildFetchOptions() {
+  async function buildFetchOptions() {
     const opts = {
       method: "GET",
       credentials: "include",
@@ -138,8 +141,7 @@ export default function ServiceDashboard({ services: servicesProp = null }) {
       },
     };
 
-    const token = localStorage.getItem("authToken");
-    if (token) opts.headers["Authorization"] = `Bearer ${token}`;
+    opts.headers = await adminAuthHeaders(getToken, opts.headers);
     return opts;
   }
 
@@ -154,7 +156,7 @@ export default function ServiceDashboard({ services: servicesProp = null }) {
       }
 
       const url = `${API_BASE}/api/service-appointments/stats/summary`;
-      const res = await fetch(url, buildFetchOptions());
+      const res = await fetch(url, await buildFetchOptions());
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
