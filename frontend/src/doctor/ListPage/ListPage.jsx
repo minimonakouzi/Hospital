@@ -195,7 +195,7 @@ function StatusSelect({ appointment, onChange }) {
       <select
         value={appointment.status}
         onChange={(e) => onChange(e.target.value)}
-        className="h-10 w-full rounded-full border border-[#e5eaf5] bg-[#f8fafc] px-3 text-xs text-[#64748b] outline-none"
+        className="h-11 w-full rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] px-3 text-xs font-semibold text-[#64748b] outline-none transition focus:border-blue-300 focus:bg-white"
         title="After reschedule you can mark Completed or Cancelled"
       >
         <option value="rescheduled" disabled>
@@ -219,10 +219,10 @@ function StatusSelect({ appointment, onChange }) {
       value={appointment.status}
       onChange={(e) => onChange(e.target.value)}
       disabled={terminal}
-      className={`h-10 w-full rounded-full border px-3 text-xs outline-none ${
+      className={`h-11 w-full rounded-2xl border px-3 text-xs font-semibold outline-none transition ${
         terminal
           ? "cursor-not-allowed border-[#eef2f7] bg-[#f8fafc] text-[#a0aec0]"
-          : "border-[#e5eaf5] bg-[#f8fafc] text-[#64748b]"
+          : "border-[#dbe6f7] bg-[#f8fbff] text-[#64748b] focus:border-blue-300 focus:bg-white"
       }`}
       title={terminal ? "Status cannot be changed" : "Change status"}
     >
@@ -288,7 +288,7 @@ function RescheduleButton({ appointment, onReschedule }) {
         className={`h-10 w-full rounded-full px-4 text-xs font-medium ${
           terminal
             ? "cursor-not-allowed border border-[#eef2f7] bg-[#f8fafc] text-[#a0aec0]"
-            : "border border-[#e5eaf5] bg-white text-[#64748b] hover:bg-[#f8fafc]"
+            : "border border-[#dbe6f7] bg-white text-[#64748b] transition hover:bg-[#f8fbff]"
         }`}
       >
         Reschedule
@@ -303,24 +303,24 @@ function RescheduleButton({ appointment, onReschedule }) {
         value={date}
         min={minDate}
         onChange={(e) => setDate(e.target.value)}
-        className="h-10 rounded-full border border-[#e5eaf5] px-3 text-xs text-[#64748b] outline-none"
+        className="h-10 rounded-2xl border border-[#dbe6f7] px-3 text-xs text-[#64748b] outline-none"
       />
       <input
         type="time"
         value={time}
         onChange={(e) => setTime(e.target.value)}
-        className="h-10 rounded-full border border-[#e5eaf5] px-3 text-xs text-[#64748b] outline-none"
+        className="h-10 rounded-2xl border border-[#dbe6f7] px-3 text-xs text-[#64748b] outline-none"
       />
       <div className="flex gap-2">
         <button
           onClick={save}
-          className="h-10 flex-1 rounded-full bg-[#2563eb] px-4 text-xs font-semibold text-white"
+          className="h-10 flex-1 rounded-2xl bg-[#2563eb] px-4 text-xs font-semibold text-white"
         >
           Save
         </button>
         <button
           onClick={cancel}
-          className="h-10 flex-1 rounded-full border border-[#e5eaf5] bg-white px-4 text-xs font-semibold text-[#64748b]"
+          className="h-10 flex-1 rounded-2xl border border-[#dbe6f7] bg-white px-4 text-xs font-semibold text-[#64748b]"
         >
           Cancel
         </button>
@@ -514,20 +514,24 @@ export default function ListPage() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc]">
-      <div className="border-b border-[#e9eef7] bg-white px-6 py-5 lg:px-8">
-        <div className="mx-auto max-w-[1320px]">
-          <h1 className="text-[1.9rem] font-bold tracking-tight text-[#0f172a]">
+      <div className="border-b border-[#dbe6f7] bg-white/95 px-4 py-5 shadow-[0_1px_0_rgba(15,23,42,0.02)] sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">
+            Doctor / Appointments
+          </p>
+          <div className="mb-2 h-1 w-10 rounded-full bg-[#2563eb]" />
+          <h1 className="text-2xl font-bold tracking-tight text-[#0f172a] sm:text-[1.7rem]">
             Appointments
           </h1>
-          <p className="mt-1 text-[0.98rem] text-[#64748b]">
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-[#64748b]">
             Manage your doctor appointments
           </p>
         </div>
       </div>
 
-      <div className="px-4 py-6 lg:px-8">
-        <div className="mx-auto max-w-[1320px]">
-          <div className="overflow-hidden rounded-[30px] border border-[#e5eaf5] bg-white shadow-sm">
+      <div className="px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="overflow-hidden rounded-3xl border border-[#dbe6f7] bg-white shadow-sm">
             <div className="flex flex-col gap-4 px-5 py-5 lg:flex-row lg:items-center lg:justify-between lg:px-6">
               <div>
                 <h2 className="text-[1.7rem] font-bold tracking-tight text-[#0f172a]">
@@ -545,7 +549,7 @@ export default function ListPage() {
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search patient name"
-                    className="h-11 w-full rounded-2xl border border-[#e5eaf5] bg-[#f8fafc] py-3 pl-11 pr-10 text-sm text-[#0f172a] outline-none sm:w-[280px] lg:w-[300px]"
+                    className="h-12 w-full rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] py-3 pl-11 pr-10 text-sm text-[#0f172a] outline-none transition focus:border-blue-300 focus:bg-white sm:w-[280px] lg:w-[300px]"
                   />
                   {search && (
                     <button
@@ -560,7 +564,7 @@ export default function ListPage() {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="h-11 rounded-2xl border border-[#e5eaf5] bg-[#f8fafc] px-4 text-sm text-[#334155] outline-none"
+                  className="h-12 rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] px-4 text-sm text-[#334155] outline-none transition focus:border-blue-300 focus:bg-white"
                   title="Filter by status"
                 >
                   <option value="">All</option>
@@ -573,7 +577,7 @@ export default function ListPage() {
               </div>
             </div>
 
-            <div className="hidden grid-cols-[2fr_1fr_1fr_0.8fr_0.9fr_1.15fr] gap-4 bg-[#f8fafc] px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#7c8aa5] lg:grid">
+            <div className="sticky top-0 hidden grid-cols-[2fr_1fr_1fr_0.8fr_0.9fr_1.15fr] gap-4 bg-[#f8fbff] px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#7c8aa5] lg:grid">
               <div>Patient</div>
               <div>Date</div>
               <div>Time</div>
@@ -583,16 +587,29 @@ export default function ListPage() {
             </div>
 
             {loading ? (
-              <div className="border-t border-[#eef2f7] px-6 py-10 text-center text-[#64748b]">
-                Loading appointments...
+              <div className="grid gap-3 border-t border-[#eef2f7] px-6 py-6">
+                {[0, 1, 2].map((item) => (
+                  <div
+                    key={item}
+                    className="h-16 animate-pulse rounded-2xl bg-slate-100"
+                  />
+                ))}
               </div>
             ) : error ? (
               <div className="border-t border-[#eef2f7] px-6 py-10 text-center text-rose-600">
                 Error: {error}
               </div>
             ) : paginatedAppointments.length === 0 ? (
-              <div className="border-t border-[#eef2f7] px-6 py-10 text-center text-[#64748b]">
-                No appointments found.
+              <div className="border-t border-[#eef2f7] px-6 py-12 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eef4fb] text-[#2563eb]">
+                  <Search className="h-5 w-5" />
+                </div>
+                <p className="mt-3 text-sm font-semibold text-[#0f172a]">
+                  No appointments found.
+                </p>
+                <p className="mt-1 text-xs text-[#64748b]">
+                  Try adjusting search or status filters.
+                </p>
               </div>
             ) : (
               <>
@@ -600,7 +617,7 @@ export default function ListPage() {
                   {paginatedAppointments.map((a) => (
                     <div
                       key={a.id}
-                      className="grid grid-cols-[2fr_1fr_1fr_0.8fr_0.9fr_1.15fr] items-center gap-4 border-t border-[#eef2f7] px-6 py-3.5"
+                      className="grid grid-cols-[2fr_1fr_1fr_0.8fr_0.9fr_1.15fr] items-center gap-4 border-t border-[#eef2f7] px-6 py-4 transition duration-200 hover:bg-[#f8fbff]"
                     >
                       <div className="flex min-w-0 items-center gap-3">
                         {a.doctorImage ? (
@@ -672,7 +689,7 @@ export default function ListPage() {
                   {paginatedAppointments.map((a) => (
                     <div
                       key={a.id}
-                      className="rounded-[22px] border border-[#e5eaf5] bg-[#fbfdff] p-4"
+                      className="rounded-3xl border border-[#dbe6f7] bg-[#fbfdff] p-4 transition duration-200 hover:bg-white hover:shadow-sm"
                     >
                       <div className="flex items-start gap-3">
                         {a.doctorImage ? (

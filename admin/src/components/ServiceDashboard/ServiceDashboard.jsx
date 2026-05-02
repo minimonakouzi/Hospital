@@ -72,7 +72,7 @@ function formatCurrency(v) {
 
 function MetricCard({ icon, label, value, iconWrapClass = "" }) {
   return (
-    <div className="rounded-[26px] border border-blue-100 bg-white px-5 py-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <div className="rounded-3xl border border-[#dbe6f7] bg-white px-5 py-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
       <div className="flex min-h-[92px] items-stretch gap-4">
         <div
           className={`flex h-14 w-14 shrink-0 items-center justify-center self-start rounded-2xl ${iconWrapClass}`}
@@ -346,9 +346,9 @@ export default function ServiceDashboard({ services: servicesProp = null }) {
 
   return (
     <div className="space-y-7">
-      <section className="rounded-[28px] border border-blue-100 bg-gradient-to-br from-blue-50 via-sky-50 to-white p-5 sm:p-6">
+      <section className="rounded-3xl border border-[#dbe6f7] bg-[#eef4fb] p-5 shadow-sm sm:p-6">
         <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-blue-100">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-[#dbe6f7]">
             <Activity className="h-5 w-5 text-blue-600" />
           </div>
 
@@ -375,7 +375,7 @@ export default function ServiceDashboard({ services: servicesProp = null }) {
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-[28px] border border-blue-100 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-3xl border border-[#dbe6f7] bg-white shadow-sm">
         <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-[1.75rem] font-bold tracking-tight text-slate-900">
@@ -394,7 +394,7 @@ export default function ServiceDashboard({ services: servicesProp = null }) {
                 placeholder="Search service..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-11 w-full rounded-2xl border border-blue-100 bg-slate-50 pl-11 pr-10 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
+                className="h-11 w-full rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] pl-11 pr-10 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
               />
               {searchQuery.length > 0 && (
                 <button
@@ -443,7 +443,7 @@ export default function ServiceDashboard({ services: servicesProp = null }) {
         ) : null}
 
         <div className="hidden lg:block">
-          <div className="grid grid-cols-12 border-b border-slate-100 px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+          <div className="grid grid-cols-12 border-b border-[#eef2f7] bg-[#f8fbff] px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
             <div className="col-span-4">Service</div>
             <div className="col-span-2">Price</div>
             <div className="col-span-2">Appointments</div>
@@ -462,7 +462,7 @@ export default function ServiceDashboard({ services: servicesProp = null }) {
             visibleServices.map((service) => (
               <div
                 key={service.id}
-                className="grid grid-cols-12 items-center border-b border-slate-100 px-6 py-5 transition hover:bg-blue-50/40"
+                className="grid grid-cols-12 items-center border-b border-[#eef2f7] px-6 py-5 transition hover:bg-[#f8fbff]"
               >
                 <div className="col-span-4 flex items-center gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 ring-1 ring-slate-200">

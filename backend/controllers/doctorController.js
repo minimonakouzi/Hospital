@@ -326,6 +326,71 @@ export async function toggleAvailability(req, res) {
   }
 }
 
+export async function changeDoctorPassword(req, res) {
+  try {
+    const { currentPassword = "", newPassword = "", confirmPassword = "" } = req.body || {};
+    const doctorId = req.doctor?._id || req.doctor?.id;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password, new password, and confirm password are required.",
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "New password and confirm password do not match.",
+      });
+    }
+
+    if (String(newPassword).length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be at least 8 characters.",
+      });
+    }
+
+    const doctor = await Doctor.findById(doctorId).select("+password");
+    if (!doctor || !doctor.password) {
+      return res.status(404).json({
+        success: false,
+        message: "Doctor not found.",
+      });
+    }
+
+    const currentMatches = isBcryptHash(doctor.password)
+      ? await bcrypt.compare(currentPassword, doctor.password)
+      : doctor.password === currentPassword;
+
+    if (!currentMatches) {
+      return res.status(401).json({
+        success: false,
+        message: "Current password is incorrect.",
+      });
+    }
+
+    doctor.password = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    await doctor.save();
+
+    const out = normalizeDocForClient(doctor.toObject());
+    delete out.password;
+
+    return res.json({
+      success: true,
+      message: "Password changed successfully.",
+      data: out,
+    });
+  } catch (err) {
+    console.error("changeDoctorPassword error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while changing password.",
+    });
+  }
+}
+
 export async function doctorLogin(req, res) {
   try {
     const { email, password } = req.body || {};

@@ -14,6 +14,8 @@ import {
   DollarSign,
   CheckCircle2,
   AlertCircle,
+  KeyRound,
+  Loader2,
   Mail,
   Star,
   Users,
@@ -24,6 +26,12 @@ import {
 
 const STORAGE_KEY = "doctorToken_v1";
 const API_BASE = "http://localhost:4000/api/doctors";
+
+const emptyPasswordForm = {
+  currentPassword: "",
+  newPassword: "",
+  confirmPassword: "",
+};
 
 /* ---------------- helpers ---------------- */
 function parse12HourTimeToMinutes(t) {
@@ -70,7 +78,7 @@ function todayISO() {
 
 function buildInputClass(editing, multiline = false) {
   return [
-    "w-full rounded-[18px] border border-[#dfe6f4] bg-[#f8fafc] text-[#0f172a] outline-none transition",
+    "w-full rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] text-[#0f172a] outline-none transition",
     multiline ? "min-h-[120px] px-4 py-3 resize-none" : "h-12 px-4",
     editing
       ? "focus:border-[#b9cdf8] focus:bg-white"
@@ -83,6 +91,31 @@ function toastTone(type) {
     return "border-emerald-200 bg-emerald-50 text-emerald-700";
   if (type === "error") return "border-rose-200 bg-rose-50 text-rose-700";
   return "border-blue-200 bg-blue-50 text-blue-700";
+}
+
+function PasswordInput({ label, value, onChange, visible, onToggle }) {
+  return (
+    <div>
+      <label className="mb-3 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7c8aa5]">
+        {label}
+      </label>
+      <div className="relative">
+        <input
+          type={visible ? "text" : "password"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={`${buildInputClass(true)} pr-12`}
+        />
+        <button
+          type="button"
+          onClick={onToggle}
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94a3b8] transition hover:text-[#2563eb]"
+        >
+          {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 /* ---------------- page ---------------- */
@@ -100,7 +133,10 @@ export default function EditProfilePage() {
 
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState(emptyPasswordForm);
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState(null);
+  const [visiblePasswords, setVisiblePasswords] = useState({});
 
   const fileInputRef = useRef(null);
 
@@ -292,7 +328,6 @@ export default function EditProfilePage() {
         "patients",
         "rating",
         "email",
-        "password",
       ];
 
       updatable.forEach((k) => {
@@ -338,6 +373,76 @@ export default function EditProfilePage() {
     }
   };
 
+  const updatePasswordField = (field, value) => {
+    setPasswordForm((prev) => ({ ...prev, [field]: value }));
+    setPasswordMessage(null);
+  };
+
+  const handleChangePassword = async () => {
+    if (
+      !passwordForm.currentPassword ||
+      !passwordForm.newPassword ||
+      !passwordForm.confirmPassword
+    ) {
+      setPasswordMessage({
+        type: "error",
+        text: "All password fields are required.",
+      });
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 8) {
+      setPasswordMessage({
+        type: "error",
+        text: "New password must be at least 8 characters.",
+      });
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordMessage({
+        type: "error",
+        text: "New password and confirm password do not match.",
+      });
+      return;
+    }
+
+    try {
+      setPasswordSaving(true);
+      setPasswordMessage(null);
+      const token = localStorage.getItem(STORAGE_KEY);
+      const res = await fetch(`${API_BASE}/me/password`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(passwordForm),
+      });
+      const json = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(json?.message || "Failed to change password.");
+      }
+
+      setPasswordForm(emptyPasswordForm);
+      setPasswordMessage({
+        type: "success",
+        text: json?.message || "Password changed successfully.",
+      });
+      addToast("Password changed successfully.", "success");
+    } catch (err) {
+      console.error("change doctor password error:", err);
+      setPasswordMessage({
+        type: "error",
+        text: err?.message || "Unable to change password.",
+      });
+      addToast(err?.message || "Unable to change password.", "error");
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
   const scheduleDates = useMemo(() => {
     if (!doc?.schedule) return [];
     return Object.keys(doc.schedule).sort((a, b) => new Date(a) - new Date(b));
@@ -346,20 +451,29 @@ export default function EditProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f8fafc]">
-        <div className="border-b border-[#e9eef7] bg-white px-6 py-5 lg:px-8">
-          <div className="mx-auto max-w-[1320px]">
-            <h1 className="text-[1.9rem] font-bold tracking-tight text-[#0f172a]">
+        <div className="border-b border-[#dbe6f7] bg-white/95 px-4 py-5 shadow-[0_1px_0_rgba(15,23,42,0.02)] sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">
+              Doctor / Profile
+            </p>
+            <div className="mb-2 h-1 w-10 rounded-full bg-[#2563eb]" />
+            <h1 className="text-2xl font-bold tracking-tight text-[#0f172a] sm:text-[1.7rem]">
               Edit Profile
             </h1>
-            <p className="mt-1 text-[0.98rem] text-[#64748b]">
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-[#64748b]">
               Update your professional details and availability
             </p>
           </div>
         </div>
 
-        <div className="px-4 py-6 lg:px-8">
-          <div className="mx-auto max-w-[1320px] rounded-[30px] border border-[#e5eaf5] bg-white p-10 text-center text-[#64748b] shadow-sm">
-            Loading profile...
+        <div className="px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto grid max-w-7xl gap-3 rounded-3xl border border-[#dbe6f7] bg-white p-6 shadow-sm">
+            {[0, 1, 2].map((item) => (
+              <div
+                key={item}
+                className="h-16 animate-pulse rounded-2xl bg-slate-100"
+              />
+            ))}
           </div>
         </div>
       </div>
@@ -369,8 +483,8 @@ export default function EditProfilePage() {
   if (!doc) {
     return (
       <div className="min-h-screen bg-[#f8fafc]">
-        <div className="px-4 py-8 lg:px-8">
-          <div className="mx-auto max-w-[1320px] rounded-[30px] border border-rose-200 bg-white p-10 text-center text-rose-600 shadow-sm">
+        <div className="px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl rounded-3xl border border-rose-200 bg-white p-10 text-center text-rose-600 shadow-sm">
             Unable to load doctor profile.
           </div>
         </div>
@@ -381,19 +495,23 @@ export default function EditProfilePage() {
   return (
     <div className="min-h-screen bg-[#f8fafc]">
       {/* top header */}
-      <div className="border-b border-[#e9eef7] bg-white px-6 py-5 lg:px-8">
-        <div className="mx-auto max-w-[1320px]">
-          <h1 className="text-[1.9rem] font-bold tracking-tight text-[#0f172a]">
+      <div className="border-b border-[#dbe6f7] bg-white/95 px-4 py-5 shadow-[0_1px_0_rgba(15,23,42,0.02)] sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">
+            Doctor / Profile
+          </p>
+          <div className="mb-2 h-1 w-10 rounded-full bg-[#2563eb]" />
+          <h1 className="text-2xl font-bold tracking-tight text-[#0f172a] sm:text-[1.7rem]">
             Edit Profile
           </h1>
-          <p className="mt-1 text-[0.98rem] text-[#64748b]">
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-[#64748b]">
             Update your doctor profile with schedule, credentials, and details
           </p>
         </div>
       </div>
 
-      <div className="px-4 py-6 lg:px-8">
-        <div className="mx-auto max-w-[1320px]">
+      <div className="px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
           {/* toast */}
           {toasts.length > 0 && (
             <div className="mb-4 space-y-3">
@@ -429,9 +547,9 @@ export default function EditProfilePage() {
           </div>
 
           {/* main card */}
-          <div className="overflow-hidden rounded-[30px] border border-[#e5eaf5] bg-white shadow-sm">
+          <div className="overflow-hidden rounded-3xl border border-[#dbe6f7] bg-white shadow-sm">
             {/* strip */}
-            <div className="border-b border-[#e5eaf5] bg-[#eef4fb] px-6 py-5">
+            <div className="border-b border-[#dbe6f7] bg-[#eef4fb] px-6 py-5">
               <div className="flex items-start gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#2563eb] text-white shadow-sm">
                   <User className="h-5 w-5" />
@@ -456,8 +574,8 @@ export default function EditProfilePage() {
                     Profile Image
                   </label>
 
-                  <div className="rounded-[24px] border border-[#e5eaf5] bg-[#f8fafc] p-4">
-                    <div className="flex min-h-[270px] flex-col items-center justify-center rounded-[20px] border border-dashed border-[#d7e2f3] bg-white px-5 py-6 text-center">
+                  <div className="rounded-3xl border border-[#dbe6f7] bg-[#f8fbff] p-4">
+                    <div className="flex min-h-[270px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#d7e2f3] bg-white px-5 py-6 text-center">
                       {imagePreview ? (
                         <img
                           src={imagePreview}
@@ -648,36 +766,6 @@ export default function EditProfilePage() {
 
                   <div>
                     <label className="mb-3 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7c8aa5]">
-                      Password *
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={getFieldValue(doc, "password")}
-                        onChange={(e) =>
-                          editing &&
-                          setDoc((d) => ({ ...d, password: e.target.value }))
-                        }
-                        disabled={!editing}
-                        className={`${buildInputClass(editing)} pr-12`}
-                        placeholder="Doctor password"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword((s) => !s)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94a3b8]"
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="mb-3 block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7c8aa5]">
                       Patients *
                     </label>
                     <div className="relative">
@@ -747,7 +835,7 @@ export default function EditProfilePage() {
                         type="button"
                         onClick={() => editing && toggleAvailability()}
                         disabled={!editing}
-                        className={`rounded-[18px] px-4 text-sm font-semibold ${
+                        className={`rounded-2xl px-4 text-sm font-semibold ${
                           editing
                             ? "bg-[#2563eb] text-white hover:bg-[#1d4ed8]"
                             : "cursor-not-allowed bg-[#e9eef7] text-[#94a3b8]"
@@ -777,7 +865,7 @@ export default function EditProfilePage() {
               </div>
 
               {/* schedule */}
-              <div className="mt-7 rounded-[28px] border border-[#e5eaf5] bg-[#f8fafc] p-5">
+              <div className="mt-7 rounded-3xl border border-[#dbe6f7] bg-[#f8fafc] p-5">
                 <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div className="flex items-start gap-4">
                     <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#eef4fb] text-[#2563eb]">
@@ -840,7 +928,7 @@ export default function EditProfilePage() {
                         }
                       }}
                       disabled={!editing}
-                      className={`h-12 w-full rounded-[18px] px-5 text-sm font-semibold md:w-[220px] ${
+                      className={`h-12 w-full rounded-2xl px-5 text-sm font-semibold md:w-[220px] ${
                         editing
                           ? "bg-[#2563eb] text-white hover:bg-[#1d4ed8]"
                           : "cursor-not-allowed bg-[#e9eef7] text-[#94a3b8]"
@@ -854,7 +942,7 @@ export default function EditProfilePage() {
                   </div>
                 </div>
 
-                <div className="mt-5 rounded-[20px] border border-dashed border-[#d7e2f3] bg-white p-4">
+                <div className="mt-5 rounded-3xl border border-dashed border-[#d7e2f3] bg-white p-4">
                   {scheduleDates.length === 0 ? (
                     <p className="text-sm text-[#94a3b8]">
                       No schedule slot added yet. Add a date and time to create
@@ -865,7 +953,7 @@ export default function EditProfilePage() {
                       {scheduleDates.map((dateStr) => (
                         <div
                           key={dateStr}
-                          className="rounded-[18px] border border-[#edf1f7] bg-[#fbfdff] p-4"
+                          className="rounded-2xl border border-[#edf1f7] bg-[#fbfdff] p-4"
                         >
                           <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div className="text-sm font-semibold text-[#0f172a]">
@@ -924,6 +1012,91 @@ export default function EditProfilePage() {
                 </div>
               </div>
 
+              <div className="mt-7 rounded-3xl border border-[#dbe6f7] bg-[#f8fafc] p-5">
+                <div className="mb-4 flex items-start gap-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#eef4fb] text-[#2563eb]">
+                    <KeyRound className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-semibold uppercase tracking-[0.12em] text-[#2563eb]">
+                      Change Password
+                    </h4>
+                    <p className="mt-1 text-sm text-[#64748b]">
+                      Update your doctor portal password.
+                    </p>
+                  </div>
+                </div>
+
+                {passwordMessage ? (
+                  <div
+                    className={`mb-4 rounded-2xl border px-4 py-3 text-sm font-medium ${
+                      passwordMessage.type === "success"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : "border-rose-200 bg-rose-50 text-rose-700"
+                    }`}
+                  >
+                    {passwordMessage.text}
+                  </div>
+                ) : null}
+
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                  <PasswordInput
+                    label="Current Password"
+                    value={passwordForm.currentPassword}
+                    onChange={(value) => updatePasswordField("currentPassword", value)}
+                    visible={visiblePasswords.currentPassword}
+                    onToggle={() =>
+                      setVisiblePasswords((prev) => ({
+                        ...prev,
+                        currentPassword: !prev.currentPassword,
+                      }))
+                    }
+                  />
+                  <PasswordInput
+                    label="New Password"
+                    value={passwordForm.newPassword}
+                    onChange={(value) => updatePasswordField("newPassword", value)}
+                    visible={visiblePasswords.newPassword}
+                    onToggle={() =>
+                      setVisiblePasswords((prev) => ({
+                        ...prev,
+                        newPassword: !prev.newPassword,
+                      }))
+                    }
+                  />
+                  <PasswordInput
+                    label="Confirm Password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(value) => updatePasswordField("confirmPassword", value)}
+                    visible={visiblePasswords.confirmPassword}
+                    onToggle={() =>
+                      setVisiblePasswords((prev) => ({
+                        ...prev,
+                        confirmPassword: !prev.confirmPassword,
+                      }))
+                    }
+                  />
+                </div>
+
+                <div className="mt-5 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleChangePassword}
+                    disabled={passwordSaving}
+                    className="rounded-2xl bg-[#2563eb] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1d4ed8] disabled:bg-blue-300"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      {passwordSaving ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <KeyRound className="h-4 w-4" />
+                      )}
+                      {passwordSaving ? "Updating..." : "Update Password"}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
               {/* footer actions */}
               <div className="mt-8 flex flex-col gap-4 border-t border-[#eef2f7] pt-6 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-[#94a3b8]">
@@ -937,7 +1110,7 @@ export default function EditProfilePage() {
                       <button
                         type="button"
                         onClick={() => setEditing(true)}
-                        className="rounded-[18px] border border-[#e5eaf5] bg-white px-5 py-3 text-sm font-semibold text-[#334155] hover:bg-[#f8fafc]"
+                        className="rounded-2xl border border-[#dbe6f7] bg-white px-5 py-3 text-sm font-semibold text-[#334155] hover:bg-[#f8fafc]"
                       >
                         Edit Profile
                       </button>
@@ -945,7 +1118,7 @@ export default function EditProfilePage() {
                       <button
                         type="button"
                         onClick={() => navigate(-1)}
-                        className="rounded-[18px] bg-[#2563eb] px-5 py-3 text-sm font-semibold text-white hover:bg-[#1d4ed8]"
+                        className="rounded-2xl bg-[#2563eb] px-5 py-3 text-sm font-semibold text-white hover:bg-[#1d4ed8]"
                       >
                         Back
                       </button>
@@ -955,7 +1128,7 @@ export default function EditProfilePage() {
                       <button
                         type="button"
                         onClick={handleReset}
-                        className="rounded-[18px] border border-[#e5eaf5] bg-white px-5 py-3 text-sm font-semibold text-[#334155] hover:bg-[#f8fafc]"
+                        className="rounded-2xl border border-[#dbe6f7] bg-white px-5 py-3 text-sm font-semibold text-[#334155] hover:bg-[#f8fafc]"
                       >
                         <span className="inline-flex items-center gap-2">
                           <X className="h-4 w-4" />
@@ -966,7 +1139,7 @@ export default function EditProfilePage() {
                       <button
                         type="button"
                         onClick={handleSave}
-                        className="rounded-[18px] bg-[#2563eb] px-5 py-3 text-sm font-semibold text-white hover:bg-[#1d4ed8]"
+                        className="rounded-2xl bg-[#2563eb] px-5 py-3 text-sm font-semibold text-white hover:bg-[#1d4ed8]"
                       >
                         <span className="inline-flex items-center gap-2">
                           <Save className="h-4 w-4" />
@@ -998,3 +1171,4 @@ export default function EditProfilePage() {
     </div>
   );
 }
+

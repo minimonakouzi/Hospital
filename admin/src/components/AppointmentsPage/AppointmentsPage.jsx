@@ -302,7 +302,7 @@ export default function AppointmentsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[28px] border border-blue-100 bg-white p-5 shadow-sm">
+      <section className="rounded-3xl border border-[#dbe6f7] bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div>
             <h1 className="text-[2rem] font-bold tracking-tight text-slate-900">
@@ -313,7 +313,7 @@ export default function AppointmentsPage() {
             </p>
           </div>
 
-          <div className="inline-flex h-10 items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-4 text-sm font-medium text-blue-700">
+          <div className="inline-flex h-10 items-center gap-2 rounded-2xl border border-[#dbe6f7] bg-[#eef4fb] px-4 text-sm font-medium text-[#2563eb]">
             <ShieldCheck className="h-4 w-4" />
             Secure Admin Session
           </div>
@@ -326,7 +326,7 @@ export default function AppointmentsPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search doctor, patient, or specialty..."
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
+              className="h-12 w-full rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] pl-11 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
             />
           </div>
 
@@ -372,7 +372,7 @@ export default function AppointmentsPage() {
       </section>
 
       {loading && (
-        <div className="rounded-[24px] border border-blue-100 bg-white p-6 text-sm text-slate-500 shadow-sm">
+        <div className="rounded-3xl border border-[#dbe6f7] bg-white p-6 text-sm text-slate-500 shadow-sm">
           Loading appointments...
         </div>
       )}
@@ -386,7 +386,7 @@ export default function AppointmentsPage() {
       {!loading && !error && (
         <>
           {displayed.length === 0 ? (
-            <div className="rounded-[24px] border border-blue-100 bg-white p-8 text-center text-sm text-slate-500 shadow-sm">
+            <div className="rounded-3xl border border-[#dbe6f7] bg-white p-8 text-center text-sm text-slate-500 shadow-sm">
               No appointments match your filters.
             </div>
           ) : (
@@ -401,7 +401,7 @@ export default function AppointmentsPage() {
                 return (
                   <article
                     key={a.id}
-                    className="overflow-hidden rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm transition hover:border-blue-200 hover:shadow-md"
+                    className="overflow-hidden rounded-3xl border border-[#dbe6f7] bg-white p-5 shadow-sm transition hover:border-blue-200 hover:shadow-md"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3">
@@ -431,7 +431,7 @@ export default function AppointmentsPage() {
                       </button>
                     </div>
 
-                    <div className="mt-4 rounded-2xl bg-slate-50 p-4">
+                    <div className="mt-4 rounded-2xl bg-[#f8fbff] p-4">
                       <div className="text-base font-semibold text-blue-700">
                         {a.doctorName || "Unknown Doctor"}
                       </div>

@@ -6,9 +6,13 @@ import {
   Users,
   CalendarDays,
   BriefcaseMedical,
-  PlusSquare,
   ClipboardList,
   CalendarClock,
+  HeartPulse,
+  UserRoundPlus,
+  UserCog,
+  ChartNoAxesCombined,
+  History,
   Menu,
   X,
   LogOut,
@@ -21,19 +25,28 @@ const navItems = [
   { to: "/h", label: "Dashboard", icon: LayoutDashboard },
   { to: "/add", label: "Add Doctor", icon: UserPlus },
   { to: "/list", label: "List Doctors", icon: Users },
+  { to: "/add-nurse", label: "Add Nurse", icon: UserRoundPlus },
+  { to: "/list-nurses", label: "List Nurses", icon: HeartPulse },
+  { to: "/add-staff", label: "Add Staff", icon: UserCog },
+  { to: "/list-staff", label: "List Staff", icon: ShieldCheck },
+  {
+    to: "/staff-performance",
+    label: "Staff Performance",
+    icon: ChartNoAxesCombined,
+  },
   { to: "/appointments", label: "Appointments", icon: CalendarDays },
   {
     to: "/service-dashboard",
     label: "Service Dashboard",
     icon: BriefcaseMedical,
   },
-  { to: "/add-service", label: "Add Service", icon: PlusSquare },
   { to: "/list-service", label: "List Services", icon: ClipboardList },
   {
     to: "/service-appointments",
     label: "Service Appointments",
     icon: CalendarClock,
   },
+  { to: "/audit-logs", label: "Audit Logs", icon: History },
 ];
 
 function SidebarLink({ item, onClick }) {
@@ -45,10 +58,10 @@ function SidebarLink({ item, onClick }) {
       onClick={onClick}
       className={({ isActive }) =>
         [
-          "group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200",
+          "group flex min-h-[64px] items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200",
           isActive
-            ? "bg-white text-blue-700 shadow-sm"
-            : "text-blue-100 hover:bg-white/10 hover:text-white",
+            ? "bg-white text-[#2563eb] shadow-sm"
+            : "bg-white/8 text-white/90 hover:bg-white/14 hover:text-white",
         ].join(" ")
       }
     >
@@ -58,8 +71,8 @@ function SidebarLink({ item, onClick }) {
             className={[
               "flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200",
               isActive
-                ? "bg-blue-50 text-blue-600"
-                : "bg-white/10 text-blue-100 group-hover:bg-white/15",
+                ? "bg-[#eef4ff] text-[#2563eb]"
+                : "bg-white/10 text-white/90 group-hover:bg-white/15",
             ].join(" ")}
           >
             <Icon size={18} />
@@ -102,14 +115,14 @@ export default function AdminLayout({ title, subtitle, children }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#f8fafc] text-[#0f172a]">
       {/* Mobile top bar */}
-      <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur lg:hidden">
+      <div className="sticky top-0 z-40 border-b border-[#dbe6f7] bg-white/95 backdrop-blur lg:hidden">
         <div className="flex items-center justify-between px-4 py-4">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] text-[#2563eb] shadow-sm"
           >
             <Menu size={20} />
           </button>
@@ -118,13 +131,13 @@ export default function AdminLayout({ title, subtitle, children }) {
             <img
               src={logoImg}
               alt="Revive"
-              className="h-10 w-10 rounded-xl object-cover"
+              className="h-10 w-10 rounded-2xl bg-[#eef4fb] object-contain p-1"
             />
             <div className="leading-tight">
-              <div className="text-sm font-semibold text-slate-900">
+              <div className="text-sm font-bold text-[#0f172a]">
                 Revive Admin
               </div>
-              <div className="text-xs text-slate-500">Healthcare Solutions</div>
+              <div className="text-xs text-[#64748b]">Hospital dashboard</div>
             </div>
           </div>
 
@@ -143,47 +156,53 @@ export default function AdminLayout({ title, subtitle, children }) {
       {/* Sidebar */}
       <aside
         className={[
-          "fixed inset-y-0 left-0 z-50 w-72 transform border-r border-white/10 bg-linear-to-b from-slate-900 via-blue-500 to-slate-900 text-white transition-transform duration-300",
+          "fixed inset-y-0 left-0 z-50 h-[100dvh] w-[270px] transform overflow-hidden border-r border-white/10 bg-gradient-to-b from-[#0d1b3d] via-[#1f58d6] to-[#17336f] text-white shadow-[10px_0_35px_rgba(15,23,42,0.18)] transition-transform duration-300",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
           "lg:translate-x-0",
         ].join(" ")}
       >
-        <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between px-5 pb-4 pt-5">
+        <div className="flex h-full min-h-0 flex-col">
+          <div className="shrink-0 border-b border-white/10 px-5 py-5">
+            <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img
-                src={logoImg}
-                alt="Revive"
-                className="h-12 w-12 rounded-2xl bg-white object-cover p-1"
-              />
+              <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white/95 shadow-md">
+                <img
+                  src={logoImg}
+                  alt="Revive"
+                  className="h-10 w-10 object-contain"
+                />
+              </div>
               <div>
-                <div className="text-lg font-bold tracking-tight">Revive</div>
-                <div className="text-xs text-blue-100/80">Admin Dashboard</div>
+                <div className="text-[1.05rem] font-bold tracking-tight">
+                  Revive
+                </div>
+                <div className="text-sm text-white/75">Admin Dashboard</div>
               </div>
             </div>
 
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-blue-100 hover:bg-white/10 lg:hidden"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl text-white/80 hover:bg-white/10 lg:hidden"
             >
               <X size={18} />
             </button>
+            </div>
           </div>
 
-          <div className="px-5 pb-3 pt-2">
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+          <div className="px-4 pt-4">
+            <div className="rounded-3xl border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
               <div className="flex items-center gap-2 text-sm font-medium text-white">
                 <ShieldCheck size={16} />
                 Admin Controls
               </div>
-              <div className="mt-1 text-xs text-blue-100/75">
+              <div className="mt-1 text-sm leading-6 text-white/70">
                 Access doctors, services, and appointments
               </div>
             </div>
           </div>
 
-          <nav className="flex-1 space-y-2 overflow-y-auto px-4 py-3">
+          <nav className="mt-5 min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pb-4 [scrollbar-gutter:stable]">
             {navItems.map((item) => (
               <SidebarLink
                 key={item.to}
@@ -193,12 +212,12 @@ export default function AdminLayout({ title, subtitle, children }) {
             ))}
           </nav>
 
-          <div className="border-t border-white/10 p-4">
-            <div className="mb-3 rounded-2xl bg-white/5 p-3">
+          <div className="shrink-0 border-t border-white/10 p-4">
+            <div className="mb-3 rounded-2xl border border-white/10 bg-white/8 px-4 py-4 backdrop-blur-sm">
               <div className="text-sm font-semibold text-white">
                 {user?.fullName || user?.firstName || "Admin User"}
               </div>
-              <div className="truncate text-xs text-blue-100/75">
+              <div className="mt-1 truncate text-sm text-white/70">
                 {user?.primaryEmailAddress?.emailAddress || "Signed in"}
               </div>
             </div>
@@ -206,7 +225,7 @@ export default function AdminLayout({ title, subtitle, children }) {
             <button
               type="button"
               onClick={handleSignOut}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-50"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 text-sm font-semibold text-[#2563eb] shadow-sm transition hover:bg-[#f8fbff]"
             >
               <LogOut size={17} />
               Sign Out
@@ -216,15 +235,16 @@ export default function AdminLayout({ title, subtitle, children }) {
       </aside>
 
       {/* Main content */}
-      <div className="lg:pl-72">
+      <div className="lg:pl-[270px]">
         <main className="min-h-screen">
-          <div className="hidden border-b border-slate-200 bg-white lg:block">
-            <div className="flex items-center justify-between px-8 py-6">
+          <div className="hidden border-b border-[#dbe6f7] bg-white/95 shadow-[0_1px_0_rgba(15,23,42,0.02)] lg:block">
+            <div className="flex items-center justify-between px-8 py-5">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                <div className="mb-2 h-1 w-10 rounded-full bg-[#2563eb]" />
+                <h1 className="text-2xl font-bold tracking-tight text-[#0f172a]">
                   {resolvedTitle}
                 </h1>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-[#64748b]">
                   {resolvedSubtitle}
                 </p>
               </div>
@@ -232,10 +252,11 @@ export default function AdminLayout({ title, subtitle, children }) {
           </div>
 
           <div className="px-4 pb-2 pt-4 lg:hidden">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            <div className="mb-2 h-1 w-10 rounded-full bg-[#2563eb]" />
+            <h1 className="text-2xl font-bold tracking-tight text-[#0f172a]">
               {resolvedTitle}
             </h1>
-            <p className="mt-1 text-sm text-slate-500">{resolvedSubtitle}</p>
+            <p className="mt-1 text-sm text-[#64748b]">{resolvedSubtitle}</p>
           </div>
 
           <div className="px-4 pb-6 pt-4 sm:px-6 lg:px-8 lg:py-8">

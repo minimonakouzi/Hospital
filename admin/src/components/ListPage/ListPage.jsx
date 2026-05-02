@@ -252,10 +252,10 @@ export default function ListPage({ apiBase }) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <section className="rounded-[28px] border border-blue-100 bg-white p-5 shadow-sm">
+      <section className="rounded-3xl border border-[#dbe6f7] bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#dbe6f7] bg-[#eef4fb] px-3 py-1 text-xs font-semibold text-[#2563eb]">
               <ShieldCheck className="h-3.5 w-3.5" />
               Secure Admin Session
             </div>
@@ -275,7 +275,7 @@ export default function ListPage({ apiBase }) {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search doctors, specializations..."
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
+                className="h-12 w-full rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] pl-11 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
               />
             </div>
 
@@ -323,13 +323,13 @@ export default function ListPage({ apiBase }) {
 
       {/* Status area */}
       {loading && (
-        <div className="rounded-[24px] border border-blue-100 bg-white p-6 text-sm text-slate-500 shadow-sm">
+        <div className="rounded-3xl border border-[#dbe6f7] bg-white p-6 text-sm text-slate-500 shadow-sm">
           Loading doctors...
         </div>
       )}
 
       {!loading && filtered.length === 0 && (
-        <div className="rounded-[24px] border border-blue-100 bg-white p-6 text-sm text-slate-500 shadow-sm">
+        <div className="rounded-3xl border border-[#dbe6f7] bg-white p-6 text-sm text-slate-500 shadow-sm">
           No doctors match your search.
         </div>
       )}
@@ -348,10 +348,10 @@ export default function ListPage({ apiBase }) {
           return (
             <article
               key={id}
-              className={`overflow-hidden rounded-[28px] border bg-white shadow-sm transition ${
+              className={`overflow-hidden rounded-3xl border bg-white shadow-sm transition ${
                 isOpen
                   ? "border-blue-300 ring-2 ring-blue-100"
-                  : "border-slate-200 hover:border-blue-200"
+                  : "border-[#dbe6f7] hover:border-blue-200"
               }`}
             >
               {/* Summary row */}
@@ -487,7 +487,7 @@ export default function ListPage({ apiBase }) {
                             </div>
 
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                              <div className="rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] p-4">
                                 <div className="text-xs uppercase tracking-wide text-slate-400">
                                   Email
                                 </div>
@@ -496,7 +496,7 @@ export default function ListPage({ apiBase }) {
                                 </div>
                               </div>
 
-                              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                              <div className="rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] p-4">
                                 <div className="text-xs uppercase tracking-wide text-slate-400">
                                   Patients
                                 </div>
@@ -505,7 +505,7 @@ export default function ListPage({ apiBase }) {
                                 </div>
                               </div>
 
-                              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                              <div className="rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] p-4">
                                 <div className="text-xs uppercase tracking-wide text-slate-400">
                                   Fee
                                 </div>
@@ -519,7 +519,7 @@ export default function ListPage({ apiBase }) {
 
                         {/* Right schedule box */}
                         <div className="xl:col-span-4">
-                          <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+                          <div className="rounded-3xl border border-[#dbe6f7] bg-[#f8fbff] p-5">
                             <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                               Upcoming Slots
                             </div>

@@ -179,7 +179,7 @@ function buildCalendarDays(monthDate) {
 
 function SummaryCard({ title, value, icon, tint }) {
   return (
-    <div className="rounded-2xl border border-[#e5eaf5] bg-white px-4 py-3 shadow-sm">
+    <div className="rounded-3xl border border-[#dbe6f7] bg-white p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md">
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8a98b5]">
@@ -190,7 +190,7 @@ function SummaryCard({ title, value, icon, tint }) {
           </p>
         </div>
         <div
-          className={`flex h-10 w-10 items-center justify-center rounded-xl ${tint}`}
+          className={`flex h-11 w-11 items-center justify-center rounded-2xl ${tint}`}
         >
           {icon}
         </div>
@@ -213,7 +213,7 @@ function StatusBadge({ status }) {
 
 function AppointmentDetailCard({ appointment, compact = false }) {
   return (
-    <article className="rounded-[22px] border border-[#e5eaf5] bg-white p-4 shadow-sm">
+    <article className="rounded-3xl border border-[#dbe6f7] bg-white p-4 shadow-sm">
       <div className="flex items-start gap-3">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#eef4fb] text-sm font-bold text-[#2563eb]">
           {getInitials(appointment.patient)}
@@ -299,10 +299,10 @@ function CalendarDayCell({
         }
       }}
       className={[
-        "min-h-[128px] rounded-[18px] border p-2.5 text-left transition",
+        "min-h-[128px] rounded-2xl border p-2.5 text-left transition",
         "focus:outline-none focus:ring-2 focus:ring-[#9bbcf6]",
         day.isCurrentMonth
-          ? "border-[#e5eaf5] bg-white hover:border-[#b9cdf8] hover:shadow-sm"
+          ? "border-[#dbe6f7] bg-white hover:border-[#b9cdf8] hover:bg-[#f8fbff] hover:shadow-sm"
           : "border-[#edf1f7] bg-[#f8fafc] text-[#a0aec0]",
         isSelected ? "border-[#2563eb] shadow-[0_0_0_2px_rgba(37,99,235,0.15)]" : "",
       ].join(" ")}
@@ -507,20 +507,24 @@ export default function ScheduleCalendarPage() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc]">
-      <div className="border-b border-[#e9eef7] bg-white px-5 py-5 lg:px-8">
-        <div className="mx-auto max-w-[1480px]">
-          <h1 className="text-[1.9rem] font-bold tracking-tight text-[#0f172a]">
+      <div className="border-b border-[#dbe6f7] bg-white/95 px-4 py-5 shadow-[0_1px_0_rgba(15,23,42,0.02)] sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#64748b]">
+            Doctor / Schedule Calendar
+          </p>
+          <div className="mb-2 h-1 w-10 rounded-full bg-[#2563eb]" />
+          <h1 className="text-2xl font-bold tracking-tight text-[#0f172a] sm:text-[1.7rem]">
             Schedule Calendar
           </h1>
-          <p className="mt-1 text-[0.98rem] text-[#64748b]">
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-[#64748b]">
             View your appointments in a monthly calendar layout
           </p>
         </div>
       </div>
 
-      <div className="px-4 py-6 lg:px-8">
-        <div className="mx-auto max-w-[1480px]">
-          <section className="rounded-[28px] border border-[#dbe7fb] bg-[#eef4fb] p-4 shadow-sm lg:p-5">
+      <div className="px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <section className="rounded-3xl border border-[#dbe6f7] bg-[#eef4fb] p-4 shadow-sm lg:p-5">
             <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex items-start gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#2563eb] text-white shadow-sm">
@@ -566,7 +570,7 @@ export default function ScheduleCalendarPage() {
             </div>
           </section>
 
-          <section className="mt-6 rounded-[30px] border border-[#e5eaf5] bg-white shadow-sm">
+          <section className="mt-6 overflow-hidden rounded-3xl border border-[#dbe6f7] bg-white shadow-sm">
             <div className="border-b border-[#eef2f7] px-4 py-4 lg:px-6">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -574,7 +578,7 @@ export default function ScheduleCalendarPage() {
                     <button
                       type="button"
                       onClick={() => changeMonth(-1)}
-                      className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#e5eaf5] bg-[#f8fafc] text-[#334155] transition hover:bg-white"
+                      className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] text-[#334155] transition hover:bg-white"
                       title="Previous month"
                     >
                       <ChevronLeft className="h-5 w-5" />
@@ -582,7 +586,7 @@ export default function ScheduleCalendarPage() {
                     <button
                       type="button"
                       onClick={() => changeMonth(1)}
-                      className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#e5eaf5] bg-[#f8fafc] text-[#334155] transition hover:bg-white"
+                      className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] text-[#334155] transition hover:bg-white"
                       title="Next month"
                     >
                       <ChevronRight className="h-5 w-5" />
@@ -615,7 +619,7 @@ export default function ScheduleCalendarPage() {
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       placeholder="Search patient, phone, type"
-                      className="h-11 w-full rounded-2xl border border-[#e5eaf5] bg-[#f8fafc] py-3 pl-11 pr-10 text-sm text-[#0f172a] outline-none sm:w-[300px]"
+                      className="h-12 w-full rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] py-3 pl-11 pr-10 text-sm text-[#0f172a] outline-none transition focus:border-blue-300 focus:bg-white sm:w-[300px]"
                     />
                     {search && (
                       <button
@@ -631,7 +635,7 @@ export default function ScheduleCalendarPage() {
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="h-11 rounded-2xl border border-[#e5eaf5] bg-[#f8fafc] px-4 text-sm text-[#334155] outline-none"
+                    className="h-12 rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] px-4 text-sm text-[#334155] outline-none transition focus:border-blue-300 focus:bg-white"
                   >
                     <option value="">All statuses</option>
                     <option value="pending">Pending</option>
@@ -651,8 +655,13 @@ export default function ScheduleCalendarPage() {
             )}
 
             {loading ? (
-              <div className="px-6 py-16 text-center text-[#64748b]">
-                Loading schedule calendar...
+              <div className="grid gap-3 px-6 py-6">
+                {[0, 1, 2].map((item) => (
+                  <div
+                    key={item}
+                    className="h-20 animate-pulse rounded-2xl bg-slate-100"
+                  />
+                ))}
               </div>
             ) : !hasFilteredAppointments ? (
               <div className="px-6 py-16">
@@ -707,7 +716,7 @@ export default function ScheduleCalendarPage() {
                                 "flex w-full items-center justify-between rounded-[20px] border px-4 py-3 text-left",
                                 day.iso === selectedDate
                                   ? "border-[#2563eb] bg-[#eef4fb]"
-                                  : "border-[#e5eaf5] bg-white",
+                                  : "border-[#dbe6f7] bg-white",
                               ].join(" ")}
                             >
                               <span className="font-semibold text-[#0f172a]">
@@ -724,10 +733,10 @@ export default function ScheduleCalendarPage() {
                           <section
                             key={day.iso}
                             className={[
-                              "rounded-[24px] border p-3",
+                              "rounded-3xl border p-3",
                               day.iso === selectedDate
                                 ? "border-[#2563eb] bg-[#eef4fb]"
-                                : "border-[#e5eaf5] bg-white",
+                                : "border-[#dbe6f7] bg-white",
                             ].join(" ")}
                           >
                             <button
@@ -751,7 +760,7 @@ export default function ScheduleCalendarPage() {
                                   onClick={() =>
                                     selectAppointment(day.iso, appointment.id)
                                   }
-                                  className="flex w-full min-w-0 items-center gap-2 rounded-2xl border border-[#e8eef8] bg-white px-3 py-2 text-left text-sm"
+                                  className="flex w-full min-w-0 items-center gap-2 rounded-2xl border border-[#dbe6f7] bg-white px-3 py-2 text-left text-sm transition hover:bg-[#f8fbff]"
                                 >
                                   <span
                                     className={`h-2.5 w-2.5 shrink-0 rounded-full ${statusDotClass(
@@ -775,7 +784,7 @@ export default function ScheduleCalendarPage() {
 
                 <aside className="border-t border-[#eef2f7] bg-[#fbfdff] p-4 xl:border-l xl:border-t-0 xl:p-5">
                   <div className="sticky top-4">
-                    <div className="mb-4 rounded-[24px] border border-[#e5eaf5] bg-white p-4 shadow-sm">
+                    <div className="mb-4 rounded-3xl border border-[#dbe6f7] bg-white p-4 shadow-sm">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8a98b5]">
                         Selected Day
                       </p>
@@ -789,7 +798,7 @@ export default function ScheduleCalendarPage() {
                     </div>
 
                     {selectedAppointments.length === 0 ? (
-                      <div className="rounded-[24px] border border-dashed border-[#d7e2f3] bg-white p-6 text-center">
+                      <div className="rounded-3xl border border-dashed border-[#d7e2f3] bg-white p-6 text-center">
                         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#eef4fb] text-[#2563eb]">
                           <CalendarDays className="h-6 w-6" />
                         </div>
@@ -810,7 +819,7 @@ export default function ScheduleCalendarPage() {
                         )}
 
                         {selectedAppointments.length > 1 && (
-                          <div className="rounded-[24px] border border-[#e5eaf5] bg-white p-3">
+                          <div className="rounded-3xl border border-[#dbe6f7] bg-white p-3">
                             <p className="mb-3 px-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8a98b5]">
                               Other visits
                             </p>
@@ -847,7 +856,7 @@ export default function ScheduleCalendarPage() {
                         )}
 
                         <div className="grid grid-cols-2 gap-3">
-                          <div className="rounded-2xl border border-[#e5eaf5] bg-white px-4 py-3">
+                          <div className="rounded-2xl border border-[#dbe6f7] bg-white px-4 py-3">
                             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8a98b5]">
                               Paid
                             </p>
@@ -861,7 +870,7 @@ export default function ScheduleCalendarPage() {
                               }
                             </p>
                           </div>
-                          <div className="rounded-2xl border border-[#e5eaf5] bg-white px-4 py-3">
+                          <div className="rounded-2xl border border-[#dbe6f7] bg-white px-4 py-3">
                             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8a98b5]">
                               Revenue
                             </p>

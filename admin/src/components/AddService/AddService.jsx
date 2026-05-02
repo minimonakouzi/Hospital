@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@clerk/clerk-react";
 import { adminAuthHeaders } from "../../utils/adminAuthHeaders";
+import { staffAuthHeaders } from "../../utils/staffAuthHeaders";
 
 function formatDisplayDate(iso) {
   if (!iso) return "";
@@ -188,7 +189,12 @@ function InputBase({
   );
 }
 
-export default function AddService({ apiBase, serviceId }) {
+export default function AddService({
+  apiBase,
+  serviceId,
+  authMode = "admin",
+  embedded = false,
+}) {
   const { getToken } = useAuth();
   const API_BASE = apiBase || "http://localhost:4000";
   const fileInputRef = useRef(null);
@@ -227,6 +233,11 @@ export default function AddService({ apiBase, serviceId }) {
     const local = new Date(d.getTime() - tzOffset * 60000);
     return local.toISOString().split("T")[0];
   });
+
+  async function serviceAuthHeaders(headers = {}) {
+    if (authMode === "staff") return staffAuthHeaders(headers);
+    return adminAuthHeaders(getToken, headers);
+  }
 
   const slotCount = useMemo(() => form.slots.length, [form.slots]);
 
@@ -516,7 +527,7 @@ export default function AddService({ apiBase, serviceId }) {
 
       const res = await fetch(url, {
         method,
-        headers: await adminAuthHeaders(getToken),
+        headers: await serviceAuthHeaders(),
         body: fd,
       });
 
@@ -594,15 +605,23 @@ export default function AddService({ apiBase, serviceId }) {
       ) : null}
 
       <div className="mx-auto max-w-7xl">
-        <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 bg-[#eef4ff] px-6 py-7 sm:px-8">
+        <div className="overflow-hidden rounded-3xl border border-[#dbe6f7] bg-white shadow-sm">
+          <div
+            className={`border-b border-[#dbe6f7] bg-[#eef4fb] px-5 sm:px-6 ${
+              embedded ? "py-5" : "py-7 sm:px-8"
+            }`}
+          >
             <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm">
                 <ShieldCheck className="h-5 w-5" />
               </div>
 
               <div>
-                <h2 className="text-[1.9rem] font-bold tracking-tight text-slate-900">
+                <h2
+                  className={`font-bold tracking-tight text-slate-900 ${
+                    embedded ? "text-xl" : "text-[1.9rem]"
+                  }`}
+                >
                   {serviceId
                     ? "Update Hospital Service"
                     : "Onboard New Hospital Service"}
@@ -615,19 +634,27 @@ export default function AddService({ apiBase, serviceId }) {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="px-6 py-8 sm:px-8">
-            <div className="grid grid-cols-1 gap-8 xl:grid-cols-[280px_minmax(0,1fr)]">
+          <form onSubmit={handleSubmit} className="px-4 py-6 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
               <aside className="xl:sticky xl:top-6 xl:self-start">
+                <div className="mb-3">
+                  <h3 className="text-base font-semibold text-slate-900">
+                    Image Upload
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Add a clear visual for the patient-facing service.
+                  </p>
+                </div>
                 <FieldLabel required>Service Image</FieldLabel>
 
-                <div className="rounded-[24px] border border-slate-200 bg-[#f8faff] p-4">
-                  <div className="rounded-[20px] border border-dashed border-slate-300 bg-white px-4 py-6 text-center">
+                <div className="rounded-3xl border border-[#dbe6f7] bg-[#f8fbff] p-4">
+                  <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-6 text-center">
                     {form.imagePreview ? (
-                      <div className="relative mx-auto h-40 w-40">
+                      <div className="relative mx-auto h-36 w-36 sm:h-40 sm:w-40">
                         <img
                           src={form.imagePreview}
                           alt="Service preview"
-                          className="h-full w-full rounded-3xl object-cover ring-1 ring-slate-200"
+                          className="h-full w-full rounded-2xl object-cover ring-1 ring-slate-200"
                         />
                         <button
                           type="button"
@@ -638,7 +665,7 @@ export default function AddService({ apiBase, serviceId }) {
                         </button>
                       </div>
                     ) : (
-                      <div className="mx-auto flex h-40 w-40 items-center justify-center rounded-3xl bg-[#eef4ff] text-blue-600">
+                      <div className="mx-auto flex h-36 w-36 items-center justify-center rounded-2xl bg-[#eef4fb] text-blue-600 sm:h-40 sm:w-40">
                         <ImagePlus className="h-11 w-11" />
                       </div>
                     )}
@@ -661,7 +688,7 @@ export default function AddService({ apiBase, serviceId }) {
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="mt-5 inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                      className="mt-5 inline-flex h-11 items-center gap-2 rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700"
                     >
                       <Upload className="h-4 w-4" />
                       {form.imagePreview ? "Change image" : "Choose image"}
@@ -676,8 +703,17 @@ export default function AddService({ apiBase, serviceId }) {
                 </div>
               </aside>
 
-              <div className="space-y-8">
-                <section>
+              <div className="space-y-6">
+                <section className="rounded-3xl border border-[#dbe6f7] bg-[#fbfcfe] p-5 sm:p-6">
+                  <div className="mb-5">
+                    <h3 className="text-base font-semibold text-slate-900">
+                      Basic Information
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Name and availability details shown across the service
+                      workspace.
+                    </p>
+                  </div>
                   <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                     <div>
                       <FieldLabel required>Service Name</FieldLabel>
@@ -708,36 +744,54 @@ export default function AddService({ apiBase, serviceId }) {
                     </div>
 
                     <div>
-                      <FieldLabel required>Service Price ($)</FieldLabel>
-                      <InputBase
-                        type="number"
-                        min="0"
-                        value={form.price}
-                        onChange={(e) => setField("price", e.target.value)}
-                        placeholder="0.00"
-                        className={errors.price ? "border-rose-300" : ""}
-                      />
-                    </div>
-
-                    <div>
                       <FieldLabel>Service Type</FieldLabel>
                       <InputBase placeholder="Hospital service" disabled />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <FieldLabel required>Service Description</FieldLabel>
-                      <InputBase
-                        as="textarea"
-                        value={form.about}
-                        onChange={(e) => setField("about", e.target.value)}
-                        placeholder="Describe the service, procedure, and what patients should expect."
-                        className={errors.about ? "border-rose-300" : ""}
-                      />
                     </div>
                   </div>
                 </section>
 
-                <section className="rounded-[24px] border border-slate-200 bg-[#fbfcfe] p-5 sm:p-6">
+                <section className="rounded-3xl border border-[#dbe6f7] bg-[#fbfcfe] p-5 sm:p-6">
+                  <div className="mb-5">
+                    <h3 className="text-base font-semibold text-slate-900">
+                      Pricing
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Set the booking price used for this service.
+                    </p>
+                  </div>
+                  <div className="max-w-md">
+                    <FieldLabel required>Service Price ($)</FieldLabel>
+                    <InputBase
+                      type="number"
+                      min="0"
+                      value={form.price}
+                      onChange={(e) => setField("price", e.target.value)}
+                      placeholder="0.00"
+                      className={errors.price ? "border-rose-300" : ""}
+                    />
+                  </div>
+                </section>
+
+                <section className="rounded-3xl border border-[#dbe6f7] bg-[#fbfcfe] p-5 sm:p-6">
+                  <div className="mb-5">
+                    <h3 className="text-base font-semibold text-slate-900">
+                      Service Details
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Describe the procedure and what patients should expect.
+                    </p>
+                  </div>
+                  <FieldLabel required>Service Description</FieldLabel>
+                  <InputBase
+                    as="textarea"
+                    value={form.about}
+                    onChange={(e) => setField("about", e.target.value)}
+                    placeholder="Describe the service, procedure, and what patients should expect."
+                    className={errors.about ? "border-rose-300" : ""}
+                  />
+                </section>
+
+                <section className="rounded-3xl border border-[#dbe6f7] bg-[#fbfcfe] p-5 sm:p-6">
                   <div className="mb-5">
                     <h3 className="text-base font-semibold text-slate-900">
                       Patient Instructions
@@ -749,7 +803,10 @@ export default function AddService({ apiBase, serviceId }) {
 
                   <div className="space-y-3">
                     {form.instructions.map((item, index) => (
-                      <div key={index} className="flex items-start gap-3">
+                      <div
+                        key={index}
+                        className="flex flex-col gap-3 sm:flex-row sm:items-start"
+                      >
                         <div className="flex-1">
                           <InputBase
                             as="textarea"
@@ -766,7 +823,7 @@ export default function AddService({ apiBase, serviceId }) {
                         <button
                           type="button"
                           onClick={() => removeInstruction(index)}
-                          className="mt-3 shrink-0 rounded-full bg-rose-50 p-2.5 text-rose-600 transition hover:bg-rose-100"
+                          className="shrink-0 rounded-2xl bg-rose-50 p-2.5 text-rose-600 transition hover:bg-rose-100 sm:mt-3"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -776,7 +833,7 @@ export default function AddService({ apiBase, serviceId }) {
                     <button
                       type="button"
                       onClick={addInstruction}
-                      className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
+                      className="inline-flex h-10 items-center gap-2 rounded-2xl bg-blue-50 px-4 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
                     >
                       <Upload className="h-4 w-4" />
                       Add Instruction
@@ -784,14 +841,14 @@ export default function AddService({ apiBase, serviceId }) {
                   </div>
                 </section>
 
-                <section className="rounded-[24px] border border-slate-200 bg-[#fbfcfe] p-5 sm:p-6">
+                <section className="rounded-3xl border border-[#dbe6f7] bg-[#fbfcfe] p-5 sm:p-6">
                   <div className="mb-5 flex items-center gap-3">
                     <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white">
                       <Calendar className="h-5 w-5" />
                     </div>
                     <div>
                       <h3 className="text-base font-semibold text-slate-900">
-                        Availability Slots
+                        Availability / Slots
                       </h3>
                       <p className="mt-1 text-sm text-slate-500">
                         Add available booking times for this service.
@@ -799,7 +856,7 @@ export default function AddService({ apiBase, serviceId }) {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[1.2fr_0.8fr_0.8fr_0.8fr_auto]">
                     <InputBase
                       type="date"
                       min={today}
@@ -874,7 +931,7 @@ export default function AddService({ apiBase, serviceId }) {
                       form.slots.map((slot) => (
                         <div
                           key={slot.id}
-                          className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                          className="flex min-w-0 items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3"
                         >
                           <div className="min-w-0">
                             <div className="truncate text-sm font-semibold text-slate-800">
@@ -909,11 +966,11 @@ export default function AddService({ apiBase, serviceId }) {
                   </div>
                 </section>
 
-                <div className="flex justify-center pt-1">
+                <div className="flex justify-end pt-1">
                   <button
                     type="submit"
                     disabled={loading}
-                    className={`inline-flex min-w-[230px] items-center justify-center gap-2 rounded-full px-8 py-3.5 text-sm font-semibold shadow-sm transition ${
+                    className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-8 text-sm font-semibold shadow-sm transition sm:w-auto sm:min-w-[220px] ${
                       loading
                         ? "cursor-not-allowed bg-blue-300 text-white"
                         : "bg-blue-600 text-white hover:bg-blue-700"

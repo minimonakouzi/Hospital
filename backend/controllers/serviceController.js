@@ -1,5 +1,6 @@
 import Service from "../models/Service.js";
 import { uploadToCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
+import { createAuditLog } from "../utils/auditLog.js";
 
 /* -----------------------
    Helpers
@@ -92,6 +93,16 @@ export async function createService(req, res) {
     });
 
     const saved = await service.save();
+    await createAuditLog(req, {
+      action: "service.created",
+      entityType: "service",
+      entityId: saved._id,
+      details: {
+        name: saved.name,
+        price: saved.price,
+        available: saved.available,
+      },
+    });
     return res.status(201).json({ success: true, data: saved, message: "Service created" });
   } catch (err) {
     console.error("createService error:", err);
@@ -167,6 +178,15 @@ export async function updateService(req, res) {
     }
 
     const updated = await Service.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+    await createAuditLog(req, {
+      action: "service.updated",
+      entityType: "service",
+      entityId: updated._id,
+      details: {
+        name: updated.name,
+        fields: Object.keys(updateData),
+      },
+    });
     return res.status(200).json({ success: true, data: updated, message: "Service updated" });
   } catch (err) {
     console.error("updateService error:", err);
@@ -192,6 +212,14 @@ export async function deleteService(req, res) {
     }
 
     await existing.deleteOne();
+    await createAuditLog(req, {
+      action: "service.deleted",
+      entityType: "service",
+      entityId: id,
+      details: {
+        name: existing.name,
+      },
+    });
     return res.status(200).json({ success: true, message: "Service deleted" });
   } catch (err) {
     console.error("deleteService error:", err);

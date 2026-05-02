@@ -49,6 +49,19 @@ const appointmentSchema = new mongoose.Schema(
       default: "Pending",
     },
 
+    checkInStatus: {
+      type: String,
+      enum: ["Not Checked In", "Checked In"],
+      default: "Not Checked In",
+      index: true,
+    },
+    checkedInAt: { type: Date, default: null },
+    checkedInByNurseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Nurse",
+      default: null,
+    },
+
     rescheduledTo: {
       date: { type: String },
       time: { type: String },

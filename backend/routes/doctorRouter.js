@@ -12,6 +12,7 @@ import {
   deleteDoctor,
   toggleAvailability,
   doctorLogin,
+  changeDoctorPassword,
 } from "../controllers/doctorController.js";
 
 import doctorAuth from "../middlewares/doctorAuth.js";
@@ -36,6 +37,7 @@ const doctorLoginLimiter = rateLimit({
 
 doctorRouter.get("/", getDoctors);
 doctorRouter.post("/login", doctorLoginLimiter, doctorLogin);
+doctorRouter.put("/me/password", doctorAuth, changeDoctorPassword);
 doctorRouter.get("/:id", getDoctorById);
 doctorRouter.post("/", clerkMiddleware(), requireAuth(), adminAuth, upload.single("image"), createDoctor);
 doctorRouter.put(

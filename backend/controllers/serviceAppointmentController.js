@@ -3,15 +3,32 @@ import ServiceAppointment from "../models/serviceAppointment.js";
 import Service from "../models/Service.js";
 import Stripe from "stripe";
 import { getAuth } from "@clerk/express";
+import { createAuditLog } from "../utils/auditLog.js";
 
 const stripeKey = process.env.STRIPE_SECRET_KEY || null;
 const stripe = stripeKey ? new Stripe(stripeKey, { apiVersion: "2022-11-15" }) : null;
+const STAFF_STATUSES = ["Pending", "In Progress", "Completed", "Cancelled"];
+const FINAL_SERVICE_STATUSES = ["Completed", "Cancelled"];
+const STAFF_STATUS_TRANSITIONS = {
+  Pending: ["In Progress", "Cancelled", "Completed"],
+  "In Progress": ["Completed", "Cancelled"],
+};
 
 const safeNumber = (val) => {
   if (val === undefined || val === null || val === "") return null;
   const n = Number(val);
   return Number.isFinite(n) ? n : null;
 };
+
+function normalizeStaffStatus(value = "") {
+  const status = String(value || "").trim();
+  if (status === "Canceled") return "Cancelled";
+  return STAFF_STATUSES.includes(status) ? status : "";
+}
+
+function normalizeServiceStatus(value = "") {
+  return String(value || "").trim() === "Canceled" ? "Cancelled" : String(value || "").trim();
+}
 
 function parseTimeString(timeStr) {
   if (!timeStr || typeof timeStr !== "string") return null;
@@ -120,7 +137,7 @@ export const createServiceAppointment = async (req, res) => {
         hour: Number(finalHour),
         minute: Number(finalMinute),
         ampm: finalAmpm,
-        status: { $ne: "Canceled" },
+        status: { $nin: ["Canceled", "Cancelled"] },
       }).lean();
       if (existing) return res.status(409).json({ success: false, message: "You already have a booking for this service at the selected date and time." });
     } catch (chkErr) {
@@ -311,6 +328,79 @@ export const getServiceAppointments = async (req, res) => {
   }
 };
 
+export const updateServiceAppointmentStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const status = normalizeStaffStatus(req.body?.status);
+
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: "Status must be Pending, In Progress, Completed, or Cancelled.",
+      });
+    }
+
+    const appointment = await ServiceAppointment.findById(id);
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: "Service appointment not found.",
+      });
+    }
+
+    const currentStatus = normalizeServiceStatus(appointment.status);
+
+    if (FINAL_SERVICE_STATUSES.includes(currentStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: "This appointment is already finalized and cannot be changed.",
+      });
+    }
+
+    const allowedNextStatuses = STAFF_STATUS_TRANSITIONS[currentStatus] || [];
+    if (!allowedNextStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot change service appointment status from ${currentStatus || "Unknown"} to ${status}.`,
+      });
+    }
+
+    appointment.status = status;
+    await appointment.save();
+    await createAuditLog(req, {
+      action: "service_appointment.status_changed",
+      entityType: "serviceAppointment",
+      entityId: appointment._id,
+      details: {
+        from: currentStatus,
+        to: status,
+        patientName: appointment.patientName || "",
+        serviceName: appointment.serviceName || "",
+        date: appointment.date || "",
+      },
+    });
+
+    return res.json({
+      success: true,
+      message: `Service appointment marked ${status}.`,
+      data: appointment,
+    });
+  } catch (err) {
+    if (err?.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message: err.message || "Invalid service appointment status.",
+      });
+    }
+
+    console.error("updateServiceAppointmentStatus:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while updating service appointment status.",
+    });
+  }
+};
+
 /* GET by id */
 export const getServiceAppointmentById = async (req, res) => {
   try {
@@ -382,7 +472,7 @@ export const cancelServiceAppointment = async (req, res) => {
     if (!appt) return res.status(404).json({ success: false, message: "Not found" });
     if (appt.status === "Completed") return res.status(400).json({ success: false, message: "Cannot cancel a completed appointment" });
 
-    appt.status = "Canceled";
+    appt.status = "Cancelled";
     if (appt.payment) appt.payment.status = appt.payment.status === "Confirmed" ? "Canceled" : "Pending";
     await appt.save();
     return res.json({ success: true, data: appt });
@@ -403,7 +493,7 @@ export const getServiceAppointmentStats = async (req, res) => {
         $addFields: {
           totalAppointments: { $size: "$appointments" },
           completed: { $size: { $filter: { input: "$appointments", as: "a", cond: { $eq: ["$$a.status", "Completed"] } } } },
-          canceled: { $size: { $filter: { input: "$appointments", as: "a", cond: { $eq: ["$$a.status", "Canceled"] } } } },
+          canceled: { $size: { $filter: { input: "$appointments", as: "a", cond: { $in: ["$$a.status", ["Canceled", "Cancelled"]] } } } },
         },
       },
       { $addFields: { earning: { $multiply: ["$completed", "$price"] } } },
@@ -444,6 +534,7 @@ export default {
   getServiceAppointments,
   getServiceAppointmentById,
   updateServiceAppointment,
+  updateServiceAppointmentStatus,
   cancelServiceAppointment,
   getServiceAppointmentStats,
   getServiceAppointmentsByPatient,

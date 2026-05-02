@@ -14,6 +14,7 @@ import {
   Phone,
   ShieldCheck,
   LogIn,
+  HeartPulse,
 } from "lucide-react";
 
 // Clerk
@@ -571,6 +572,17 @@ export default function Navbar() {
     { label: "Contact", href: "/contact", icon: Phone },
   ];
 
+  const portalItems = [
+    { label: "Doctor Admin", href: "/doctor-admin/login", icon: ShieldCheck },
+    { label: "Nurse Portal", href: "/nurse/login", icon: HeartPulse },
+    {
+      label: "Staff Portal",
+      href: "http://localhost:5174/staff/login",
+      icon: ShieldCheck,
+      external: true,
+    },
+  ];
+
   const isActive = (href) => location.pathname === href;
 
   return (
@@ -580,31 +592,34 @@ export default function Navbar() {
         showNavbar ? "translate-y-0" : "-translate-y-full"
       }`}
     >
-      <div className="mx-auto max-w-[1380px] px-4 pt-4 sm:px-6 lg:px-8">
-        <div className="overflow-hidden rounded-[28px] border border-white/60 bg-white/80 shadow-[0_18px_50px_rgba(30,64,175,0.10)] backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6">
+      <div className="mx-auto max-w-[1240px] px-3 pt-3 sm:px-5 lg:px-6">
+        <div className="overflow-hidden rounded-2xl border border-white/70 bg-white/90 shadow-[0_14px_38px_rgba(30,64,175,0.10)] backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-3 px-3 py-2.5 sm:px-4">
             {/* Left */}
-            <Link to="/" className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#eef4fb] shadow-sm">
+            <Link
+              to="/"
+              className="flex min-w-0 items-center gap-2.5 rounded-xl px-1 py-1 transition hover:bg-[#f8fbff]"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#eef4fb] shadow-sm">
                 <img
                   src={logo}
                   alt="Revive logo"
-                  className="h-8 w-8 object-contain"
+                  className="h-7 w-7 object-contain"
                 />
               </div>
 
-              <div className="hidden sm:block">
-                <h1 className="text-[1.05rem] font-bold tracking-tight text-[#0f172a]">
+              <div className="hidden min-w-0 sm:block">
+                <h1 className="text-[1rem] font-bold tracking-tight text-[#0f172a]">
                   Revive<span className="text-[#2563eb]">+</span>
                 </h1>
-                <p className="text-[11px] text-[#64748b]">
+                <p className="truncate text-[10px] font-medium text-[#64748b]">
                   Healthcare Solutions
                 </p>
               </div>
             </Link>
 
             {/* Center desktop nav */}
-            <div className="hidden lg:flex items-center gap-2 rounded-full border border-[#dbe6f7] bg-[#f8fbff] px-2 py-2">
+            <nav className="hidden items-center gap-1 rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] p-1 xl:flex">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.href);
@@ -613,10 +628,10 @@ export default function Navbar() {
                   <Link
                     key={item.href}
                     to={item.href}
-                    className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    className={`inline-flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-[13px] font-semibold transition ${
                       active
-                        ? "bg-[#2563eb] text-white shadow-sm"
-                        : "text-[#334155] hover:bg-white"
+                        ? "bg-white text-[#2563eb] shadow-sm ring-1 ring-[#dbe6f7]"
+                        : "text-[#334155] hover:bg-white hover:text-[#2563eb]"
                     }`}
                   >
                     <Icon className="h-4 w-4" />
@@ -624,24 +639,40 @@ export default function Navbar() {
                   </Link>
                 );
               })}
-            </div>
+            </nav>
 
             {/* Right desktop */}
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden items-center gap-2 xl:flex">
               <SignedOut>
-                <Link
-                  to="/doctor-admin/login"
-                  className="inline-flex items-center gap-2 rounded-full border border-[#dbe6f7] bg-white px-4 py-2 text-sm font-semibold text-[#334155] transition hover:bg-[#f8fbff]"
-                >
-                  <ShieldCheck className="h-4 w-4 text-[#2563eb]" />
-                  Doctor Admin
-                </Link>
+                <div className="flex items-center gap-1.5">
+                  {portalItems.map((item) => {
+                    const Icon = item.icon;
+                    const className =
+                      "inline-flex h-9 items-center gap-1.5 rounded-xl border border-[#dbe6f7] bg-white px-2.5 text-xs font-semibold text-[#334155] transition hover:bg-[#f8fbff] hover:text-[#2563eb]";
+
+                    if (item.external) {
+                      return (
+                        <a key={item.href} href={item.href} className={className}>
+                          <Icon className="h-3.5 w-3.5 text-[#2563eb]" />
+                          {item.label}
+                        </a>
+                      );
+                    }
+
+                    return (
+                      <Link key={item.href} to={item.href} className={className}>
+                        <Icon className="h-3.5 w-3.5 text-[#2563eb]" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
 
                 <button
                   onClick={() => clerk.openSignIn()}
-                  className="inline-flex items-center gap-2 rounded-full bg-[#2563eb] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#1d4ed8]"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#2563eb] px-3 text-xs font-semibold text-white transition hover:bg-[#1d4ed8]"
                 >
-                  <LogIn className="h-4 w-4" />
+                  <LogIn className="h-3.5 w-3.5" />
                   Login
                 </button>
               </SignedOut>
@@ -656,7 +687,10 @@ export default function Navbar() {
             {/* Mobile button */}
             <button
               onClick={() => setIsOpen((s) => !s)}
-              className="md:hidden rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] p-2 text-[#334155]"
+              className="rounded-xl border border-[#dbe6f7] bg-[#f8fbff] p-2 text-[#334155] transition hover:text-[#2563eb] xl:hidden"
+              type="button"
+              aria-label="Toggle navigation menu"
+              aria-expanded={isOpen}
             >
               {isOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
@@ -664,8 +698,8 @@ export default function Navbar() {
 
           {/* Mobile menu */}
           {isOpen && (
-            <div className="border-t border-[#e8eef8] bg-white px-4 py-4 md:hidden">
-              <div className="flex flex-col gap-2">
+            <div className="border-t border-[#e8eef8] bg-white px-3 py-3 xl:hidden">
+              <div className="grid gap-2 sm:grid-cols-2">
                 {navItems.map((item) => {
                   const Icon = item.icon;
                   const active = isActive(item.href);
@@ -675,10 +709,10 @@ export default function Navbar() {
                       key={item.href}
                       to={item.href}
                       onClick={() => setIsOpen(false)}
-                      className={`inline-flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition ${
+                      className={`inline-flex h-11 items-center gap-2.5 rounded-xl px-3 text-sm font-semibold transition ${
                         active
                           ? "bg-[#2563eb] text-white"
-                          : "bg-[#f8fbff] text-[#334155]"
+                          : "bg-[#f8fbff] text-[#334155] hover:text-[#2563eb]"
                       }`}
                     >
                       <Icon className="h-4 w-4" />
@@ -688,21 +722,44 @@ export default function Navbar() {
                 })}
 
                 <SignedOut>
-                  <Link
-                    to="/doctor-admin/login"
-                    onClick={() => setIsOpen(false)}
-                    className="inline-flex items-center gap-3 rounded-2xl bg-[#f8fbff] px-4 py-3 text-sm font-medium text-[#334155]"
-                  >
-                    <ShieldCheck className="h-4 w-4 text-[#2563eb]" />
-                    Doctor Admin
-                  </Link>
+                  {portalItems.map((item) => {
+                    const Icon = item.icon;
+                    const className =
+                      "inline-flex h-11 items-center gap-2.5 rounded-xl bg-[#f8fbff] px-3 text-sm font-semibold text-[#334155] transition hover:text-[#2563eb]";
+
+                    if (item.external) {
+                      return (
+                        <a
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setIsOpen(false)}
+                          className={className}
+                        >
+                          <Icon className="h-4 w-4 text-[#2563eb]" />
+                          {item.label}
+                        </a>
+                      );
+                    }
+
+                    return (
+                      <Link
+                        key={item.href}
+                        to={item.href}
+                        onClick={() => setIsOpen(false)}
+                        className={className}
+                      >
+                        <Icon className="h-4 w-4 text-[#2563eb]" />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
 
                   <button
                     onClick={() => {
                       setIsOpen(false);
                       clerk.openSignIn();
                     }}
-                    className="inline-flex items-center gap-3 rounded-2xl bg-[#2563eb] px-4 py-3 text-sm font-medium text-white"
+                    className="inline-flex h-11 items-center gap-2.5 rounded-xl bg-[#2563eb] px-3 text-sm font-semibold text-white"
                   >
                     <LogIn className="h-4 w-4" />
                     Login
@@ -710,7 +767,7 @@ export default function Navbar() {
                 </SignedOut>
 
                 <SignedIn>
-                  <div className="mt-2 flex justify-start">
+                  <div className="flex justify-start sm:col-span-2">
                     <AnimatedLogoutButton
                       onLogout={async () => {
                         setIsOpen(false);

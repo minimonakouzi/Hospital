@@ -116,7 +116,7 @@ function getAvatarTone(index) {
 ------------------------ */
 function MetricCard({ icon, label, value, iconWrapClass = "" }) {
   return (
-    <div className="rounded-[26px] border border-blue-100 bg-white px-5 py-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <div className="rounded-3xl border border-[#dbe6f7] bg-white px-5 py-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
       <div className="flex min-h-[92px] items-stretch gap-4">
         <div
           className={`flex h-14 w-14 shrink-0 items-center justify-center self-start rounded-2xl ${iconWrapClass}`}
@@ -347,12 +347,12 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-6">
       {/* Key metrics */}
-      <section className="rounded-[28px] border border-blue-100 bg-gradient-to-br from-blue-50 via-sky-50 to-white p-5 sm:p-6">
+      <section className="rounded-3xl border border-[#dbe6f7] bg-[#eef4fb] p-5 shadow-sm sm:p-6">
         <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-blue-100">
-            <Activity className="h-5 w-5 text-blue-600" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-[#dbe6f7]">
+            <Activity className="h-5 w-5 text-[#2563eb]" />
           </div>
 
           <div>
@@ -379,8 +379,8 @@ export default function DashboardPage() {
       </section>
 
       {/* Doctors directory */}
-      <section className="overflow-hidden rounded-[28px] border border-blue-100 bg-white shadow-sm">
-        <div className="flex flex-col gap-4 border-b border-slate-100 px-6 py-6 lg:flex-row lg:items-center lg:justify-between">
+      <section className="overflow-hidden rounded-3xl border border-[#dbe6f7] bg-white shadow-sm">
+        <div className="flex flex-col gap-4 border-b border-[#eef2f7] px-6 py-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="text-[1.75rem] font-bold tracking-tight text-slate-900">
               Doctors Directory
@@ -397,13 +397,13 @@ export default function DashboardPage() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search name / specialization / fee"
-                className="h-11 w-full rounded-2xl border border-blue-100 bg-slate-50 pl-11 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
+                className="h-11 w-full rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] pl-11 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
               />
             </div>
 
             <button
               onClick={() => setQuery("")}
-              className="h-11 rounded-2xl border border-blue-100 bg-slate-50 px-5 text-sm font-medium text-slate-700 transition hover:bg-blue-50"
+              className="h-11 rounded-2xl border border-[#dbe6f7] bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-[#f8fbff]"
             >
               Clear
             </button>
@@ -425,7 +425,7 @@ export default function DashboardPage() {
             {/* Desktop table */}
             <div className="hidden overflow-x-auto lg:block">
               <table className="min-w-full">
-                <thead className="bg-slate-50">
+                <thead className="bg-[#f8fbff]">
                   <tr className="text-left">
                     <th className="px-6 py-4 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                       Doctor
@@ -455,7 +455,7 @@ export default function DashboardPage() {
                   {filteredDoctors.map((doctor, index) => (
                     <tr
                       key={doctor.id}
-                      className="border-t border-slate-100 transition hover:bg-blue-50/40"
+                      className="border-t border-[#eef2f7] transition hover:bg-[#f8fbff]"
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-4">
@@ -531,7 +531,7 @@ export default function DashboardPage() {
                 filteredDoctors.map((doctor, index) => (
                   <div
                     key={doctor.id}
-                    className="rounded-3xl border border-blue-100 bg-white p-4 shadow-sm"
+                    className="rounded-3xl border border-[#dbe6f7] bg-[#fbfdff] p-4 shadow-sm"
                   >
                     <div className="flex items-center gap-4">
                       <DoctorAvatar
@@ -552,7 +552,7 @@ export default function DashboardPage() {
                       </span>
                     </div>
 
-                    <div className="mt-4 grid grid-cols-3 gap-3 rounded-2xl bg-slate-50 p-3">
+                    <div className="mt-4 grid grid-cols-3 gap-3 rounded-2xl bg-[#f8fbff] p-3">
                       <div className="text-center">
                         <div className="text-xs uppercase tracking-wide text-slate-400">
                           Appts
@@ -588,22 +588,22 @@ export default function DashboardPage() {
                   </div>
                 ))
               ) : (
-                <div className="rounded-3xl border border-blue-100 bg-white p-6 text-center text-sm text-slate-500">
+                <div className="rounded-3xl border border-[#dbe6f7] bg-white p-6 text-center text-sm text-slate-500">
                   No doctors found.
                 </div>
               )}
             </div>
 
-            <div className="flex flex-col gap-3 border-t border-slate-100 px-6 py-5 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 border-t border-[#eef2f7] px-6 py-5 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 Showing {filteredDoctors.length} of {doctors.length} doctors
               </div>
 
               <div className="flex items-center gap-3">
-                <button className="rounded-2xl border border-blue-100 bg-slate-50 px-4 py-2 text-slate-400">
+                <button className="rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] px-4 py-2 text-slate-400">
                   Previous
                 </button>
-                <button className="rounded-2xl border border-blue-100 bg-slate-50 px-4 py-2 text-slate-400">
+                <button className="rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] px-4 py-2 text-slate-400">
                   Next
                 </button>
               </div>

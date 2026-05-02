@@ -1,1 +1,15 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap");
+
 @import "tailwindcss";
+
+.admin-landing,
+.admin-landing button {
+  font-family: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+.admin-hero-title {
+  font-family: "Space Grotesk", "Manrope", system-ui, sans-serif;
+  letter-spacing: 0;
+  text-wrap: balance;
+}

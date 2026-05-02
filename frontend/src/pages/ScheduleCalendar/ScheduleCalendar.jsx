@@ -4,16 +4,11 @@ import ScheduleCalendarPage from "../../doctor/ScheduleCalendarPage/ScheduleCale
 
 const ScheduleCalendar = () => {
   return (
-    <div className="h-screen overflow-hidden bg-[#f8fafc]">
-      <div className="flex h-full">
-        <div className="shrink-0">
-          <Navbar />
-        </div>
-
-        <main className="min-w-0 flex-1 overflow-y-auto">
-          <ScheduleCalendarPage />
-        </main>
-      </div>
+    <div className="min-h-[100dvh] bg-[#f8fafc] text-[#0f172a]">
+      <Navbar />
+      <main className="min-h-[100dvh] min-w-0 overflow-x-hidden bg-[#f8fafc] lg:pl-[270px]">
+        <ScheduleCalendarPage />
+      </main>
     </div>
   );
 };

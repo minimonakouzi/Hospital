@@ -9,11 +9,21 @@ import {
   Search,
   Calendar,
   Plus,
+  Layers,
+  CheckCircle2,
+  Clock3,
 } from "lucide-react";
 import { useAuth } from "@clerk/clerk-react";
 import { adminAuthHeaders } from "../../utils/adminAuthHeaders";
+import { staffAuthHeaders } from "../../utils/staffAuthHeaders";
 
-export default function ListServicePage({ apiBase }) {
+export default function ListServicePage({
+  apiBase,
+  authMode = "admin",
+  canEdit = true,
+  canDelete = true,
+  embedded = false,
+}) {
   const { getToken } = useAuth();
   const API_BASE = apiBase || "http://localhost:4000";
 
@@ -23,9 +33,16 @@ export default function ListServicePage({ apiBase }) {
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState("all");
   const [editForm, setEditForm] = useState(null);
+  const [loadingServices, setLoadingServices] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState(null);
   const fileRef = useRef();
 
   const [toasts, setToasts] = useState([]);
+
+  async function serviceAuthHeaders(headers = {}) {
+    if (authMode === "staff") return staffAuthHeaders(headers);
+    return adminAuthHeaders(getToken, headers);
+  }
 
   function addToast(
     message,
@@ -114,6 +131,7 @@ export default function ListServicePage({ apiBase }) {
 
   async function fetchServices() {
     try {
+      setLoadingServices(true);
       const res = await fetch(`${API_BASE}/api/services`);
       const body = await res.json().catch(() => null);
 
@@ -146,10 +164,13 @@ export default function ListServicePage({ apiBase }) {
       }));
 
       setServices(normalized);
+      setLastUpdated(new Date());
     } catch (err) {
       console.error("fetchServices error", err);
       addToast("Network error while loading services", "error");
       setServices([]);
+    } finally {
+      setLoadingServices(false);
     }
   }
 
@@ -314,6 +335,7 @@ export default function ListServicePage({ apiBase }) {
   }
 
   async function startEdit(service) {
+    if (!canEdit) return;
     let latest = service;
 
     if (service.id) {
@@ -466,6 +488,7 @@ export default function ListServicePage({ apiBase }) {
   }
 
   async function saveEdit() {
+    if (!canEdit) return;
     if (!editForm) return;
 
     if ((editForm.slots || []).length > 0) {
@@ -517,7 +540,7 @@ export default function ListServicePage({ apiBase }) {
       const id = editForm.id;
       const res = await fetch(`${API_BASE}/api/services/${id}`, {
         method: "PUT",
-        headers: await adminAuthHeaders(getToken),
+        headers: await serviceAuthHeaders(),
         body: fd,
       });
       const body = await res.json().catch(() => null);
@@ -565,13 +588,14 @@ export default function ListServicePage({ apiBase }) {
   }
 
   async function removeService(id) {
+    if (!canDelete) return;
     if (!window.confirm("Are you sure you want to remove this service?"))
       return;
 
     try {
       const res = await fetch(`${API_BASE}/api/services/${id}`, {
         method: "DELETE",
-        headers: await adminAuthHeaders(getToken),
+        headers: await serviceAuthHeaders(),
       });
       const body = await res.json().catch(() => null);
 
@@ -673,6 +697,44 @@ export default function ListServicePage({ apiBase }) {
       return true;
     });
 
+  const serviceStats = [
+    {
+      label: "Total Services",
+      value: services.length,
+      icon: Layers,
+      tone: "bg-blue-50 text-blue-700 ring-blue-100",
+    },
+    {
+      label: "Active",
+      value: services.filter((service) => service.available).length,
+      icon: CheckCircle2,
+      tone: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+    },
+    {
+      label: "Inactive",
+      value: services.filter((service) => !service.available).length,
+      icon: X,
+      tone: "bg-slate-100 text-slate-600 ring-slate-200",
+    },
+    {
+      label: "Scheduled Slots",
+      value: services.reduce(
+        (count, service) => count + (service.slots?.length || 0),
+        0,
+      ),
+      icon: Clock3,
+      tone: "bg-amber-50 text-amber-700 ring-amber-100",
+    },
+  ];
+
+  function formatLastUpdated(value) {
+    if (!value) return "Last updated after services load";
+    return `Last updated ${value.toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+    })}`;
+  }
+
   function formatDateHuman(dateStr) {
     if (!dateStr) return "";
     const parts = dateStr.split("-");
@@ -722,21 +784,29 @@ export default function ListServicePage({ apiBase }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f7fb] p-4 md:p-6">
+    <div className={embedded ? "w-full" : "min-h-screen bg-[#f5f7fb] p-4 md:p-6"}>
       <div className="mx-auto max-w-[1680px]">
         {/* Header */}
-        <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div>
-            <h1 className="text-[2rem] font-bold tracking-[-0.03em] text-slate-900">
-              Healthcare Services
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              Search, modify, and manage your clinical service offerings.
-            </p>
-          </div>
+        <div
+          className={
+            embedded
+              ? "mb-5 rounded-3xl border border-[#dbe6f7] bg-white p-4 shadow-sm sm:p-5"
+              : "mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between"
+          }
+        >
+          {!embedded ? (
+            <div>
+              <h1 className="text-[2rem] font-bold tracking-tight text-slate-900">
+                Healthcare Services
+              </h1>
+              <p className="mt-1 text-sm text-slate-500">
+                Search, modify, and manage your clinical service offerings.
+              </p>
+            </div>
+          ) : null}
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <div className="flex h-12 items-center gap-2 rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] px-4 shadow-sm">
               <Search size={16} className="text-slate-400" />
               <input
                 value={search}
@@ -749,14 +819,43 @@ export default function ListServicePage({ apiBase }) {
         </div>
 
         {/* Filters */}
-        <div className="mb-6 flex flex-wrap items-center gap-2">
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {serviceStats.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <div
+                key={stat.label}
+                className="rounded-3xl border border-[#dbe6f7] bg-white p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      {stat.label}
+                    </p>
+                    <p className="mt-2 text-2xl font-bold text-slate-950">
+                      {stat.value}
+                    </p>
+                  </div>
+                  <div
+                    className={`flex h-11 w-11 items-center justify-center rounded-2xl ring-1 ${stat.tone}`}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setFilterMode("all")}
             type="button"
             className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
               filterMode === "all"
                 ? "bg-blue-700 text-white shadow-sm"
-                : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                : "border border-[#dbe6f7] bg-white text-slate-600 hover:bg-[#f8fbff]"
             }`}
           >
             All Services
@@ -767,7 +866,7 @@ export default function ListServicePage({ apiBase }) {
             className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
               filterMode === "available"
                 ? "bg-blue-700 text-white shadow-sm"
-                : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                : "border border-[#dbe6f7] bg-white text-slate-600 hover:bg-[#f8fbff]"
             }`}
           >
             Active
@@ -778,14 +877,37 @@ export default function ListServicePage({ apiBase }) {
             className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
               filterMode === "unavailable"
                 ? "bg-blue-700 text-white shadow-sm"
-                : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                : "border border-[#dbe6f7] bg-white text-slate-600 hover:bg-[#f8fbff]"
             }`}
           >
             Inactive
           </button>
+          </div>
+          <p className="text-xs font-semibold text-slate-400">
+            {formatLastUpdated(lastUpdated)}
+          </p>
         </div>
 
         {/* Grid */}
+        {loadingServices ? (
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+            {[0, 1, 2, 3].map((item) => (
+              <div
+                key={item}
+                className="rounded-3xl border border-[#dbe6f7] bg-white p-5 shadow-sm"
+              >
+                <div className="flex gap-4">
+                  <div className="h-16 w-16 animate-pulse rounded-2xl bg-slate-100" />
+                  <div className="flex-1 space-y-3">
+                    <div className="h-4 w-2/3 animate-pulse rounded-full bg-slate-100" />
+                    <div className="h-3 w-full animate-pulse rounded-full bg-slate-100" />
+                    <div className="h-3 w-1/2 animate-pulse rounded-full bg-slate-100" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {filtered.map((svc) => {
             const isOpen = !!openDetails[svc.id];
@@ -794,18 +916,18 @@ export default function ListServicePage({ apiBase }) {
             return (
               <div
                 key={svc.id}
-                className={`overflow-hidden rounded-[28px] border bg-white shadow-sm transition ${
+                className={`overflow-hidden rounded-3xl border bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md ${
                   isOpen
                     ? "border-blue-300 shadow-[0_10px_30px_rgba(37,99,235,0.10)]"
-                    : "border-slate-200"
+                    : "border-[#dbe6f7]"
                 }`}
               >
                 {/* Card top */}
                 <div
                   onClick={() => toggleDetails(svc.id)}
-                  className="flex cursor-pointer items-start gap-4 px-4 py-4 md:px-5"
+                  className="flex cursor-pointer items-start gap-4 px-4 py-4 transition hover:bg-[#f8fbff] md:px-5"
                 >
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 sm:h-[72px] sm:w-[72px]">
                     {svc.image ? (
                       <img
                         src={svc.image}
@@ -834,7 +956,7 @@ export default function ListServicePage({ apiBase }) {
                       </div>
                     </div>
 
-                    <div className="mt-3 flex items-center gap-4 text-sm">
+                    <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
                       <div className="flex items-center gap-1 text-slate-400">
                         <Calendar size={14} />
                         <span className="text-slate-500">
@@ -865,12 +987,12 @@ export default function ListServicePage({ apiBase }) {
 
                 {/* Details */}
                 {isOpen && (
-                  <div className="border-t border-slate-200 px-4 py-5 md:px-5">
+                  <div className="border-t border-slate-200 bg-[#fbfdff] px-4 py-5 md:px-5">
                     {isEditing ? (
                       <div className="space-y-5">
-                        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[140px_minmax(0,1fr)]">
+                        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[160px_minmax(0,1fr)]">
                           <div className="space-y-3">
-                            <div className="flex h-32 w-full items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                            <div className="flex aspect-square w-full max-w-[180px] items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
                               {editForm?.imagePreview ? (
                                 <img
                                   src={editForm.imagePreview}
@@ -890,7 +1012,7 @@ export default function ListServicePage({ apiBase }) {
                               onChange={onImageFileChange}
                               type="file"
                               accept="image/*"
-                              className="block w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600"
+                              className="block w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 file:mr-3 file:rounded-xl file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-blue-700"
                             />
                           </div>
 
@@ -982,15 +1104,15 @@ export default function ListServicePage({ apiBase }) {
                           />
                         </div>
 
-                        <div className="rounded-[24px] border border-slate-200 bg-[#f8fafc] p-4">
-                          <div className="mb-4 flex items-center justify-between">
+                        <div className="rounded-3xl border border-[#dbe6f7] bg-[#f8fbff] p-4">
+                          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                               Upcoming Schedule Slots
                             </label>
                             <button
                               onClick={addNewSlot}
                               type="button"
-                              className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                              className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-3 text-sm font-semibold text-white transition hover:bg-blue-700"
                             >
                               <Plus size={14} />
                               Add slot
@@ -1001,7 +1123,7 @@ export default function ListServicePage({ apiBase }) {
                             {(editForm.slots || []).map((slot) => (
                               <div
                                 key={slot.id}
-                                className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-3 md:grid-cols-[180px_1fr_90px]"
+                                className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-200 bg-white p-3 md:grid-cols-[170px_minmax(0,1fr)_96px]"
                               >
                                 <input
                                   type="date"
@@ -1014,7 +1136,7 @@ export default function ListServicePage({ apiBase }) {
                                   className="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                                 />
 
-                                <div className="grid grid-cols-3 gap-2">
+                                <div className="grid min-w-0 grid-cols-3 gap-2">
                                   <select
                                     value={slot.hour}
                                     onChange={(e) =>
@@ -1090,16 +1212,16 @@ export default function ListServicePage({ apiBase }) {
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap justify-end gap-3">
+                        <div className="flex flex-col justify-end gap-3 sm:flex-row">
                           <button
                             onClick={cancelEdit}
-                            className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                            className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
                           >
                             Cancel
                           </button>
                           <button
                             onClick={saveEdit}
-                            className="rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                            className="h-11 rounded-2xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700"
                           >
                             Save
                           </button>
@@ -1111,7 +1233,7 @@ export default function ListServicePage({ apiBase }) {
                           <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-slate-900">
                             Clinical Overview
                           </h3>
-                          <div className="rounded-2xl border border-slate-200 bg-[#f8fafc] px-4 py-4 text-sm leading-6 text-slate-600">
+                          <div className="rounded-2xl border border-[#dbe6f7] bg-white px-4 py-4 text-sm leading-6 text-slate-600">
                             {svc.about || "No description provided."}
                           </div>
                         </div>
@@ -1151,12 +1273,12 @@ export default function ListServicePage({ apiBase }) {
                                 (slot, index) => (
                                   <div
                                     key={slot.id}
-                                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"
+                                    className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"
                                   >
                                     <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-xs font-semibold text-blue-700">
                                       {index + 1}
                                     </div>
-                                    <div className="text-sm text-slate-600">
+                                    <div className="min-w-0 break-words text-sm text-slate-600">
                                       {formatDateHuman(slot.date)} — {slot.hour}
                                       :{String(slot.minute).padStart(2, "0")}{" "}
                                       {slot.ampm}
@@ -1168,23 +1290,29 @@ export default function ListServicePage({ apiBase }) {
                           )}
                         </div>
 
-                        <div className="flex flex-wrap justify-end gap-3">
-                          <button
-                            onClick={() => startEdit(svc)}
-                            className="inline-flex items-center gap-2 rounded-2xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
-                          >
-                            <Edit2 size={14} />
-                            Edit
-                          </button>
+                        {canEdit || canDelete ? (
+                          <div className="flex flex-col justify-end gap-3 sm:flex-row">
+                            {canEdit ? (
+                              <button
+                                onClick={() => startEdit(svc)}
+                                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-slate-100 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-200"
+                              >
+                                <Edit2 size={14} />
+                                Edit
+                              </button>
+                            ) : null}
 
-                          <button
-                            onClick={() => removeService(svc.id)}
-                            className="inline-flex items-center gap-2 rounded-2xl bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-600 transition hover:bg-rose-100"
-                          >
-                            <Trash2 size={14} />
-                            Remove
-                          </button>
-                        </div>
+                            {canDelete ? (
+                              <button
+                                onClick={() => removeService(svc.id)}
+                                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-rose-50 px-4 text-sm font-semibold text-rose-600 transition hover:bg-rose-100"
+                              >
+                                <Trash2 size={14} />
+                                Remove
+                              </button>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </div>
                     )}
                   </div>
@@ -1193,10 +1321,16 @@ export default function ListServicePage({ apiBase }) {
             );
           })}
         </div>
+        )}
 
-        {filtered.length === 0 && (
-          <div className="mt-10 rounded-[28px] border border-slate-200 bg-white px-6 py-10 text-center text-sm text-slate-500 shadow-sm">
-            No services match your search.
+        {!loadingServices && filtered.length === 0 && (
+          <div className="mt-10 rounded-3xl border border-[#dbe6f7] bg-white px-6 py-10 text-center shadow-sm">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+              <ImageIcon size={22} />
+            </div>
+            <p className="mt-3 text-sm font-semibold text-slate-700">
+              No services match your search.
+            </p>
           </div>
         )}
 

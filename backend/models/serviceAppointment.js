@@ -98,9 +98,30 @@ const serviceAppointmentSchema = new mongoose.Schema(
        ========================= */
     status: {
       type: String,
-      enum: ["Pending", "Confirmed", "Rescheduled", "Completed", "Canceled"],
+      enum: [
+        "Pending",
+        "Confirmed",
+        "In Progress",
+        "Rescheduled",
+        "Completed",
+        "Cancelled",
+        "Canceled",
+      ],
       default: "Pending",
       index: true,
+    },
+
+    checkInStatus: {
+      type: String,
+      enum: ["Not Checked In", "Checked In"],
+      default: "Not Checked In",
+      index: true,
+    },
+    checkedInAt: { type: Date, default: null },
+    checkedInByNurseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Nurse",
+      default: null,
     },
 
     rescheduledTo: {

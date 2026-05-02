@@ -12,6 +12,10 @@ import doctorRouter from './routes/doctorRouter.js';
 import serviceRouter from './routes/serviceRoutes.js';
 import serviceAppointmentRouter from './routes/serviceAppointmentRouter.js';
 import patientProfileRouter from "./routes/patientProfileRouter.js";
+import nurseRouter from "./routes/nurseRouter.js";
+import staffRouter from "./routes/staffRouter.js";
+import auditLogRouter from "./routes/auditLogRouter.js";
+import staffPerformanceRouter from "./routes/staffPerformanceRouter.js";
 const app = express();
 const port = process.env.PORT || 4000;
 
@@ -19,6 +23,7 @@ const port = process.env.PORT || 4000;
 const allowedOrigins = [
   "http://localhost:5173", // user frontend
   "http://localhost:5174", // admin dashboard
+  "http://localhost:5176", // admin dashboard dev server
 ];
 
 app.use(
@@ -34,7 +39,7 @@ app.use(
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true, // ✅ REQUIRED for cookies / Clerk
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
@@ -57,6 +62,10 @@ app.use("/api/doctors", doctorRouter);
 app.use("/api/services", serviceRouter);
 app.use("/api/service-appointments", serviceAppointmentRouter);
 app.use("/api/patient-profile", patientProfileRouter);
+app.use("/api/nurses", nurseRouter);
+app.use("/api/staff", staffRouter);
+app.use("/api/staff-performance", staffPerformanceRouter);
+app.use("/api/audit-logs", auditLogRouter);
 // Test route
 app.get('/', (req, res) => {
     res.send('API Working ');

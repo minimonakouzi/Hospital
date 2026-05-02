@@ -398,9 +398,9 @@ export default function AddPage() {
       </div>
 
       {/* Main card */}
-      <div className="overflow-hidden rounded-[28px] border border-blue-100 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-3xl border border-[#dbe6f7] bg-white shadow-sm">
         {/* Top strip */}
-        <div className="border-b border-blue-100 bg-gradient-to-r from-blue-50 to-sky-50 px-6 py-5">
+        <div className="border-b border-[#dbe6f7] bg-[#eef4fb] px-6 py-5">
           <div className="flex items-start gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm">
               <UserRoundPlus className="h-5 w-5" />
@@ -425,7 +425,7 @@ export default function AddPage() {
             <div className="xl:col-span-3">
               <FieldLabel required>Profile Image</FieldLabel>
 
-              <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <div className="rounded-3xl border border-[#dbe6f7] bg-[#f8fbff] p-4">
                 <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-center">
                   {form.imagePreview ? (
                     <div className="w-full">
@@ -742,7 +742,7 @@ export default function AddPage() {
           </div>
 
           {/* Availability */}
-          <div className="mt-6 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+          <div className="mt-6 rounded-3xl border border-[#dbe6f7] bg-[#f8fbff] p-5">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-100 text-blue-700">
@@ -833,7 +833,7 @@ export default function AddPage() {
 
             <div className="mt-5">
               {slotCount === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-4 text-sm text-slate-400">
+                <div className="rounded-2xl border border-dashed border-[#dbe6f7] bg-white px-4 py-4 text-sm text-slate-400">
                   No schedule slot added yet. Add a date and time to create
                   availability.
                 </div>
@@ -947,7 +947,7 @@ export default function AddPage() {
 
       {/* Optional recently added preview */}
       {doctorList.length > 0 && (
-        <div className="mt-6 rounded-[24px] border border-blue-100 bg-white p-5 shadow-sm">
+        <div className="mt-6 rounded-3xl border border-[#dbe6f7] bg-white p-5 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">
             Recently Added
           </h3>

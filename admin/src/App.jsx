@@ -1,5 +1,5 @@
-import React from "react";
-import { Routes, Route } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Navigate, Routes, Route, useLocation } from "react-router-dom";
 import { useUser } from "@clerk/clerk-react";
 import { Link } from "react-router-dom";
 
@@ -9,10 +9,21 @@ import Add from "./pages/Add/Add";
 import List from "./pages/List/List";
 import Appointments from "./pages/Appointments/Appointments";
 import SerDashboard from "./pages/SerDashboard/SerDashboard";
-import AddSer from "./pages/AddSer/AddSer";
 import ListService from "./pages/ListService/ListService";
 import ServiceAppointments from "./pages/ServiceAppointments/ServiceAppointments";
 import Hero from "./components/Hero/Hero";
+import AddNurse from "./pages/AddNurse/AddNurse";
+import ListNurses from "./pages/ListNurses/ListNurses";
+import AddStaff from "./pages/AddStaff/AddStaff";
+import ListStaff from "./pages/ListStaff/ListStaff";
+import StaffLogin from "./pages/StaffLogin/StaffLogin";
+import StaffLayout from "./staff/StaffLayout/StaffLayout";
+import StaffServices from "./pages/StaffServices/StaffServices";
+import StaffAddService from "./pages/StaffAddService/StaffAddService";
+import StaffProfile from "./pages/StaffProfile/StaffProfile";
+import StaffServiceAppointments from "./pages/StaffServiceAppointments/StaffServiceAppointments";
+import AuditLogs from "./pages/AuditLogs/AuditLogs";
+import StaffPerformance from "./pages/StaffPerformance";
 
 function RequireAuth({ children }) {
   const { isLoaded, isSignedIn } = useUser();
@@ -46,9 +57,25 @@ function RequireAuth({ children }) {
 }
 
 const App = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    document.title = location.pathname.startsWith("/staff")
+      ? "Staff | Revive Hospital"
+      : "Admin | Revive Hospital";
+  }, [location.pathname]);
+
   return (
     <Routes>
       <Route path="/" element={<Hero />} />
+      <Route path="/staff/login" element={<StaffLogin />} />
+      <Route path="/staff" element={<StaffLayout />}>
+        <Route index element={<Navigate to="/staff/services" replace />} />
+        <Route path="services" element={<StaffServices />} />
+        <Route path="service-appointments" element={<StaffServiceAppointments />} />
+        <Route path="add-service" element={<StaffAddService />} />
+        <Route path="profile" element={<StaffProfile />} />
+      </Route>
       <Route
         path="/h"
         element={
@@ -74,6 +101,46 @@ const App = () => {
         }
       />
       <Route
+        path="/add-nurse"
+        element={
+          <RequireAuth>
+            <AddNurse />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/list-nurses"
+        element={
+          <RequireAuth>
+            <ListNurses />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/add-staff"
+        element={
+          <RequireAuth>
+            <AddStaff />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/list-staff"
+        element={
+          <RequireAuth>
+            <ListStaff />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/staff-performance"
+        element={
+          <RequireAuth>
+            <StaffPerformance />
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/appointments"
         element={
           <RequireAuth>
@@ -93,7 +160,7 @@ const App = () => {
         path="/add-service"
         element={
           <RequireAuth>
-            <AddSer />
+            <Navigate to="/service-dashboard" replace />
           </RequireAuth>
         }
       />
@@ -110,6 +177,14 @@ const App = () => {
         element={
           <RequireAuth>
             <ServiceAppointments />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/audit-logs"
+        element={
+          <RequireAuth>
+            <AuditLogs />
           </RequireAuth>
         }
       />

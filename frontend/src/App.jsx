@@ -1,6 +1,6 @@
 // src/App.jsx
 import React, { useEffect, useState } from "react";
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Navigate, Routes, Route, useLocation } from "react-router-dom";
 
 // Pages
 import Home from "./pages/Home/Home";
@@ -12,6 +12,13 @@ import ServiceDetailPage from "./pages/ServiceDetailPage/ServiceDetailPage";
 import Appointments from "./pages/Appointments/Appointments";
 import MedicalRecords from "./pages/MedicalRecords/MedicalRecords";
 import Login from "./pages/Login/Login";
+import NurseLogin from "./pages/NurseLogin/NurseLogin";
+import NurseDashboard from "./pages/NurseDashboard/NurseDashboard";
+import NurseCheckIns from "./pages/NurseCheckIns/NurseCheckIns";
+import NurseVitals from "./pages/NurseVitals/NurseVitals";
+import NurseBookings from "./pages/NurseBookings/NurseBookings";
+import NurseProfile from "./pages/NurseProfile/NurseProfile";
+import NurseLayout from "./nurse/NurseLayout/NurseLayout";
 
 // Doctor Admin
 import DHome from "./pages/DHome/DHome";
@@ -65,7 +72,16 @@ const ScrollButton = () => {
 };
 
 /* ================= Main App ================= */
+function getDocumentTitle(pathname) {
+  if (pathname.startsWith("/nurse")) return "Nurse | Revive Hospital";
+  if (pathname.startsWith("/doctor-admin")) return "Doctor | Revive Hospital";
+  return "Revive Hospital";
+}
+
 const App = () => {
+  const location = useLocation();
+  const isNurseRoute = location.pathname.startsWith("/nurse");
+
   useEffect(() => {
     document.body.style.overflowX = "hidden";
     document.documentElement.style.overflowX = "hidden";
@@ -75,12 +91,19 @@ const App = () => {
     };
   }, []);
 
+  useEffect(() => {
+    document.title = getDocumentTitle(location.pathname);
+  }, [location.pathname]);
+
   return (
     <>
       <ScrollToTop />
 
-      {/* changed bg-white -> bg-transparent */}
-      <div className="overflow-x-hidden bg-transparent text-gray-900">
+      <div
+        className={`min-h-[100dvh] overflow-x-hidden text-gray-900 ${
+          isNurseRoute ? "bg-[#eef4fb]" : "bg-transparent"
+        }`}
+      >
         <Routes>
           {/* Public */}
           <Route path="/" element={<Home />} />
@@ -92,6 +115,15 @@ const App = () => {
           <Route path="/appointments" element={<Appointments />} />
           <Route path="/medical-records" element={<MedicalRecords />} />
           <Route path="/doctor-admin/login" element={<Login />} />
+          <Route path="/nurse/login" element={<NurseLogin />} />
+          <Route path="/nurse" element={<NurseLayout />}>
+            <Route index element={<Navigate to="/nurse/dashboard" replace />} />
+            <Route path="dashboard" element={<NurseDashboard />} />
+            <Route path="check-ins" element={<NurseCheckIns />} />
+            <Route path="vitals" element={<NurseVitals />} />
+            <Route path="bookings" element={<NurseBookings />} />
+            <Route path="profile" element={<NurseProfile />} />
+          </Route>
 
           {/* Stripe payment routes */}
           <Route path="/appointment/success" element={<VerifyPaymentPage />} />
