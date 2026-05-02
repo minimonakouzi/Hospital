@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Calendar,
+  ChartNoAxesCombined,
   ChevronDown,
   Grid,
   HeartPulse,
@@ -44,6 +45,11 @@ const navItems = [
     to: "/list-staff",
     label: "List Staff",
     icon: <ShieldCheck className="h-4 w-4" />,
+  },
+  {
+    to: "/performance",
+    label: "Performance",
+    icon: <ChartNoAxesCombined className="h-4 w-4" />,
   },
   {
     to: "/appointments",
@@ -90,6 +96,7 @@ const navGroups = [
       getItem("/list-staff"),
     ],
   },
+  { type: "link", ...getItem("/performance") },
   { type: "link", ...getItem("/appointments") },
   {
     type: "menu",
@@ -174,7 +181,9 @@ export default function AnimatedNavbar() {
       if (!isSignedIn) {
         try {
           localStorage.removeItem("clerk_token");
-        } catch {}
+        } catch (err) {
+          console.warn("Failed to clear Clerk token", err);
+        }
         return;
       }
 
@@ -224,7 +233,9 @@ export default function AnimatedNavbar() {
     } finally {
       try {
         localStorage.removeItem("clerk_token");
-      } catch {}
+      } catch (err) {
+        console.warn("Failed to clear Clerk token", err);
+      }
       navigate("/");
     }
   };

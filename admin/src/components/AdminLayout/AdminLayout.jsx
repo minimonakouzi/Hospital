@@ -30,8 +30,8 @@ const navItems = [
   { to: "/add-staff", label: "Add Staff", icon: UserCog },
   { to: "/list-staff", label: "List Staff", icon: ShieldCheck },
   {
-    to: "/staff-performance",
-    label: "Staff Performance",
+    to: "/performance",
+    label: "Performance",
     icon: ChartNoAxesCombined,
   },
   { to: "/appointments", label: "Appointments", icon: CalendarDays },
@@ -109,7 +109,9 @@ export default function AdminLayout({ title, subtitle, children }) {
     } finally {
       try {
         localStorage.removeItem("clerk_token");
-      } catch {}
+      } catch (err) {
+        console.warn("Failed to clear Clerk token", err);
+      }
       navigate("/");
     }
   }

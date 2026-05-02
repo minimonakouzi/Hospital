@@ -15,7 +15,7 @@ import patientProfileRouter from "./routes/patientProfileRouter.js";
 import nurseRouter from "./routes/nurseRouter.js";
 import staffRouter from "./routes/staffRouter.js";
 import auditLogRouter from "./routes/auditLogRouter.js";
-import staffPerformanceRouter from "./routes/staffPerformanceRouter.js";
+import performanceRouter from "./routes/performanceRouter.js";
 const app = express();
 const port = process.env.PORT || 4000;
 
@@ -64,7 +64,8 @@ app.use("/api/service-appointments", serviceAppointmentRouter);
 app.use("/api/patient-profile", patientProfileRouter);
 app.use("/api/nurses", nurseRouter);
 app.use("/api/staff", staffRouter);
-app.use("/api/staff-performance", staffPerformanceRouter);
+app.use("/api/performance", performanceRouter);
+app.use("/api/staff-performance", performanceRouter);
 app.use("/api/audit-logs", auditLogRouter);
 // Test route
 app.get('/', (req, res) => {

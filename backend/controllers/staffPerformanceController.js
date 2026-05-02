@@ -1,66 +1,72 @@
-import StaffPerformance from "../models/StaffPerformance.js";
+import mongoose from "mongoose";
+import Staff from "../models/Staff.js";
+import StaffAttendance from "../models/staffAttendanceModel.js";
 
-const VALID_ROLES = ["Doctor", "Nurse", "Staff"];
-const VALID_SHIFTS = ["Morning", "Evening", "Night"];
-const VALID_ATTENDANCE = ["Present", "Absent"];
-const VALID_PERFORMANCE_STATUSES = ["Excellent", "Good", "Needs Review"];
+const ROLES = ["Doctor", "Nurse", "Staff"];
+const SHIFTS = ["Morning", "Evening", "Night", "Rotating"];
+const ATTENDANCE_STATUSES = ["Present", "Absent", "Late", "On Leave"];
+const ALL_DEPARTMENTS = "All Departments";
+const ALL_SHIFTS = "All Shifts";
 
 function cleanString(value) {
   return String(value ?? "").trim();
 }
 
-function parseNumber(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
+function firstString(source = {}, paths = [], fallback = "") {
+  for (const path of paths) {
+    const value = path.split(".").reduce((acc, key) => acc?.[key], source);
+    const cleaned = cleanString(value);
+    if (cleaned) return cleaned;
+  }
+  return fallback;
 }
 
-function normalizeDate(value) {
-  const date = value ? new Date(value) : new Date();
-  return Number.isNaN(date.getTime()) ? null : date;
+function normalizeMatch(value) {
+  return cleanString(value).toLowerCase();
+}
+
+function isAll(value, allLabel) {
+  const cleaned = cleanString(value);
+  return !cleaned || cleaned === allLabel;
 }
 
 function getMonthNumber(value) {
-  if (!value) return null;
-  const numeric = Number(value);
+  const cleaned = cleanString(value);
+  if (!cleaned) return null;
+
+  const numeric = Number(cleaned);
   if (Number.isInteger(numeric) && numeric >= 1 && numeric <= 12) return numeric;
 
-  const parsed = new Date(`${value} 1, 2000`);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed.getMonth() + 1;
+  const parsed = new Date(`${cleaned} 1, 2000`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.getMonth() + 1;
 }
 
-function buildFilter(query = {}) {
-  const filter = {};
+function buildAttendanceFilter(query = {}) {
+  const filter = { staffModel: "Staff" };
 
-  if (query.department && query.department !== "All Departments") {
-    filter.department = cleanString(query.department);
+  if (!isAll(query.department, ALL_DEPARTMENTS)) {
+    filter.department = new RegExp(`^${escapeRegex(query.department)}$`, "i");
   }
 
-  if (query.shift && query.shift !== "All Shifts") {
-    filter.shift = cleanString(query.shift);
-  }
-
-  if (query.role && query.role !== "All Roles") {
-    filter.role = cleanString(query.role);
+  const shiftType = query.shiftType ?? query.shift;
+  if (!isAll(shiftType, ALL_SHIFTS)) {
+    filter.shiftType = new RegExp(`^${escapeRegex(shiftType)}$`, "i");
   }
 
   const year = Number(query.year);
   const month = getMonthNumber(query.month);
-  const day =
-    query.day && query.day !== "All Days" ? Number(query.day) : undefined;
+  const day = cleanString(query.day);
+  const numericDay = day && day !== "All Days" ? Number(day) : null;
 
   if (Number.isInteger(year)) {
     const startMonth = month ? month - 1 : 0;
-    const endMonth = month ? month : 12;
-    const startDay = Number.isInteger(day) ? day : 1;
-
-    const start = new Date(Date.UTC(year, startMonth, startDay));
+    const start = new Date(Date.UTC(year, startMonth, numericDay || 1));
     let end;
 
-    if (Number.isInteger(day) && month) {
-      end = new Date(Date.UTC(year, startMonth, day + 1));
+    if (month && Number.isInteger(numericDay) && numericDay >= 1 && numericDay <= 31) {
+      end = new Date(Date.UTC(year, startMonth, numericDay + 1));
     } else if (month) {
-      end = new Date(Date.UTC(year, endMonth, 1));
+      end = new Date(Date.UTC(year, startMonth + 1, 1));
     } else {
       end = new Date(Date.UTC(year + 1, 0, 1));
     }
@@ -71,181 +77,175 @@ function buildFilter(query = {}) {
   return filter;
 }
 
-function normalizeInput(body = {}, partial = false) {
-  const data = {};
-
-  if (!partial || body.staffId !== undefined) data.staffId = cleanString(body.staffId);
-  if (!partial || body.staffName !== undefined) {
-    data.staffName = cleanString(body.staffName);
-  }
-  if (!partial || body.role !== undefined) data.role = cleanString(body.role);
-  if (!partial || body.department !== undefined) {
-    data.department = cleanString(body.department);
-  }
-  if (!partial || body.shift !== undefined) data.shift = cleanString(body.shift);
-  if (!partial || body.attendance !== undefined) {
-    data.attendance = cleanString(body.attendance);
-  }
-  if (!partial || body.date !== undefined) data.date = normalizeDate(body.date);
-  if (!partial || body.utilization !== undefined) {
-    data.utilization = Math.min(100, Math.max(0, parseNumber(body.utilization)));
-  }
-  if (!partial || body.performanceStatus !== undefined) {
-    data.performanceStatus = cleanString(body.performanceStatus) || "Good";
-  }
-
-  return data;
+function escapeRegex(value) {
+  return cleanString(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function validateRecordInput(data = {}, partial = false) {
-  const missing = [];
-  const required = [
-    "staffId",
-    "staffName",
-    "role",
-    "department",
-    "shift",
-    "attendance",
-    "date",
-    "utilization",
-    "performanceStatus",
-  ];
+function isActiveRecord(record = {}) {
+  const checks = ["isActive", "active", "available"];
 
-  if (!partial) {
-    required.forEach((field) => {
-      if (data[field] === undefined || data[field] === null || data[field] === "") {
-        missing.push(field);
-      }
-    });
+  for (const field of checks) {
+    if (record[field] === undefined || record[field] === null) continue;
+    if (typeof record[field] === "boolean") return record[field];
+    const value = normalizeMatch(record[field]);
+    return !["false", "no", "inactive", "unavailable", "0"].includes(value);
   }
 
-  if (missing.length) {
-    return `Missing required fields: ${missing.join(", ")}`;
+  if (record.status !== undefined && record.status !== null) {
+    return ["active", "available"].includes(normalizeMatch(record.status));
   }
 
-  if (data.role !== undefined && !VALID_ROLES.includes(data.role)) {
-    return "Role must be Doctor, Nurse, or Staff.";
-  }
-  if (data.shift !== undefined && !VALID_SHIFTS.includes(data.shift)) {
-    return "Shift must be Morning, Evening, or Night.";
-  }
-  if (
-    data.attendance !== undefined &&
-    !VALID_ATTENDANCE.includes(data.attendance)
-  ) {
-    return "Attendance must be Present or Absent.";
-  }
-  if (
-    data.performanceStatus !== undefined &&
-    !VALID_PERFORMANCE_STATUSES.includes(data.performanceStatus)
-  ) {
-    return "Performance status must be Excellent, Good, or Needs Review.";
-  }
-  if (data.date === null) return "Date must be valid.";
-  if (
-    data.utilization !== undefined &&
-    (!Number.isFinite(data.utilization) ||
-      data.utilization < 0 ||
-      data.utilization > 100)
-  ) {
-    return "Utilization must be a number from 0 to 100.";
+  if (record.availability !== undefined && record.availability !== null) {
+    return ["available", "active", "true", "yes", "1"].includes(
+      normalizeMatch(record.availability),
+    );
   }
 
-  return "";
+  return true;
 }
 
-function mapCountObject(items, keyName = "_id") {
+function mapStaffMember(record = {}) {
+  return {
+    _id: String(record._id || ""),
+    name: firstString(
+      record,
+      ["name", "fullName"],
+      "Unnamed Staff",
+    ),
+    role: "Staff",
+    department: firstString(
+      record,
+      ["department", "roleDepartment"],
+      "Unassigned",
+    ),
+    shiftType: firstString(
+      record,
+      ["shiftType", "shift", "workingShift", "schedule.shiftType"],
+      "Unassigned",
+    ),
+    email: firstString(record, ["email", "contactEmail"], ""),
+    phone: firstString(record, ["phone", "mobile", "contactNumber"], ""),
+    source: record,
+  };
+}
+
+function matchesStaffFilters(staff = {}, query = {}) {
+  if (!isAll(query.department, ALL_DEPARTMENTS)) {
+    if (normalizeMatch(staff.department) !== normalizeMatch(query.department)) return false;
+  }
+
+  const shiftType = query.shiftType ?? query.shift;
+  if (!isAll(shiftType, ALL_SHIFTS)) {
+    if (normalizeMatch(staff.shiftType) !== normalizeMatch(shiftType)) return false;
+  }
+
+  return true;
+}
+
+function roundPercent(numerator, denominator) {
+  if (!denominator) return 0;
+  const percent = (numerator / denominator) * 100;
+  return Number.isFinite(percent) ? Math.round(percent) : 0;
+}
+
+function countBy(items = [], field) {
   return items.reduce((acc, item) => {
-    acc[item[keyName] || "Other"] = item.count || 0;
+    const key = item[field] || "Unassigned";
+    acc[key] = (acc[key] || 0) + 1;
     return acc;
   }, {});
 }
 
-export async function getStaffPerformanceRecords(req, res) {
-  try {
-    const records = await StaffPerformance.find(buildFilter(req.query))
-      .sort({ date: -1, createdAt: -1 })
-      .lean();
+async function loadActiveStaff(query = {}) {
+  const staff = await Staff.find().select("-password").lean();
 
-    return res.json({
-      success: true,
-      message: "Staff performance records loaded successfully.",
-      data: records,
-    });
-  } catch (err) {
-    console.error("getStaffPerformanceRecords error:", err);
-    return res.status(500).json({
-      success: false,
-      message: "Server error while loading staff performance records.",
-    });
-  }
+  return staff
+    .filter(isActiveRecord)
+    .map(mapStaffMember)
+    .filter((item) => matchesStaffFilters(item, query));
 }
 
 export async function getStaffPerformanceSummary(req, res) {
   try {
-    const filter = buildFilter(req.query);
+    const allStaff = await loadActiveStaff(req.query);
+    const attendanceFilter = buildAttendanceFilter(req.query);
+    const attendanceRecords = await StaffAttendance.find(attendanceFilter)
+      .sort({ date: -1, createdAt: -1 })
+      .lean();
 
-    const [
-      totalStaff,
-      doctors,
-      nurses,
-      staff,
-      staffPresent,
-      utilizationAgg,
-      shiftAgg,
-      presentRoleAgg,
-      departmentAgg,
-    ] = await Promise.all([
-      StaffPerformance.countDocuments(filter),
-      StaffPerformance.countDocuments({ ...filter, role: "Doctor" }),
-      StaffPerformance.countDocuments({ ...filter, role: "Nurse" }),
-      StaffPerformance.countDocuments({ ...filter, role: "Staff" }),
-      StaffPerformance.countDocuments({ ...filter, attendance: "Present" }),
-      StaffPerformance.aggregate([
-        { $match: filter },
-        { $group: { _id: null, averageUtilization: { $avg: "$utilization" } } },
-      ]),
-      StaffPerformance.aggregate([
-        { $match: filter },
-        { $group: { _id: "$shift", count: { $sum: 1 } } },
-        { $sort: { _id: 1 } },
-      ]),
-      StaffPerformance.aggregate([
-        { $match: { ...filter, attendance: "Present" } },
-        { $group: { _id: "$role", count: { $sum: 1 } } },
-        { $sort: { _id: 1 } },
-      ]),
-      StaffPerformance.aggregate([
-        { $match: filter },
-        {
-          $group: {
-            _id: "$department",
-            utilization: { $avg: "$utilization" },
-            count: { $sum: 1 },
-          },
-        },
-        { $sort: { utilization: -1 } },
-      ]),
-    ]);
+    const activeStaffIds = new Set(allStaff.map((item) => `${item.role}:${item._id}`));
+    const relevantAttendance = attendanceRecords.filter((record) =>
+      activeStaffIds.has(`${record.staffModel || record.role}:${String(record.staffId || "")}`),
+    );
+    const attendanceByStaff = new Map();
+    relevantAttendance.forEach((record) => {
+      const key = `Staff:${String(record.staffId || "")}`;
+      if (!attendanceByStaff.has(key)) attendanceByStaff.set(key, record);
+    });
+
+    const statusForStaff = (member) =>
+      attendanceByStaff.get(`Staff:${member._id}`)?.status || "Absent";
+
+    const staffPresent = allStaff.filter((member) => statusForStaff(member) === "Present").length;
+    const staffLate = allStaff.filter((member) => statusForStaff(member) === "Late").length;
+    const staffOnLeave = allStaff.filter((member) => statusForStaff(member) === "On Leave").length;
+    const staffAbsent = Math.max(0, allStaff.length - staffPresent - staffLate - staffOnLeave);
+    const shiftCounts = countBy(allStaff, "shiftType");
+
+    const departments = [...new Set(allStaff.map((item) => item.department || "Unassigned"))];
+    const utilizationByDepartment = departments.map((department) => {
+      const departmentStaff = allStaff.filter((item) => item.department === department);
+      const activeStaffCount = departmentStaff.filter(
+        (member) => statusForStaff(member) === "Present",
+      ).length;
+
+      return {
+        department,
+        utilizationPercent: roundPercent(activeStaffCount, departmentStaff.length),
+        activeStaff: activeStaffCount,
+        totalStaff: departmentStaff.length,
+      };
+    });
+
+    const staffRecords = allStaff.map((member) => {
+      const attendance = attendanceByStaff.get(`Staff:${member._id}`);
+      const attendanceStatus = attendance?.status || "Absent";
+
+      return {
+        _id: member._id,
+        name: member.name,
+        role: member.role,
+        department: attendance?.department || member.department,
+        shiftType: attendance?.shiftType || member.shiftType,
+        attendanceStatus,
+        utilizationPercent: attendanceStatus === "Present" ? 100 : 0,
+        email: member.email,
+        phone: member.phone,
+      };
+    });
 
     return res.json({
       success: true,
-      message: "Staff performance summary loaded successfully.",
-      data: {
-        totalStaff,
-        doctors,
-        nurses,
-        staff,
+      overview: {
+        totalStaff: allStaff.length,
+        numberOfDoctors: 0,
+        numberOfNurses: 0,
         staffPresent,
-        utilization: Math.round(utilizationAgg[0]?.averageUtilization || 0),
-        staffByShift: mapCountObject(shiftAgg),
-        staffPresentByRole: mapCountObject(presentRoleAgg),
-        utilizationByDepartment: departmentAgg.map((item) => ({
-          department: item._id || "Other",
-          utilization: Math.round(item.utilization || 0),
-          count: item.count || 0,
-        })),
+        staffAbsent,
+        staffLate,
+        staffOnLeave,
+        staffUtilizationPercent: roundPercent(staffPresent, allStaff.length),
       },
+      shiftDistribution: [...SHIFTS, "Unassigned"].map((shiftType) => ({
+        shiftType,
+        count: shiftCounts[shiftType] || 0,
+      })),
+      presentByRole: ROLES.map((role) => ({
+        role,
+        count: role === "Staff" ? staffPresent : 0,
+      })),
+      utilizationByDepartment,
+      staffRecords,
     });
   } catch (err) {
     console.error("getStaffPerformanceSummary error:", err);
@@ -256,102 +256,160 @@ export async function getStaffPerformanceSummary(req, res) {
   }
 }
 
-export async function addStaffPerformanceRecord(req, res) {
+export async function getStaffAttendanceRecords(req, res) {
   try {
-    const data = normalizeInput(req.body);
-    const validationMessage = validateRecordInput(data);
+    const records = await StaffAttendance.find(buildAttendanceFilter(req.query))
+      .sort({ date: -1, createdAt: -1 })
+      .lean();
 
-    if (validationMessage) {
-      return res.status(400).json({ success: false, message: validationMessage });
-    }
-
-    const record = await StaffPerformance.create(data);
-
-    return res.status(201).json({
+    return res.json({
       success: true,
-      message: "Staff performance record created successfully.",
-      data: record,
+      data: records,
     });
   } catch (err) {
-    if (err?.name === "ValidationError") {
-      return res.status(400).json({
-        success: false,
-        message: err.message || "Invalid staff performance data.",
-      });
-    }
-
-    console.error("addStaffPerformanceRecord error:", err);
+    console.error("getStaffAttendanceRecords error:", err);
     return res.status(500).json({
       success: false,
-      message: "Server error while creating staff performance record.",
+      message: "Server error while loading staff attendance records.",
     });
   }
 }
 
-export async function updateStaffPerformanceRecord(req, res) {
+function normalizeAttendanceInput(body = {}, partial = false) {
+  const data = {};
+
+  if (!partial || body.staffId !== undefined) data.staffId = cleanString(body.staffId);
+  if (!partial || body.staffModel !== undefined) data.staffModel = cleanString(body.staffModel);
+  if (!partial || body.name !== undefined) data.name = cleanString(body.name);
+  if (!partial || body.role !== undefined) data.role = cleanString(body.role);
+  if (!partial || body.department !== undefined) {
+    data.department = cleanString(body.department) || "Unassigned";
+  }
+  if (!partial || body.shiftType !== undefined) {
+    data.shiftType = cleanString(body.shiftType) || "Unassigned";
+  }
+  if (!partial || body.status !== undefined) data.status = cleanString(body.status) || "Absent";
+  if (!partial || body.date !== undefined) {
+    const date = body.date ? new Date(body.date) : null;
+    data.date = date && !Number.isNaN(date.getTime()) ? date : null;
+  }
+  if (!partial || body.checkInTime !== undefined) data.checkInTime = cleanString(body.checkInTime);
+  if (!partial || body.checkOutTime !== undefined) data.checkOutTime = cleanString(body.checkOutTime);
+  if (!partial || body.notes !== undefined) data.notes = cleanString(body.notes);
+
+  return data;
+}
+
+function validateAttendanceInput(data = {}, partial = false) {
+  if (data.staffId !== undefined && !mongoose.Types.ObjectId.isValid(data.staffId)) {
+    return "staffId must be a valid MongoDB ObjectId.";
+  }
+
+  const required = ["staffId", "staffModel", "name", "role", "date"];
+  if (!partial) {
+    const missing = required.filter((field) => !data[field]);
+    if (missing.length) return `Missing required fields: ${missing.join(", ")}`;
+  }
+
+  if (data.staffModel !== undefined && data.staffModel !== "Staff") {
+    return "staffModel must be Staff for staff performance attendance.";
+  }
+  if (data.role !== undefined && data.role !== "Staff") {
+    return "role must be Staff for staff performance attendance.";
+  }
+  if (data.status !== undefined && !ATTENDANCE_STATUSES.includes(data.status)) {
+    return "status must be Present, Absent, Late, or On Leave.";
+  }
+  if (data.date === null) return "date must be valid.";
+
+  return "";
+}
+
+export async function createStaffAttendanceRecord(req, res) {
   try {
-    const data = normalizeInput(req.body, true);
-    const validationMessage = validateRecordInput(data, true);
+    const data = normalizeAttendanceInput(req.body);
+    const validationMessage = validateAttendanceInput(data);
 
     if (validationMessage) {
       return res.status(400).json({ success: false, message: validationMessage });
     }
 
-    const record = await StaffPerformance.findByIdAndUpdate(
+    const record = await StaffAttendance.create(data);
+    return res.status(201).json({ success: true, data: record });
+  } catch (err) {
+    if (err?.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message: err.message || "Invalid attendance data.",
+      });
+    }
+
+    console.error("createStaffAttendanceRecord error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while creating staff attendance.",
+    });
+  }
+}
+
+export async function updateStaffAttendanceRecord(req, res) {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ success: false, message: "Invalid attendance id." });
+    }
+
+    const data = normalizeAttendanceInput(req.body, true);
+    const validationMessage = validateAttendanceInput(data, true);
+
+    if (validationMessage) {
+      return res.status(400).json({ success: false, message: validationMessage });
+    }
+
+    const record = await StaffAttendance.findByIdAndUpdate(
       req.params.id,
       { $set: data },
       { new: true, runValidators: true },
     );
 
     if (!record) {
-      return res.status(404).json({
-        success: false,
-        message: "Staff performance record not found.",
-      });
+      return res.status(404).json({ success: false, message: "Attendance record not found." });
     }
 
-    return res.json({
-      success: true,
-      message: "Staff performance record updated successfully.",
-      data: record,
-    });
+    return res.json({ success: true, data: record });
   } catch (err) {
     if (err?.name === "ValidationError") {
       return res.status(400).json({
         success: false,
-        message: err.message || "Invalid staff performance data.",
+        message: err.message || "Invalid attendance data.",
       });
     }
 
-    console.error("updateStaffPerformanceRecord error:", err);
+    console.error("updateStaffAttendanceRecord error:", err);
     return res.status(500).json({
       success: false,
-      message: "Server error while updating staff performance record.",
+      message: "Server error while updating staff attendance.",
     });
   }
 }
 
-export async function deleteStaffPerformanceRecord(req, res) {
+export async function deleteStaffAttendanceRecord(req, res) {
   try {
-    const record = await StaffPerformance.findByIdAndDelete(req.params.id);
-
-    if (!record) {
-      return res.status(404).json({
-        success: false,
-        message: "Staff performance record not found.",
-      });
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ success: false, message: "Invalid attendance id." });
     }
 
-    return res.json({
-      success: true,
-      message: "Staff performance record deleted successfully.",
-      data: record,
-    });
+    const record = await StaffAttendance.findByIdAndDelete(req.params.id);
+
+    if (!record) {
+      return res.status(404).json({ success: false, message: "Attendance record not found." });
+    }
+
+    return res.json({ success: true, data: record });
   } catch (err) {
-    console.error("deleteStaffPerformanceRecord error:", err);
+    console.error("deleteStaffAttendanceRecord error:", err);
     return res.status(500).json({
       success: false,
-      message: "Server error while deleting staff performance record.",
+      message: "Server error while deleting staff attendance.",
     });
   }
 }

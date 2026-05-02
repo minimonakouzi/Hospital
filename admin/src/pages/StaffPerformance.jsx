@@ -1,77 +1,83 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@clerk/clerk-react";
 import AdminLayout from "../components/AdminLayout/AdminLayout";
 import {
   Activity,
+  AlertTriangle,
+  BarChart3,
   CalendarCheck2,
   CheckCircle2,
   Clock3,
   Filter,
   HeartPulse,
+  Search,
+  ShieldCheck,
   Stethoscope,
+  TrendingUp,
   UserCheck,
   UsersRound,
-  XCircle,
 } from "lucide-react";
-import {
-  fetchStaffPerformanceRecords,
-  fetchStaffPerformanceSummary,
-} from "../api/staffPerformanceApi";
+import { fetchPerformanceSummary } from "../api/performanceApi";
+
+const currentYear = new Date().getFullYear();
+const monthOptions = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+].map((label, index) => ({ label, value: String(index + 1) }));
 
 const filterOptions = {
-  years: ["2026", "2025"],
-  months: ["May", "April", "March", "February", "January"],
-  days: ["All Days", "02", "01", "31", "30", "29"],
-  departments: [
-    "All Departments",
-    "Admissions",
-    "Cardiology",
-    "Emergency",
-    "ICU",
-    "Laboratory",
-    "Neurology",
-    "Pediatrics",
-    "Radiology",
-    "Surgery",
+  years: [currentYear + 1, currentYear, currentYear - 1, currentYear - 2].map(String),
+  months: monthOptions,
+  days: [
+    { label: "All Days", value: "All Days" },
+    ...Array.from({ length: 31 }, (_, index) => ({
+      label: String(index + 1),
+      value: String(index + 1),
+    })),
   ],
-  shifts: ["All Shifts", "Morning", "Evening", "Night"],
+  roles: ["All Roles", "Doctor", "Nurse", "Staff"],
+  shifts: ["All Shifts", "Morning", "Evening", "Night", "Rotating", "Unassigned"],
+  statuses: ["All Statuses", "Present", "Absent", "Late", "On Leave"],
 };
 
-function formatDate(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+const roleBadgeStyles = {
+  Doctor: "bg-blue-50 text-blue-700 ring-blue-100",
+  Nurse: "bg-teal-50 text-teal-700 ring-teal-100",
+  Staff: "bg-violet-50 text-violet-700 ring-violet-100",
+};
+
+const statusBadgeStyles = {
+  Present: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+  Absent: "bg-rose-50 text-rose-700 ring-rose-100",
+  Late: "bg-amber-50 text-amber-700 ring-amber-100",
+  "On Leave": "bg-sky-50 text-sky-700 ring-sky-100",
+};
+
+function safeNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
 }
 
-function MetricCard({ icon, label, value, tone = "bg-blue-50" }) {
-  return (
-    <div className="rounded-3xl border border-[#dbe6f7] bg-white px-5 py-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="flex min-h-[92px] items-stretch gap-4">
-        <div
-          className={`flex h-14 w-14 shrink-0 items-center justify-center self-start rounded-2xl ${tone}`}
-        >
-          {icon}
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col justify-between">
-          <div className="min-h-[32px] text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-            {label}
-          </div>
-          <div className="text-[2rem] font-bold leading-none tabular-nums text-slate-900">
-            {value}
-          </div>
-        </div>
-      </div>
-    </div>
+function normalizeOptions(options) {
+  return options.map((option) =>
+    typeof option === "string" ? { label: option, value: option } : option,
   );
 }
 
 function FilterSelect({ label, value, onChange, options }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+      <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
         {label}
       </span>
       <select
@@ -79,9 +85,9 @@ function FilterSelect({ label, value, onChange, options }) {
         onChange={(event) => onChange(event.target.value)}
         className="h-11 w-full rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-300 focus:bg-white"
       >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
+        {normalizeOptions(options).map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
           </option>
         ))}
       </select>
@@ -89,227 +95,329 @@ function FilterSelect({ label, value, onChange, options }) {
   );
 }
 
-function AttendanceBadge({ status }) {
-  const present = status === "Present";
-  const Icon = present ? CheckCircle2 : XCircle;
+function Badge({ value, type }) {
+  const styles =
+    type === "role"
+      ? roleBadgeStyles[value] || "bg-slate-50 text-slate-700 ring-slate-100"
+      : statusBadgeStyles[value] || "bg-slate-50 text-slate-700 ring-slate-100";
 
   return (
-    <span
-      className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ring-1 ${
-        present
-          ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
-          : "bg-rose-50 text-rose-700 ring-rose-100"
-      }`}
-    >
-      <Icon className="h-4 w-4" />
-      {status}
+    <span className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-bold ring-1 ${styles}`}>
+      {value || "-"}
     </span>
   );
 }
 
-function ChartCard({ title, subtitle, icon, items, valueSuffix = "" }) {
-  const maxValue = Math.max(...items.map((item) => item.value), 1);
+function ProgressBar({ value, color = "bg-blue-500" }) {
+  const width = Math.max(0, Math.min(100, safeNumber(value)));
+  return (
+    <div className="h-2.5 overflow-hidden rounded-full bg-[#eef4fb]">
+      <div className={`h-full rounded-full ${color}`} style={{ width: `${width}%` }} />
+    </div>
+  );
+}
+
+function OverviewCard({ label, value, helper, icon, tone = "bg-blue-50", wide = false }) {
+  return (
+    <article className={`rounded-3xl border border-[#dbe6f7] bg-white p-5 shadow-sm ${wide ? "xl:col-span-2" : ""}`}>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">{label}</p>
+          <div className="mt-4 text-3xl font-bold leading-none tabular-nums text-slate-900">{value}</div>
+          <p className="mt-3 text-sm text-slate-500">{helper}</p>
+        </div>
+        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${tone}`}>{icon}</div>
+      </div>
+    </article>
+  );
+}
+
+function SectionHeader({ icon, title, subtitle }) {
+  return (
+    <div className="mb-5 flex items-start gap-3">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#eef4ff] text-blue-600">
+        {icon}
+      </div>
+      <div>
+        <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+        <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
+      </div>
+    </div>
+  );
+}
+
+function BarList({ items, valueSuffix = "", color = "bg-blue-500", emptyText = "No matching data." }) {
+  const safeItems = items?.length ? items : [];
+  const maxValue = Math.max(...safeItems.map((item) => safeNumber(item.value)), 1);
+
+  if (!safeItems.length) {
+    return (
+      <div className="rounded-2xl border border-dashed border-slate-300 bg-[#f8fbff] px-4 py-8 text-center text-sm text-slate-500">
+        {emptyText}
+      </div>
+    );
+  }
 
   return (
-    <section className="rounded-3xl border border-[#dbe6f7] bg-white p-5 shadow-sm">
-      <div className="mb-5 flex items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#eef4ff] text-blue-600">
-          {icon}
-        </div>
-        <div>
-          <h3 className="text-lg font-bold text-slate-900">{title}</h3>
-          <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        {items.map((item) => (
+    <div className="space-y-4">
+      {safeItems.map((item) => {
+        const value = safeNumber(item.value);
+        return (
           <div key={item.label}>
             <div className="mb-2 flex items-center justify-between gap-3 text-sm">
               <span className="font-semibold text-slate-700">{item.label}</span>
               <span className="font-bold tabular-nums text-slate-900">
-                {item.value}
+                {value}
                 {valueSuffix}
               </span>
             </div>
             <div className="h-3 overflow-hidden rounded-full bg-[#eef4fb]">
               <div
-                className={`h-full rounded-full ${item.color}`}
-                style={{ width: `${Math.max((item.value / maxValue) * 100, 6)}%` }}
+                className={`h-full rounded-full ${item.color || color}`}
+                style={{ width: value ? `${Math.max((value / maxValue) * 100, 6)}%` : "0%" }}
               />
             </div>
           </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function RoleHealth({ roles }) {
+  return (
+    <section className="rounded-3xl border border-[#dbe6f7] bg-white p-5 shadow-sm xl:col-span-2">
+      <SectionHeader
+        icon={<UsersRound className="h-5 w-5" />}
+        title="Role Health"
+        subtitle="Availability and score by workforce group"
+      />
+      <div className="grid gap-4 md:grid-cols-3">
+        {roles.map((item) => (
+          <article key={item.role} className="rounded-2xl border border-[#eef2f7] bg-[#fbfdff] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <Badge value={item.role} type="role" />
+              <div className="text-sm font-bold tabular-nums text-slate-900">{safeNumber(item.total)} total</div>
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Present</div>
+                <div className="mt-1 text-lg font-bold text-emerald-600">{safeNumber(item.present)}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Absent</div>
+                <div className="mt-1 text-lg font-bold text-rose-600">{safeNumber(item.absent)}</div>
+              </div>
+            </div>
+            <div className="mt-5">
+              <div className="mb-2 flex justify-between text-xs font-bold text-slate-500">
+                <span>Utilization</span>
+                <span>{safeNumber(item.utilizationPercent)}%</span>
+              </div>
+              <ProgressBar value={item.utilizationPercent} color="bg-cyan-500" />
+            </div>
+            <div className="mt-4">
+              <div className="mb-2 flex justify-between text-xs font-bold text-slate-500">
+                <span>Avg. score</span>
+                <span>{safeNumber(item.averagePerformanceScore)}</span>
+              </div>
+              <ProgressBar value={item.averagePerformanceScore} color="bg-blue-500" />
+            </div>
+          </article>
         ))}
       </div>
     </section>
   );
 }
 
-function chartItemsFromObject(source = {}, labels = [], colors = []) {
-  return labels.map((label, index) => ({
-    label,
-    value: Number(source?.[label] || 0),
-    color: colors[index] || "bg-blue-500",
-  }));
+function PersonList({ title, subtitle, icon, items, emptyText, attention = false }) {
+  return (
+    <section className="rounded-3xl border border-[#dbe6f7] bg-white p-5 shadow-sm">
+      <SectionHeader icon={icon} title={title} subtitle={subtitle} />
+      {items.length ? (
+        <div className="space-y-3">
+          {items.map((item) => (
+            <article key={`${item.role}-${item._id}`} className="rounded-2xl border border-[#eef2f7] bg-[#fbfdff] p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-bold text-slate-900">{item.name || "Unnamed"}</div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Badge value={item.role} type="role" />
+                    <Badge value={item.attendanceStatus} type="status" />
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xl font-bold tabular-nums text-slate-900">{safeNumber(item.performanceScore)}</div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Score</div>
+                </div>
+              </div>
+              <div className="mt-3 text-sm text-slate-500">
+                {attention ? item.reason : `${item.department || "Unassigned"} - workload ${safeNumber(item.workloadCount)}`}
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-[#f8fbff] px-4 py-8 text-center text-sm text-slate-500">
+          {emptyText}
+        </div>
+      )}
+    </section>
+  );
 }
 
 export default function StaffPerformance() {
-  const [year, setYear] = useState("2026");
-  const [month, setMonth] = useState("May");
+  const { getToken } = useAuth();
+  const [year, setYear] = useState(String(currentYear));
+  const [month, setMonth] = useState(String(new Date().getMonth() + 1));
   const [day, setDay] = useState("All Days");
+  const [role, setRole] = useState("All Roles");
   const [department, setDepartment] = useState("All Departments");
-  const [shift, setShift] = useState("All Shifts");
-  const [records, setRecords] = useState([]);
-  const [summary, setSummary] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [shiftType, setShiftType] = useState("All Shifts");
+  const [status, setStatus] = useState("All Statuses");
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [performanceData, setPerformanceData] = useState(null);
 
-  const activeFilters = useMemo(() => {
-    return {
-      year,
-      month,
-      day,
-      department,
-      shift,
-    };
-  }, [day, department, month, shift, year]);
+  const filters = useMemo(
+    () => ({ year, month, day, role, department, shiftType, status }),
+    [day, department, month, role, shiftType, status, year],
+  );
 
   useEffect(() => {
     let mounted = true;
 
-    async function loadStaffPerformance() {
+    async function loadPerformance() {
       try {
         setLoading(true);
         setError("");
-
-        const [recordsData, summaryData] = await Promise.all([
-          fetchStaffPerformanceRecords(activeFilters),
-          fetchStaffPerformanceSummary(activeFilters),
-        ]);
-
-        if (!mounted) return;
-        setRecords(recordsData);
-        setSummary(summaryData);
+        const data = await fetchPerformanceSummary(filters, getToken);
+        if (mounted) setPerformanceData(data);
       } catch (err) {
-        console.error("Staff performance fetch error:", err);
+        console.error("Performance fetch error:", err);
         if (mounted) {
-          setError(
-            err?.message || "Unable to load staff performance records.",
-          );
-          setRecords([]);
-          setSummary(null);
+          setError("Unable to load performance data. Please try again.");
+          setPerformanceData(null);
         }
       } finally {
         if (mounted) setLoading(false);
       }
     }
 
-    loadStaffPerformance();
+    loadPerformance();
 
     return () => {
       mounted = false;
     };
-  }, [activeFilters]);
+  }, [filters, getToken]);
 
-  const filteredRecords = records;
+  const overview = performanceData?.overview || {};
+  const records = useMemo(
+    () => (Array.isArray(performanceData?.records) ? performanceData.records : []),
+    [performanceData],
+  );
 
-  const analytics = useMemo(() => {
-    return {
-      totalStaff: summary?.totalStaff || 0,
-      doctors: summary?.doctors || 0,
-      nurses: summary?.nurses || 0,
-      staff: summary?.staff || 0,
-      present: summary?.staffPresent || 0,
-      utilization: summary?.utilization || 0,
-      shiftChart: chartItemsFromObject(
-        summary?.staffByShift,
-        ["Morning", "Evening", "Night"],
-        ["bg-blue-500", "bg-cyan-500", "bg-indigo-500"],
-      ),
-      roleChart: chartItemsFromObject(
-        summary?.staffPresentByRole,
-        ["Doctor", "Nurse", "Staff"],
-        ["bg-blue-500", "bg-emerald-500", "bg-cyan-500"],
-      ),
-      departmentChart: Array.isArray(summary?.utilizationByDepartment)
-        ? summary.utilizationByDepartment.map((item) => ({
-            label: item.department,
-            value: Number(item.utilization || 0),
-            color: "bg-gradient-to-r from-[#2563eb] to-[#06b6d4]",
-          }))
-        : [],
-    };
-  }, [summary]);
+  const filteredRecords = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return records;
+    return records.filter((record) =>
+      [record.name, record.role, record.department, record.shiftType, record.email, record.phone]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query)),
+    );
+  }, [records, search]);
 
-  const metrics = [
-    {
-      label: "Total Staff",
-      value: analytics.totalStaff,
-      icon: <UsersRound className="h-6 w-6 text-blue-600" />,
-      tone: "bg-blue-50",
-    },
-    {
-      label: "Number of Doctors",
-      value: analytics.doctors,
-      icon: <Stethoscope className="h-6 w-6 text-indigo-600" />,
-      tone: "bg-indigo-50",
-    },
-    {
-      label: "Number of Nurses",
-      value: analytics.nurses,
-      icon: <HeartPulse className="h-6 w-6 text-cyan-600" />,
-      tone: "bg-cyan-50",
-    },
-    {
-      label: "Staff Present",
-      value: analytics.present,
-      icon: <UserCheck className="h-6 w-6 text-emerald-600" />,
-      tone: "bg-emerald-50",
-    },
-    {
-      label: "Staff Utilization %",
-      value: `${analytics.utilization}%`,
-      icon: <Activity className="h-6 w-6 text-teal-600" />,
-      tone: "bg-teal-50",
-    },
+  const departmentOptions = useMemo(() => {
+    const departments = new Set(records.map((record) => record.department).filter(Boolean));
+    if (department && department !== "All Departments") departments.add(department);
+    return ["All Departments", ...Array.from(departments).sort()];
+  }, [department, records]);
+
+  const roleHealth = performanceData?.roleBreakdown || [];
+  const attendanceItems = [
+    { label: "Present", value: overview.presentCount, color: "bg-emerald-500" },
+    { label: "Absent", value: overview.absentCount, color: "bg-rose-500" },
+    { label: "Late", value: overview.lateCount, color: "bg-amber-500" },
+    { label: "On Leave", value: overview.onLeaveCount, color: "bg-sky-500" },
   ];
+  const shiftItems = (performanceData?.shiftDistribution || []).map((item, index) => ({
+    label: item.shiftType,
+    value: item.count,
+    color: ["bg-blue-500", "bg-cyan-500", "bg-indigo-500", "bg-violet-500", "bg-slate-400"][index] || "bg-blue-500",
+  }));
+  const departmentItems = (performanceData?.departmentUtilization || [])
+    .slice()
+    .sort((a, b) => safeNumber(b.total) - safeNumber(a.total))
+    .slice(0, 6)
+    .map((item) => ({
+      label: item.department,
+      value: item.utilizationPercent,
+      color: "bg-gradient-to-r from-[#2563eb] to-[#06b6d4]",
+    }));
+  const trendItems = (performanceData?.attendanceTrend || []).slice(-7).map((item) => ({
+    label: item.label,
+    value: safeNumber(item.present) + safeNumber(item.late) + safeNumber(item.onLeave),
+    color: "bg-emerald-500",
+  }));
 
   return (
     <AdminLayout
-      title="Staff Performance"
-      subtitle="Monitor workforce availability, attendance, and utilization"
+      title="Performance"
+      subtitle="Monitor doctors, nurses, and staff attendance, workload, utilization, and performance."
     >
       <div className="space-y-7">
         <section className="rounded-3xl border border-[#dbe6f7] bg-[#eef4fb] p-5 shadow-sm sm:p-6">
-          <div className="mb-5 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div className="flex gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-[#dbe6f7]">
                 <CalendarCheck2 className="h-5 w-5 text-blue-600" />
               </div>
               <div>
                 <h2 className="text-2xl font-bold tracking-tight text-slate-900">
-                  Workforce Overview
+                  Performance Command Center
                 </h2>
-                <p className="mt-2 max-w-5xl text-sm leading-6 text-slate-600">
-                  The Staff Performance Dashboard provides a clear overview of
-                  hospital workforce availability, attendance, and utilization. It
-                  displays key metrics such as total staff count, number of doctors
-                  and nurses, staff attendance, and overall utilization percentage.
-                  It also includes detailed staff records showing each member's
-                  role, department, shift type, and attendance status. By
-                  visualizing staff utilization by department and shift type, this
-                  dashboard helps hospital managers monitor workforce efficiency,
-                  identify staffing gaps, and make better resource allocation
-                  decisions.
+                <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">
+                  A live operational view of workforce availability, attendance,
+                  workload, and performance across clinical and support teams.
                 </p>
               </div>
             </div>
+            <div className="rounded-2xl border border-blue-100 bg-white px-4 py-3 text-sm font-semibold text-blue-700 shadow-sm">
+              {loading ? "Loading performance data..." : `${safeNumber(overview.totalPeople)} people in view`}
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
-            {metrics.map((item) => (
-              <MetricCard key={item.label} {...item} />
-            ))}
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <OverviewCard
+              label="Total Workforce"
+              value={safeNumber(overview.totalPeople)}
+              helper={`${safeNumber(overview.totalDoctors)} doctors, ${safeNumber(overview.totalNurses)} nurses, ${safeNumber(overview.totalStaff)} staff`}
+              icon={<UsersRound className="h-6 w-6 text-blue-600" />}
+              tone="bg-blue-50"
+              wide
+            />
+            <OverviewCard
+              label="Present"
+              value={safeNumber(overview.presentCount)}
+              helper={`${safeNumber(overview.absentCount)} absent, ${safeNumber(overview.lateCount)} late`}
+              icon={<UserCheck className="h-6 w-6 text-emerald-600" />}
+              tone="bg-emerald-50"
+            />
+            <OverviewCard
+              label="Utilization"
+              value={`${safeNumber(overview.overallUtilizationPercent)}%`}
+              helper="Present workforce against total selected people"
+              icon={<Activity className="h-6 w-6 text-cyan-600" />}
+              tone="bg-cyan-50"
+            />
+            <OverviewCard
+              label="Avg. Score"
+              value={safeNumber(overview.averagePerformanceScore)}
+              helper="Attendance weighted with real workload"
+              icon={<TrendingUp className="h-6 w-6 text-indigo-600" />}
+              tone="bg-indigo-50"
+            />
           </div>
 
           {error ? (
@@ -320,116 +428,128 @@ export default function StaffPerformance() {
         </section>
 
         <section className="rounded-3xl border border-[#dbe6f7] bg-white p-5 shadow-sm sm:p-6">
-          <div className="mb-5 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-              <Filter className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-slate-900">Filters</h2>
-              <p className="text-sm text-slate-500">
-                Refine staff analytics by date, department, and shift
-              </p>
-            </div>
+          <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <SectionHeader
+              icon={<Filter className="h-5 w-5" />}
+              title="Filters"
+              subtitle="Start with date, then narrow by role or operating area"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setDay("All Days");
+                setRole("All Roles");
+                setDepartment("All Departments");
+                setShiftType("All Shifts");
+                setStatus("All Statuses");
+                setSearch("");
+              }}
+              className="h-11 rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] px-4 text-sm font-bold text-blue-700 transition hover:bg-blue-50"
+            >
+              Reset filters
+            </button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <FilterSelect
-              label="Year"
-              value={year}
-              onChange={setYear}
-              options={filterOptions.years}
-            />
-            <FilterSelect
-              label="Month"
-              value={month}
-              onChange={setMonth}
-              options={filterOptions.months}
-            />
-            <FilterSelect
-              label="Day"
-              value={day}
-              onChange={setDay}
-              options={filterOptions.days}
-            />
-            <FilterSelect
-              label="Department Name"
-              value={department}
-              onChange={setDepartment}
-              options={filterOptions.departments}
-            />
-            <FilterSelect
-              label="Shift Type"
-              value={shift}
-              onChange={setShift}
-              options={filterOptions.shifts}
-            />
+          <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-7">
+            <FilterSelect label="Year" value={year} onChange={setYear} options={filterOptions.years} />
+            <FilterSelect label="Month" value={month} onChange={setMonth} options={filterOptions.months} />
+            <FilterSelect label="Day" value={day} onChange={setDay} options={filterOptions.days} />
+            <FilterSelect label="Role" value={role} onChange={setRole} options={filterOptions.roles} />
+            <FilterSelect label="Department" value={department} onChange={setDepartment} options={departmentOptions} />
+            <FilterSelect label="Shift" value={shiftType} onChange={setShiftType} options={filterOptions.shifts} />
+            <FilterSelect label="Status" value={status} onChange={setStatus} options={filterOptions.statuses} />
           </div>
         </section>
 
         <div className="grid gap-5 xl:grid-cols-3">
-          <ChartCard
-            title="Number of Staff by Shift Type"
-            subtitle="Coverage distribution across daily shifts"
-            icon={<Clock3 className="h-5 w-5" />}
-            items={analytics.shiftChart}
+          <RoleHealth roles={roleHealth} />
+          <section className="rounded-3xl border border-[#dbe6f7] bg-white p-5 shadow-sm">
+            <SectionHeader
+              icon={<CheckCircle2 className="h-5 w-5" />}
+              title="Attendance Snapshot"
+              subtitle="Current status mix for selected filters"
+            />
+            <BarList items={attendanceItems} />
+          </section>
+        </div>
+
+        <div className="grid gap-5 xl:grid-cols-3">
+          <section className="rounded-3xl border border-[#dbe6f7] bg-white p-5 shadow-sm">
+            <SectionHeader
+              icon={<Clock3 className="h-5 w-5" />}
+              title="Shift Coverage"
+              subtitle="Workforce distribution by shift"
+            />
+            <BarList items={shiftItems} />
+          </section>
+          <section className="rounded-3xl border border-[#dbe6f7] bg-white p-5 shadow-sm">
+            <SectionHeader
+              icon={<BarChart3 className="h-5 w-5" />}
+              title="Department Utilization"
+              subtitle="Top departments by selected utilization"
+            />
+            <BarList items={departmentItems} valueSuffix="%" emptyText="No department utilization yet." />
+          </section>
+          <section className="rounded-3xl border border-[#dbe6f7] bg-white p-5 shadow-sm">
+            <SectionHeader
+              icon={<TrendingUp className="h-5 w-5" />}
+              title="Attendance Trend"
+              subtitle="Recent attended, late, and leave entries"
+            />
+            <BarList items={trendItems} emptyText="No attendance trend records yet." color="bg-emerald-500" />
+          </section>
+        </div>
+
+        <div className="grid gap-5 xl:grid-cols-2">
+          <PersonList
+            title="Top Performers"
+            subtitle="Highest calculated scores from real attendance and workload"
+            icon={<TrendingUp className="h-5 w-5" />}
+            items={performanceData?.topPerformers || []}
+            emptyText="No top performers match the selected filters."
           />
-          <ChartCard
-            title="Staff Present by Role"
-            subtitle="Available team members by clinical role"
-            icon={<UserCheck className="h-5 w-5" />}
-            items={analytics.roleChart}
-          />
-          <ChartCard
-            title="Staff Utilization by Department"
-            subtitle="Average utilization for active departments"
-            icon={<Activity className="h-5 w-5" />}
-            items={
-              analytics.departmentChart.length
-                ? analytics.departmentChart
-                : [
-                    {
-                      label: "No matching records",
-                      value: 0,
-                      color: "bg-slate-300",
-                    },
-                  ]
-            }
-            valueSuffix="%"
+          <PersonList
+            title="Needs Attention"
+            subtitle="Absent, late, or low-scoring workforce members"
+            icon={<AlertTriangle className="h-5 w-5" />}
+            items={performanceData?.attentionNeeded || []}
+            emptyText="No attention items match the selected filters."
+            attention
           />
         </div>
 
         <section className="overflow-hidden rounded-3xl border border-[#dbe6f7] bg-white shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-[#eef2f7] px-6 py-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-4 border-b border-[#eef2f7] px-6 py-6 xl:flex-row xl:items-center xl:justify-between">
             <div>
-              <h2 className="text-[1.65rem] font-bold tracking-tight text-slate-900">
-                Staff Attendance Records
+              <h2 className="text-[1.55rem] font-bold tracking-tight text-slate-900">
+                Performance Records
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Daily roster details for attendance and shift coverage
+                Unified, searchable records for doctors, nurses, and staff
               </p>
             </div>
-            <div className="rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] px-4 py-2 text-sm font-semibold text-slate-600">
-              {loading ? "Loading records..." : `Showing ${filteredRecords.length} records`}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <label className="relative block">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search records"
+                  className="h-11 w-full rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] pl-10 pr-4 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-300 focus:bg-white sm:w-64"
+                />
+              </label>
+              <div className="rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] px-4 py-2 text-sm font-semibold text-slate-600">
+                {loading ? "Loading records..." : `${filteredRecords.length} shown`}
+              </div>
             </div>
           </div>
 
-          <div className="hidden overflow-x-auto lg:block">
-            <table className="min-w-full">
+          <div className="overflow-x-auto">
+            <table className="min-w-[1060px]">
               <thead className="bg-[#f8fbff]">
                 <tr className="text-left">
-                  {[
-                    "Date",
-                    "Staff ID",
-                    "Staff Name",
-                    "Role",
-                    "Department",
-                    "Shift",
-                    "Attendance",
-                  ].map((heading) => (
-                    <th
-                      key={heading}
-                      className="px-6 py-4 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500"
-                    >
+                  {["Name", "Role", "Department", "Shift", "Attendance", "Workload", "Utilization", "Score", "Contact"].map((heading) => (
+                    <th key={heading} className="px-5 py-4 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
                       {heading}
                     </th>
                   ))}
@@ -438,122 +558,51 @@ export default function StaffPerformance() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td
-                      colSpan={7}
-                      className="px-6 py-10 text-center text-sm text-slate-500"
-                    >
-                      Loading staff performance records...
+                    <td colSpan={9} className="px-6 py-12 text-center text-sm text-slate-500">
+                      Loading performance data...
                     </td>
                   </tr>
                 ) : null}
 
                 {!loading && filteredRecords.map((record) => (
-                  <tr
-                    key={record._id || `${record.staffId}-${record.date}`}
-                    className="border-t border-[#eef2f7] transition hover:bg-[#f8fbff]"
-                  >
-                    <td className="px-6 py-4 text-sm font-medium text-slate-700">
-                      {formatDate(record.date)}
+                  <tr key={`${record.role}-${record._id}`} className="border-t border-[#eef2f7] transition hover:bg-[#f8fbff]">
+                    <td className="px-5 py-4">
+                      <div className="text-sm font-bold text-slate-900">{record.name || "Unnamed"}</div>
+                      <div className="mt-1 text-xs text-slate-400">{record._id}</div>
                     </td>
-                    <td className="px-6 py-4 text-sm font-semibold text-blue-700">
-                      {record.staffId}
+                    <td className="px-5 py-4"><Badge value={record.role} type="role" /></td>
+                    <td className="px-5 py-4 text-sm text-slate-600">{record.department || "Unassigned"}</td>
+                    <td className="px-5 py-4 text-sm font-semibold text-blue-700">{record.shiftType || "Unassigned"}</td>
+                    <td className="px-5 py-4"><Badge value={record.attendanceStatus} type="status" /></td>
+                    <td className="px-5 py-4 text-sm font-semibold tabular-nums text-slate-700">{safeNumber(record.workloadCount)}</td>
+                    <td className="px-5 py-4">
+                      <div className="w-28">
+                        <div className="mb-1 text-xs font-bold tabular-nums text-slate-700">{safeNumber(record.utilizationPercent)}%</div>
+                        <ProgressBar value={record.utilizationPercent} color="bg-cyan-500" />
+                      </div>
                     </td>
-                    <td className="px-6 py-4 text-sm font-bold text-slate-900">
-                      {record.staffName}
+                    <td className="px-5 py-4">
+                      <div className="w-32">
+                        <div className="mb-1 text-xs font-bold tabular-nums text-slate-700">{safeNumber(record.performanceScore)}</div>
+                        <ProgressBar value={record.performanceScore} color="bg-blue-500" />
+                      </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-slate-600">
-                      {record.role}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-600">
-                      {record.department}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex rounded-xl bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
-                        {record.shift}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <AttendanceBadge status={record.attendance} />
+                    <td className="px-5 py-4 text-sm text-slate-600">
+                      <div>{record.email || "-"}</div>
+                      <div className="mt-1 text-xs text-slate-400">{record.phone || "-"}</div>
                     </td>
                   </tr>
                 ))}
+
                 {!loading && !filteredRecords.length && (
                   <tr>
-                    <td
-                      colSpan={7}
-                      className="px-6 py-10 text-center text-sm text-slate-500"
-                    >
-                      No staff records match the selected filters.
+                    <td colSpan={9} className="px-6 py-12 text-center text-sm text-slate-500">
+                      No performance records match the selected filters.
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
-          </div>
-
-          <div className="space-y-4 p-4 lg:hidden">
-            {loading ? (
-              <div className="rounded-3xl border border-[#dbe6f7] bg-white p-6 text-center text-sm text-slate-500">
-                Loading staff performance records...
-              </div>
-            ) : filteredRecords.length ? (
-              filteredRecords.map((record) => (
-                <article
-                  key={record._id || `${record.staffId}-${record.date}`}
-                  className="rounded-3xl border border-[#dbe6f7] bg-[#fbfdff] p-4 shadow-sm"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate text-base font-bold text-slate-900">
-                        {record.staffName}
-                      </div>
-                      <div className="mt-1 text-sm font-semibold text-blue-700">
-                        {record.staffId}
-                      </div>
-                    </div>
-                    <AttendanceBadge status={record.attendance} />
-                  </div>
-                  <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-[#f8fbff] p-3 text-sm">
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                        Date
-                      </div>
-                      <div className="mt-1 font-semibold text-slate-700">
-                        {formatDate(record.date)}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                        Role
-                      </div>
-                      <div className="mt-1 font-semibold text-slate-700">
-                        {record.role}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                        Department
-                      </div>
-                      <div className="mt-1 font-semibold text-slate-700">
-                        {record.department}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                        Shift
-                      </div>
-                      <div className="mt-1 font-semibold text-slate-700">
-                        {record.shift}
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              ))
-            ) : (
-              <div className="rounded-3xl border border-dashed border-slate-300 bg-[#f8fbff] px-4 py-10 text-center text-sm text-slate-500">
-                No staff records match the selected filters.
-              </div>
-            )}
           </div>
         </section>
       </div>

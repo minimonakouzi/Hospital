@@ -1,18 +1,21 @@
 import express from "express";
+import { clerkMiddleware, requireAuth } from "@clerk/express";
 import {
-  addStaffPerformanceRecord,
-  deleteStaffPerformanceRecord,
-  getStaffPerformanceRecords,
+  createStaffAttendanceRecord,
+  deleteStaffAttendanceRecord,
+  getStaffAttendanceRecords,
   getStaffPerformanceSummary,
-  updateStaffPerformanceRecord,
+  updateStaffAttendanceRecord,
 } from "../controllers/staffPerformanceController.js";
+import adminAuth from "../middlewares/adminAuth.js";
 
 const staffPerformanceRouter = express.Router();
+const protectAdmin = [clerkMiddleware(), requireAuth(), adminAuth];
 
-staffPerformanceRouter.get("/", getStaffPerformanceRecords);
-staffPerformanceRouter.get("/summary", getStaffPerformanceSummary);
-staffPerformanceRouter.post("/", addStaffPerformanceRecord);
-staffPerformanceRouter.put("/:id", updateStaffPerformanceRecord);
-staffPerformanceRouter.delete("/:id", deleteStaffPerformanceRecord);
+staffPerformanceRouter.get("/summary", protectAdmin, getStaffPerformanceSummary);
+staffPerformanceRouter.post("/attendance", protectAdmin, createStaffAttendanceRecord);
+staffPerformanceRouter.get("/attendance", protectAdmin, getStaffAttendanceRecords);
+staffPerformanceRouter.put("/attendance/:id", protectAdmin, updateStaffAttendanceRecord);
+staffPerformanceRouter.delete("/attendance/:id", protectAdmin, deleteStaffAttendanceRecord);
 
 export default staffPerformanceRouter;

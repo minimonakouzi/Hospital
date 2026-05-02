@@ -27,17 +27,15 @@ async function parseResponse(res) {
   const body = await res.json().catch(() => null);
 
   if (!res.ok) {
-    throw new Error(
-      body?.message || `Staff performance request failed (${res.status})`,
-    );
+    throw new Error(body?.message || `Performance request failed (${res.status})`);
   }
 
   return body;
 }
 
-export async function fetchStaffPerformanceSummary(filters = {}, getToken) {
+export async function fetchPerformanceSummary(filters = {}, getToken) {
   const res = await fetch(
-    `${API_BASE}/api/staff-performance/summary${buildQuery(filters)}`,
+    `${API_BASE}/api/performance/summary${buildQuery(filters)}`,
     {
       headers: await adminAuthHeaders(getToken),
     },

@@ -133,10 +133,18 @@ const App = () => {
         }
       />
       <Route
-        path="/staff-performance"
+        path="/performance"
         element={
           <RequireAuth>
             <StaffPerformance />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/staff-performance"
+        element={
+          <RequireAuth>
+            <Navigate to="/performance" replace />
           </RequireAuth>
         }
       />
