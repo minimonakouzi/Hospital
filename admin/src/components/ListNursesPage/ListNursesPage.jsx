@@ -149,6 +149,7 @@ export default function ListNursesPage() {
       .filter((nurse) => {
         if (!q) return true;
         return [
+          nurse.nurseCode,
           nurse.name,
           nurse.department,
           nurse.email,
@@ -331,7 +332,7 @@ export default function ListNursesPage() {
                         {nurse.name || "Unnamed Nurse"}
                       </h2>
                       <p className="mt-1 truncate text-xs font-medium text-blue-700">
-                        {nurse.specialization || nurse.email}
+                        {[nurse.nurseCode, nurse.specialization || nurse.email].filter(Boolean).join(" - ")}
                       </p>
                     </div>
                   </div>

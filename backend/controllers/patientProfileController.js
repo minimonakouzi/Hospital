@@ -26,6 +26,8 @@ function resolveClerkUserId(req) {
 
 function normalizeBody(body = {}) {
   return {
+    name: String(body.name || body.fullName || "").trim(),
+    email: String(body.email || "").trim().toLowerCase(),
     phone: String(body.phone || "").trim(),
     age:
       body.age === "" || body.age === null || body.age === undefined
@@ -107,21 +109,21 @@ export const upsertMyPatientProfile = async (req, res) => {
       });
     }
 
-    const profile = await PatientProfile.findOneAndUpdate(
-      { clerkUserId },
-      { $set: updates },
-      {
-        new: true,
-        upsert: true,
-        runValidators: true,
-        setDefaultsOnInsert: true,
-      }
-    ).lean();
+    let profile = await PatientProfile.findOne({ clerkUserId });
+    if (!profile) {
+      profile = await PatientProfile.create({
+        clerkUserId,
+        ...updates,
+      });
+    } else {
+      Object.assign(profile, updates);
+      await profile.save();
+    }
 
     return res.status(200).json({
       success: true,
       message: "Patient profile saved successfully",
-      profile,
+      profile: profile.toObject(),
     });
   } catch (err) {
     console.error("upsertMyPatientProfile error:", err);

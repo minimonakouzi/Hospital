@@ -3,7 +3,9 @@ import { NavLink, useParams, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   CalendarDays,
+  BedDouble,
   CalendarClock,
+  ClipboardPlus,
   SquarePen,
   LogOut,
   Menu,
@@ -91,6 +93,18 @@ export default function Navbar() {
       name: "Appointments",
       to: `${basePath}/appointments`,
       icon: CalendarDays,
+      end: false,
+    },
+    {
+      name: "Admitted Patients",
+      to: doctorId ? `${basePath}/admitted-patients` : "/doctor/admitted-patients",
+      icon: BedDouble,
+      end: false,
+    },
+    {
+      name: "Prescriptions",
+      to: doctorId ? `${basePath}/prescriptions` : "/doctor-admin/login",
+      icon: ClipboardPlus,
       end: false,
     },
     {

@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import {
   ArrowLeft,
+  AlertCircle,
   Clock,
   FileText,
   IndianRupee,
@@ -31,6 +32,10 @@ export default function ServiceDetail() {
 
   const [email, setEmail] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Online");
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [prescriptionsLoading, setPrescriptionsLoading] = useState(false);
+  const [prescriptionError, setPrescriptionError] = useState("");
+  const [selectedPrescriptionId, setSelectedPrescriptionId] = useState("");
 
   const [service, setService] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -54,6 +59,9 @@ export default function ServiceDetail() {
     if (!mobile || !isValidMobile(mobile)) missing.push("mobile (8 digits)");
     if (!selectedDate) missing.push("date");
     if (!selectedTime) missing.push("time");
+    if (service?.requiresPrescription && !selectedPrescriptionId) {
+      missing.push("active prescription");
+    }
 
     if (!isValidAge(age)) missing.push("age (positive integer)");
     if (!gender || !String(gender).trim()) missing.push("gender");
@@ -61,6 +69,9 @@ export default function ServiceDetail() {
   }
 
   const isFormValid = () => getClientMissingFields().length === 0;
+  const isBaseFormValid = () =>
+    getClientMissingFields().filter((field) => field !== "active prescription")
+      .length === 0;
 
   useEffect(() => {
     let mounted = true;
@@ -256,9 +267,51 @@ export default function ServiceDetail() {
     out.dates = sortServiceDates(dates);
     out.slots = slotsMap;
     out.imageAlt = doc.imageAlt ?? doc.alt ?? out.name;
+    out.requiresPrescription = Boolean(doc.requiresPrescription);
     out.raw = doc;
     return out;
   }
+
+  useEffect(() => {
+    if (!service?.requiresPrescription || !isSignedIn) {
+      setPrescriptions([]);
+      setSelectedPrescriptionId("");
+      setPrescriptionError("");
+      return;
+    }
+
+    let mounted = true;
+    async function loadPrescriptions() {
+      try {
+        setPrescriptionsLoading(true);
+        setPrescriptionError("");
+        const token = await getToken();
+        const res = await fetch(`${DEFAULT_HOST}/api/prescriptions/my`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const body = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(body?.message || "Unable to load prescriptions.");
+        const active = (Array.isArray(body?.data) ? body.data : []).filter(
+          (item) => item.status === "Active",
+        );
+        if (!mounted) return;
+        setPrescriptions(active);
+        setSelectedPrescriptionId((current) => current || active[0]?._id || "");
+      } catch (err) {
+        if (!mounted) return;
+        setPrescriptions([]);
+        setSelectedPrescriptionId("");
+        setPrescriptionError(err?.message || "Unable to load prescriptions.");
+      } finally {
+        if (mounted) setPrescriptionsLoading(false);
+      }
+    }
+
+    loadPrescriptions();
+    return () => {
+      mounted = false;
+    };
+  }, [getToken, isSignedIn, service?.requiresPrescription]);
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
@@ -275,6 +328,11 @@ export default function ServiceDetail() {
 
     if (!service) {
       setSubmitError("Service details not loaded");
+      return;
+    }
+
+    if (service.requiresPrescription && !selectedPrescriptionId) {
+      setSubmitError("This service requires a prescription.");
       return;
     }
 
@@ -320,6 +378,9 @@ export default function ServiceDetail() {
         fees: service?.price ?? 0,
         paymentMethod: paymentMethod === "Cash" ? "Cash" : "Online",
         email: email || undefined,
+        prescriptionId: service.requiresPrescription
+          ? selectedPrescriptionId
+          : undefined,
         meta: {
           client: "frontend",
           serviceName: service?.name,
@@ -516,6 +577,52 @@ export default function ServiceDetail() {
               />
             </div>
 
+            {service.requiresPrescription ? (
+              <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#2563eb]" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-[#0f172a]">
+                      This service requires a prescription.
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-[#64748b]">
+                      Select an active doctor-created prescription before booking.
+                    </p>
+                    {prescriptionsLoading ? (
+                      <p className="mt-3 text-sm font-semibold text-[#2563eb]">
+                        Loading prescriptions...
+                      </p>
+                    ) : prescriptionError ? (
+                      <p className="mt-3 text-sm font-semibold text-rose-700">
+                        {prescriptionError}
+                      </p>
+                    ) : prescriptions.length ? (
+                      <select
+                        value={selectedPrescriptionId}
+                        onChange={(e) => setSelectedPrescriptionId(e.target.value)}
+                        className="mt-3 h-11 w-full rounded-2xl border border-[#dbe6f7] bg-white px-4 text-sm text-[#0f172a] outline-none focus:border-blue-300"
+                        required
+                      >
+                        <option value="">Select prescription</option>
+                        {prescriptions.map((prescription) => (
+                          <option key={prescription._id} value={prescription._id}>
+                            {(prescription.diagnosis || "Prescription")} - {new Date(prescription.createdAt).toLocaleDateString()}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="mt-3 text-sm font-semibold text-[#334155]">
+                        No active prescriptions found. Please contact your doctor.
+                      </p>
+                    )}
+                    <p className="mt-2 text-xs text-[#64748b]">
+                      External prescription upload is not configured in this HMS yet.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             <div className={serviceDetailStyles.dateSection}>
               <label className={serviceDetailStyles.paymentLabel}>
                 Payment Method
@@ -619,10 +726,10 @@ export default function ServiceDetail() {
               </div>
             )}
             <button
-              disabled={!isFormValid() || submitting}
+              disabled={!isBaseFormValid() || submitting}
               onClick={handleSubmit}
               className={serviceDetailStyles.submitButton(
-                isFormValid() && !submitting,
+                isBaseFormValid() && !submitting,
                 submitting,
               )}
             >
@@ -639,6 +746,19 @@ export default function ServiceDetail() {
         {/* RIGHT */}
         <div className={serviceDetailStyles.rightColumn}>
           <h1 className={serviceDetailStyles.serviceName}>{service.name}</h1>
+          <div className="mt-3">
+            <span
+              className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
+                service.requiresPrescription
+                  ? "bg-blue-50 text-[#2563eb] ring-1 ring-blue-100"
+                  : "bg-slate-100 text-slate-600 ring-1 ring-slate-200"
+              }`}
+            >
+              {service.requiresPrescription
+                ? "Prescription Required"
+                : "No Prescription Needed"}
+            </span>
+          </div>
 
           <div className={serviceDetailStyles.aboutContainer}>
             <h2 className={serviceDetailStyles.aboutTitle}>
@@ -690,6 +810,14 @@ export default function ServiceDetail() {
               </p>
               <p>
                 <b>Payment:</b> {paymentMethod}
+              </p>
+              <p>
+                <b>Prescription:</b>{" "}
+                {service.requiresPrescription
+                  ? selectedPrescriptionId
+                    ? "Prescription Submitted"
+                    : "Prescription Missing"
+                  : "Prescription Not Required"}
               </p>
               <p>
                 <b>Price:</b> $ {service.price}

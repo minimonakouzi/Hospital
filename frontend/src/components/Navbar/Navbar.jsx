@@ -11,10 +11,12 @@ import {
   FlaskConical,
   CalendarDays,
   FileHeart,
+  ClipboardList,
   Phone,
   ShieldCheck,
   LogIn,
   HeartPulse,
+  BedDouble,
 } from "lucide-react";
 
 // Clerk
@@ -678,6 +680,28 @@ export default function Navbar() {
               </SignedOut>
 
               <SignedIn>
+                <Link
+                  to="/my-admission"
+                  className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-semibold transition ${
+                    isActive("/my-admission")
+                      ? "border-[#bfdbfe] bg-[#eff6ff] text-[#2563eb]"
+                      : "border-[#dbe6f7] bg-white text-[#334155] hover:bg-[#f8fbff] hover:text-[#2563eb]"
+                  }`}
+                >
+                  <BedDouble className="h-3.5 w-3.5 text-[#2563eb]" />
+                  My Admission
+                </Link>
+                <Link
+                  to="/my-prescriptions"
+                  className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-semibold transition ${
+                    isActive("/my-prescriptions")
+                      ? "border-[#bfdbfe] bg-[#eff6ff] text-[#2563eb]"
+                      : "border-[#dbe6f7] bg-white text-[#334155] hover:bg-[#f8fbff] hover:text-[#2563eb]"
+                  }`}
+                >
+                  <ClipboardList className="h-3.5 w-3.5 text-[#2563eb]" />
+                  My Prescriptions
+                </Link>
                 <AnimatedLogoutButton
                   onLogout={() => clerk.signOut({ redirectUrl: "/" })}
                 />
@@ -767,6 +791,30 @@ export default function Navbar() {
                 </SignedOut>
 
                 <SignedIn>
+                  <Link
+                    to="/my-admission"
+                    onClick={() => setIsOpen(false)}
+                    className={`inline-flex h-11 items-center gap-2.5 rounded-xl px-3 text-sm font-semibold transition ${
+                      isActive("/my-admission")
+                        ? "bg-[#2563eb] text-white"
+                        : "bg-[#f8fbff] text-[#334155] hover:text-[#2563eb]"
+                    }`}
+                  >
+                    <BedDouble className="h-4 w-4" />
+                    My Admission
+                  </Link>
+                  <Link
+                    to="/my-prescriptions"
+                    onClick={() => setIsOpen(false)}
+                    className={`inline-flex h-11 items-center gap-2.5 rounded-xl px-3 text-sm font-semibold transition ${
+                      isActive("/my-prescriptions")
+                        ? "bg-[#2563eb] text-white"
+                        : "bg-[#f8fbff] text-[#334155] hover:text-[#2563eb]"
+                    }`}
+                  >
+                    <ClipboardList className="h-4 w-4" />
+                    My Prescriptions
+                  </Link>
                   <div className="flex justify-start sm:col-span-2">
                     <AnimatedLogoutButton
                       onLogout={async () => {

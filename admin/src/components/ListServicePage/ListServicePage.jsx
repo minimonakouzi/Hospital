@@ -154,6 +154,7 @@ export default function ListServicePage({
         ),
         price: s.price ?? s.fee ?? 0,
         available: s.available ?? s.availability === "Available",
+        requiresPrescription: Boolean(s.requiresPrescription),
         image: s.image || s.imageUrl || s.imageSrc || s.imageSmall || "",
         slots: Array.isArray(s.slots)
           ? convertSlotsForUI(s.slots)
@@ -360,6 +361,7 @@ export default function ListServicePage({
       price: latest.price ?? latest.fee ?? 0,
       available:
         latest.available ?? latest.availability === "Available" ?? true,
+      requiresPrescription: Boolean(latest.requiresPrescription),
       imagePreview: latest.imageUrl || latest.image || latest.imageSrc || "",
       imageFile: null,
       slots: sortSlotsForDisplay(
@@ -523,6 +525,7 @@ export default function ListServicePage({
         "availability",
         editForm.available ? "available" : "unavailable",
       );
+      fd.append("requiresPrescription", editForm.requiresPrescription ? "true" : "false");
 
       const instructions = (editForm.instructionsText || "")
         .split(/\r?\n/)
@@ -564,6 +567,7 @@ export default function ListServicePage({
                 instructionsText: instructions.join("\n"),
                 price: Number(editForm.price) || 0,
                 available: !!editForm.available,
+                requiresPrescription: !!editForm.requiresPrescription,
                 image:
                   updatedRaw?.imageUrl ||
                   updatedRaw?.image ||
@@ -949,6 +953,17 @@ export default function ListServicePage({
                           <span className={availabilityPill(svc.available)}>
                             {svc.available ? "Available" : "Unavailable"}
                           </span>
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                              svc.requiresPrescription
+                                ? "bg-blue-50 text-blue-600"
+                                : "bg-slate-100 text-slate-500"
+                            }`}
+                          >
+                            {svc.requiresPrescription
+                              ? "Prescription Required"
+                              : "No Prescription"}
+                          </span>
                         </div>
                         <p className="mt-1 line-clamp-1 text-sm text-slate-500">
                           {svc.about || "No description provided."}
@@ -1068,6 +1083,30 @@ export default function ListServicePage({
                                 <option value="true">Available</option>
                                 <option value="false">Unavailable</option>
                               </select>
+                            </div>
+
+                            <div className="md:col-span-2">
+                              <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                                <span>
+                                  <span className="block text-sm font-semibold text-slate-900">
+                                    Requires Prescription
+                                  </span>
+                                  <span className="mt-1 block text-xs text-slate-500">
+                                    Patients must attach an active eRx before booking.
+                                  </span>
+                                </span>
+                                <input
+                                  type="checkbox"
+                                  checked={!!editForm.requiresPrescription}
+                                  onChange={(e) =>
+                                    setEditForm((p) => ({
+                                      ...p,
+                                      requiresPrescription: e.target.checked,
+                                    }))
+                                  }
+                                  className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                />
+                              </label>
                             </div>
                           </div>
                         </div>
@@ -1233,6 +1272,19 @@ export default function ListServicePage({
                           <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.12em] text-slate-900">
                             Clinical Overview
                           </h3>
+                          <div className="mb-3">
+                            <span
+                              className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
+                                svc.requiresPrescription
+                                  ? "bg-blue-50 text-blue-700 ring-1 ring-blue-100"
+                                  : "bg-slate-100 text-slate-600 ring-1 ring-slate-200"
+                              }`}
+                            >
+                              {svc.requiresPrescription
+                                ? "Prescription Required"
+                                : "No Prescription Needed"}
+                            </span>
+                          </div>
                           <div className="rounded-2xl border border-[#dbe6f7] bg-white px-4 py-4 text-sm leading-6 text-slate-600">
                             {svc.about || "No description provided."}
                           </div>

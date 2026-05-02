@@ -204,6 +204,7 @@ export default function AddService({
     about: "",
     price: "",
     availability: "available",
+    requiresPrescription: false,
     imageFile: null,
     imagePreview: "",
     instructions: [""],
@@ -278,6 +279,7 @@ export default function AddService({
               ? String(data.price)
               : "",
           availability: data.available ? "available" : "unavailable",
+          requiresPrescription: Boolean(data.requiresPrescription),
           imageFile: null,
           imagePreview: imageUrl,
           instructions:
@@ -506,6 +508,7 @@ export default function AddService({
       fd.append("about", form.about.trim());
       fd.append("price", String(form.price).trim());
       fd.append("availability", form.availability);
+      fd.append("requiresPrescription", form.requiresPrescription ? "true" : "false");
 
       const cleanedInstructions = form.instructions
         .map((x) => String(x).trim())
@@ -556,6 +559,7 @@ export default function AddService({
           about: "",
           price: "",
           availability: "available",
+          requiresPrescription: false,
           imageFile: null,
           imagePreview: "",
           instructions: [""],
@@ -746,6 +750,26 @@ export default function AddService({
                     <div>
                       <FieldLabel>Service Type</FieldLabel>
                       <InputBase placeholder="Hospital service" disabled />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-[#dbe6f7] bg-white px-4 py-3">
+                        <span>
+                          <span className="block text-sm font-semibold text-slate-900">
+                            Requires Prescription
+                          </span>
+                          <span className="mt-1 block text-xs text-slate-500">
+                            Patients must attach an active eRx before booking this service.
+                          </span>
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={form.requiresPrescription}
+                          onChange={(e) =>
+                            setField("requiresPrescription", e.target.checked)
+                          }
+                          className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </label>
                     </div>
                   </div>
                 </section>

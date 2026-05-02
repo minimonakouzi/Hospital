@@ -135,6 +135,12 @@ function statusClasses(status) {
   return "border-amber-200 bg-amber-50 text-amber-700";
 }
 
+function prescriptionClasses(status = "Not Required") {
+  if (status === "Submitted") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (status === "Missing" || status === "Required") return "border-amber-200 bg-amber-50 text-amber-700";
+  return "border-slate-200 bg-slate-100 text-slate-600";
+}
+
 /* ----------------------
   Toast
 ------------------------ */
@@ -393,6 +399,7 @@ export default function ServiceAppointmentsPage() {
           minute: parsed.minute,
           ampm: parsed.ampm,
           status: a.status || "Pending",
+          prescriptionStatus: a.prescriptionStatus || "Not Required",
           raw: a,
         };
       });
@@ -766,6 +773,13 @@ export default function ServiceAppointmentsPage() {
                         )}`}
                       >
                         {a.status}
+                      </div>
+                      <div
+                        className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] ${prescriptionClasses(
+                          a.prescriptionStatus,
+                        )}`}
+                      >
+                        Prescription {a.prescriptionStatus}
                       </div>
                     </div>
 

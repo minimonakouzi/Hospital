@@ -62,6 +62,24 @@ const serviceAppointmentSchema = new mongoose.Schema(
       publicId: { type: String, default: "" },   // optional (for delete/update)
     },
 
+    prescriptionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Prescription",
+      default: null,
+    },
+
+    prescriptionFileUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    prescriptionStatus: {
+      type: String,
+      enum: ["Not Required", "Required", "Submitted", "Missing"],
+      default: "Not Required",
+    },
+
     fees: {
       type: Number,
       required: true,

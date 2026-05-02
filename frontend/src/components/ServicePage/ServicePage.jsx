@@ -101,6 +101,7 @@ export default function ServicePage({ apiBase }) {
       _description: getServiceDescription(service),
       _price: getServicePrice(service),
       _available: isServiceAvailable(service),
+      _requiresPrescription: Boolean(service?.requiresPrescription),
     }));
   }, [services]);
 
@@ -244,6 +245,17 @@ export default function ServicePage({ apiBase }) {
                           <Star className="h-3.5 w-3.5" />
                           Diagnostic
                         </span>
+                      </span>
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                          service._requiresPrescription
+                            ? "bg-blue-50 text-[#2563eb]"
+                            : "bg-slate-100 text-slate-600"
+                        }`}
+                      >
+                        {service._requiresPrescription
+                          ? "Prescription Required"
+                          : "No Prescription Needed"}
                       </span>
                     </div>
 

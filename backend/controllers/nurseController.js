@@ -135,7 +135,9 @@ function duplicateMessage(error) {
   const fields = Object.keys(error?.keyPattern || {});
   const message = String(error?.message || "");
   if (fields.includes("email")) return "A nurse with this email already exists.";
+  if (fields.includes("nurseCode")) return "A nurse with this Nurse ID already exists.";
   if (message.includes("email")) return "A nurse with this email already exists.";
+  if (message.includes("nurseCode")) return "A nurse with this Nurse ID already exists.";
   return "Duplicate nurse record.";
 }
 
@@ -737,6 +739,7 @@ export async function getNurseDashboard(req, res) {
       data: {
         nurse: {
           id: String(nurse._id || nurse.id || ""),
+          nurseCode: nurse.nurseCode || "",
           name: nurse.name || "",
           email: nurse.email || "",
           phone: nurse.phone || "",

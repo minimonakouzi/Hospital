@@ -8,6 +8,7 @@ import {
   BriefcaseMedical,
   ClipboardList,
   CalendarClock,
+  Building2,
   HeartPulse,
   UserRoundPlus,
   UserCog,
@@ -35,6 +36,7 @@ const navItems = [
     icon: ChartNoAxesCombined,
   },
   { to: "/appointments", label: "Appointments", icon: CalendarDays },
+  { to: "/ward-management", label: "Ward Management", icon: Building2 },
   {
     to: "/service-dashboard",
     label: "Service Dashboard",

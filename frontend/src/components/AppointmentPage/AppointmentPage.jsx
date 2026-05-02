@@ -12,6 +12,7 @@ import {
   Search,
   Stethoscope,
   FlaskConical,
+  FileText,
 } from "lucide-react";
 import { useAuth, useUser } from "@clerk/clerk-react";
 
@@ -188,6 +189,28 @@ function StatusBadge({ itemStatus }) {
   );
 }
 
+function PrescriptionBadge({ status = "Not Required" }) {
+  if (status === "Submitted") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+        <FileText className="h-3.5 w-3.5" /> Prescription Submitted
+      </span>
+    );
+  }
+  if (status === "Required" || status === "Missing") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+        <FileText className="h-3.5 w-3.5" /> Prescription Missing
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+      <FileText className="h-3.5 w-3.5" /> Prescription Not Required
+    </span>
+  );
+}
+
 /* -------------------- Cards -------------------- */
 function EmptyState({ text }) {
   return (
@@ -247,6 +270,7 @@ function DoctorAppointmentCard({ item }) {
         <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
           <PaymentBadge payment={item.payment} />
           <StatusBadge itemStatus={item.status} />
+          <PrescriptionBadge status={item.prescriptionStatus} />
         </div>
       </div>
     </article>
@@ -569,6 +593,7 @@ export default function AppointmentPage() {
           time,
           payment,
           status,
+          prescriptionStatus: s.prescriptionStatus || "Not Required",
         };
       })
       .map((x) => ({ ...x, status: computeStatus(x) }));

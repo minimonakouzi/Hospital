@@ -22,8 +22,10 @@ import StaffServices from "./pages/StaffServices/StaffServices";
 import StaffAddService from "./pages/StaffAddService/StaffAddService";
 import StaffProfile from "./pages/StaffProfile/StaffProfile";
 import StaffServiceAppointments from "./pages/StaffServiceAppointments/StaffServiceAppointments";
+import StaffAdmissions from "./pages/StaffAdmissions/StaffAdmissions";
 import AuditLogs from "./pages/AuditLogs/AuditLogs";
 import StaffPerformance from "./pages/StaffPerformance";
+import WardManagement from "./pages/WardManagement/WardManagement";
 
 function RequireAuth({ children }) {
   const { isLoaded, isSignedIn } = useUser();
@@ -73,6 +75,7 @@ const App = () => {
         <Route index element={<Navigate to="/staff/services" replace />} />
         <Route path="services" element={<StaffServices />} />
         <Route path="service-appointments" element={<StaffServiceAppointments />} />
+        <Route path="admissions" element={<StaffAdmissions />} />
         <Route path="add-service" element={<StaffAddService />} />
         <Route path="profile" element={<StaffProfile />} />
       </Route>
@@ -153,6 +156,14 @@ const App = () => {
         element={
           <RequireAuth>
             <Appointments />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/ward-management"
+        element={
+          <RequireAuth>
+            <WardManagement />
           </RequireAuth>
         }
       />

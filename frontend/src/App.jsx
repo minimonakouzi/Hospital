@@ -11,6 +11,8 @@ import DoctorDetail from "./pages/DoctorDetail/DoctorDetail";
 import ServiceDetailPage from "./pages/ServiceDetailPage/ServiceDetailPage";
 import Appointments from "./pages/Appointments/Appointments";
 import MedicalRecords from "./pages/MedicalRecords/MedicalRecords";
+import MyAdmission from "./pages/MyAdmission/MyAdmission";
+import MyPrescriptions from "./pages/MyPrescriptions/MyPrescriptions";
 import Login from "./pages/Login/Login";
 import NurseLogin from "./pages/NurseLogin/NurseLogin";
 import NurseDashboard from "./pages/NurseDashboard/NurseDashboard";
@@ -18,6 +20,7 @@ import NurseCheckIns from "./pages/NurseCheckIns/NurseCheckIns";
 import NurseVitals from "./pages/NurseVitals/NurseVitals";
 import NurseBookings from "./pages/NurseBookings/NurseBookings";
 import NurseProfile from "./pages/NurseProfile/NurseProfile";
+import NurseWardPatients from "./pages/NurseWardPatients/NurseWardPatients";
 import NurseLayout from "./nurse/NurseLayout/NurseLayout";
 
 // Doctor Admin
@@ -25,6 +28,8 @@ import DHome from "./pages/DHome/DHome";
 import List from "./pages/List/List";
 import EditProfile from "./pages/EditProfile/EditProfile";
 import ScheduleCalendar from "./pages/ScheduleCalendar/ScheduleCalendar";
+import DoctorAdmittedPatients from "./pages/DoctorAdmittedPatients/DoctorAdmittedPatients";
+import DoctorPrescriptions from "./pages/DoctorPrescriptions/DoctorPrescriptions";
 
 // Lucide icon
 import { CircleChevronUp } from "lucide-react";
@@ -114,6 +119,8 @@ const App = () => {
           <Route path="/services/:id" element={<ServiceDetailPage />} />
           <Route path="/appointments" element={<Appointments />} />
           <Route path="/medical-records" element={<MedicalRecords />} />
+          <Route path="/my-admission" element={<MyAdmission />} />
+          <Route path="/my-prescriptions" element={<MyPrescriptions />} />
           <Route path="/doctor-admin/login" element={<Login />} />
           <Route path="/nurse/login" element={<NurseLogin />} />
           <Route path="/nurse" element={<NurseLayout />}>
@@ -122,6 +129,7 @@ const App = () => {
             <Route path="check-ins" element={<NurseCheckIns />} />
             <Route path="vitals" element={<NurseVitals />} />
             <Route path="bookings" element={<NurseBookings />} />
+            <Route path="ward-patients" element={<NurseWardPatients />} />
             <Route path="profile" element={<NurseProfile />} />
           </Route>
 
@@ -141,6 +149,18 @@ const App = () => {
           {/* Doctor Admin */}
           <Route path="/doctor-admin/:id" element={<DHome />} />
           <Route path="/doctor-admin/:id/appointments" element={<List />} />
+          <Route
+            path="/doctor-admin/:id/admitted-patients"
+            element={<DoctorAdmittedPatients />}
+          />
+          <Route
+            path="/doctor-admin/:id/prescriptions"
+            element={<DoctorPrescriptions />}
+          />
+          <Route
+            path="/doctor/admitted-patients"
+            element={<DoctorAdmittedPatients />}
+          />
           <Route
             path="/doctor-admin/:id/schedule-calendar"
             element={<ScheduleCalendar />}

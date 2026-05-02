@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   BriefcaseMedical,
   CalendarCheck,
+  ClipboardList,
   LogOut,
   Menu,
   PlusSquare,
@@ -23,6 +24,7 @@ const navItems = [
     label: "Appointments",
     icon: CalendarCheck,
   },
+  { to: "/staff/admissions", label: "Admissions", icon: ClipboardList },
   { to: "/staff/add-service", label: "Add Service", icon: PlusSquare },
 ];
 

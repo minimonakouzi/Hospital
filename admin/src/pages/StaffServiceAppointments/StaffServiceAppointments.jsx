@@ -64,6 +64,20 @@ function StatusBadge({ status }) {
   );
 }
 
+function PrescriptionBadge({ status = "Not Required" }) {
+  const tone =
+    status === "Submitted"
+      ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
+      : status === "Missing" || status === "Required"
+        ? "bg-amber-50 text-amber-700 ring-amber-100"
+        : "bg-slate-100 text-slate-600 ring-slate-200";
+  return (
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${tone}`}>
+      Prescription {status}
+    </span>
+  );
+}
+
 export default function StaffServiceAppointments() {
   const [appointments, setAppointments] = useState([]);
   const [query, setQuery] = useState("");
@@ -401,6 +415,7 @@ export default function StaffServiceAppointments() {
                         <div className="grid gap-2">
                           <div className="flex flex-wrap items-center gap-2">
                             <StatusBadge status={item.status} />
+                            <PrescriptionBadge status={item.prescriptionStatus || "Not Required"} />
                             {finalized ? (
                               <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-blue-700 ring-1 ring-blue-100">
                                 Finalized

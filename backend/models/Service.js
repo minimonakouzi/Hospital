@@ -9,6 +9,7 @@ const serviceSchema = new mongoose.Schema(
 
     price: { type: Number, default: 0 },
     available: { type: Boolean, default: true },
+    requiresPrescription: { type: Boolean, default: false },
 
     // ✅ FIXED: Cloudinary fields
     imageUrl: { type: String, default: null },

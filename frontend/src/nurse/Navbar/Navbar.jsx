@@ -4,6 +4,7 @@ import {
   Activity,
   CalendarDays,
   ClipboardList,
+  BedDouble,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -18,6 +19,7 @@ const navItems = [
   { name: "Check-in Queue", to: "/nurse/check-ins", icon: ClipboardList },
   { name: "Vitals", to: "/nurse/vitals", icon: Activity },
   { name: "Bookings", to: "/nurse/bookings", icon: CalendarDays },
+  { name: "Ward Patients", to: "/nurse/ward-patients", icon: BedDouble },
 ];
 
 function NurseNavLinks({ onClick }) {

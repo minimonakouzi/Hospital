@@ -56,6 +56,12 @@ const parseAvailability = (v) => {
   return s === "available" || s === "true";
 };
 
+const parseBoolean = (v) => {
+  if (typeof v === "boolean") return v;
+  const s = String(v ?? "").trim().toLowerCase();
+  return ["true", "1", "yes", "on"].includes(s);
+};
+
 /* -----------------------
    CREATE
    ----------------------- */
@@ -67,6 +73,7 @@ export async function createService(req, res) {
     const slots = normalizeSlotsToMap(rawSlots);
     const numericPrice = sanitizePrice(b.price);
     const available = parseAvailability(b.availability);
+    const requiresPrescription = parseBoolean(b.requiresPrescription);
 
     let imageUrl = null;
     let imagePublicId = null;
@@ -86,6 +93,7 @@ export async function createService(req, res) {
       shortDescription: b.shortDescription || "",
       price: numericPrice,
       available,
+      requiresPrescription,
       instructions,
       slots,
       imageUrl,
@@ -101,6 +109,7 @@ export async function createService(req, res) {
         name: saved.name,
         price: saved.price,
         available: saved.available,
+        requiresPrescription: saved.requiresPrescription,
       },
     });
     return res.status(201).json({ success: true, data: saved, message: "Service created" });
@@ -155,6 +164,7 @@ export async function updateService(req, res) {
     if (b.shortDescription !== undefined) updateData.shortDescription = b.shortDescription;
     if (b.price !== undefined) updateData.price = sanitizePrice(b.price);
     if (b.availability !== undefined) updateData.available = parseAvailability(b.availability);
+    if (b.requiresPrescription !== undefined) updateData.requiresPrescription = parseBoolean(b.requiresPrescription);
     if (b.instructions !== undefined) updateData.instructions = parseJsonArrayField(b.instructions);
     if (b.slots !== undefined) updateData.slots = normalizeSlotsToMap(parseJsonArrayField(b.slots));
 

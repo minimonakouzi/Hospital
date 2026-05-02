@@ -1,6 +1,9 @@
 // controllers/serviceAppointmentController.js
+import mongoose from "mongoose";
 import ServiceAppointment from "../models/serviceAppointment.js";
 import Service from "../models/Service.js";
+import PatientProfile from "../models/PatientProfile.js";
+import Prescription from "../models/Prescription.js";
 import Stripe from "stripe";
 import { getAuth } from "@clerk/express";
 import { createAuditLog } from "../utils/auditLog.js";
@@ -75,6 +78,10 @@ function resolveClerkUserId(req) {
   }
 }
 
+function isValidObjectId(id) {
+  return mongoose.Types.ObjectId.isValid(String(id || ""));
+}
+
 /* CREATE */
 export const createServiceAppointment = async (req, res) => {
   try {
@@ -100,6 +107,8 @@ export const createServiceAppointment = async (req, res) => {
       email,
       meta = {},
       notes = "",
+      prescriptionId,
+      prescriptionFileUrl = "",
       serviceImageUrl: serviceImageUrlFromBody,
       serviceImagePublicId: serviceImagePublicIdFromBody,
     } = body;
@@ -144,9 +153,54 @@ export const createServiceAppointment = async (req, res) => {
       console.warn("Duplicate booking check failed:", chkErr);
     }
 
-    // Fetch service snapshot (non-fatal)
+    // Fetch service snapshot
     let svc = null;
     try { svc = await Service.findById(serviceId).lean(); } catch (e) { console.warn("Service lookup failed:", e?.message || e); }
+    if (!svc) return res.status(404).json({ success: false, message: "Service not found." });
+
+    let resolvedPrescriptionId = null;
+    const externalPrescriptionUrl = String(prescriptionFileUrl || "").trim();
+    let prescriptionStatus = svc.requiresPrescription ? "Required" : "Not Required";
+
+    if (svc.requiresPrescription) {
+      const patient = await PatientProfile.findOne({ clerkUserId }).lean();
+      if (!patient) {
+        return res.status(404).json({
+          success: false,
+          message: "Patient profile not found. Please complete your profile before booking this service.",
+        });
+      }
+
+      if (!prescriptionId && !externalPrescriptionUrl) {
+        return res.status(400).json({
+          success: false,
+          message: "This service requires a prescription.",
+        });
+      }
+
+      if (prescriptionId) {
+        if (!isValidObjectId(prescriptionId)) {
+          return res.status(400).json({ success: false, message: "Invalid prescriptionId." });
+        }
+
+        const prescription = await Prescription.findOne({
+          _id: prescriptionId,
+          patientId: patient._id,
+          status: "Active",
+        }).lean();
+
+        if (!prescription) {
+          return res.status(400).json({
+            success: false,
+            message: "Selected prescription was not found or is not active.",
+          });
+        }
+
+        resolvedPrescriptionId = prescription._id;
+      }
+
+      prescriptionStatus = "Submitted";
+    }
 
     let resolvedServiceName = serviceNameFromBody || (svc && (svc.name || svc.title)) || "Service";
     const svcImageUrlFromDB = svc && (String(svc.imageUrl || svc.image || svc.image?.url || svc.profileImage?.url || "").trim() || "");
@@ -169,6 +223,9 @@ export const createServiceAppointment = async (req, res) => {
       fees: numericAmount,
       createdBy: clerkUserId,
       notes: notes || "",
+      prescriptionId: resolvedPrescriptionId,
+      prescriptionFileUrl: externalPrescriptionUrl,
+      prescriptionStatus,
     };
 
     // Free appointment
