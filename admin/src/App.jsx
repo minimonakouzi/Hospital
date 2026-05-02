@@ -23,9 +23,16 @@ import StaffAddService from "./pages/StaffAddService/StaffAddService";
 import StaffProfile from "./pages/StaffProfile/StaffProfile";
 import StaffServiceAppointments from "./pages/StaffServiceAppointments/StaffServiceAppointments";
 import StaffAdmissions from "./pages/StaffAdmissions/StaffAdmissions";
+import StaffSupportTickets from "./pages/StaffSupportTickets/StaffSupportTickets";
+import StaffRadiologyReports from "./pages/StaffRadiologyReports/StaffRadiologyReports";
+import StaffLabReports from "./pages/StaffLabReports/StaffLabReports";
+import StaffBilling from "./pages/StaffBilling/StaffBilling";
 import AuditLogs from "./pages/AuditLogs/AuditLogs";
 import StaffPerformance from "./pages/StaffPerformance";
 import WardManagement from "./pages/WardManagement/WardManagement";
+import RadiologyReports from "./pages/RadiologyReports/RadiologyReports";
+import LabReports from "./pages/LabReports/LabReports";
+import PatientBilling from "./pages/PatientBilling/PatientBilling";
 
 function RequireAuth({ children }) {
   const { isLoaded, isSignedIn } = useUser();
@@ -76,6 +83,10 @@ const App = () => {
         <Route path="services" element={<StaffServices />} />
         <Route path="service-appointments" element={<StaffServiceAppointments />} />
         <Route path="admissions" element={<StaffAdmissions />} />
+        <Route path="support-tickets" element={<StaffSupportTickets />} />
+        <Route path="radiology-reports" element={<StaffRadiologyReports />} />
+        <Route path="lab-reports" element={<StaffLabReports />} />
+        <Route path="billing" element={<StaffBilling />} />
         <Route path="add-service" element={<StaffAddService />} />
         <Route path="profile" element={<StaffProfile />} />
       </Route>
@@ -196,6 +207,30 @@ const App = () => {
         element={
           <RequireAuth>
             <ServiceAppointments />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/radiology-reports"
+        element={
+          <RequireAuth>
+            <RadiologyReports />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/lab-reports"
+        element={
+          <RequireAuth>
+            <LabReports />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/patient-billing"
+        element={
+          <RequireAuth>
+            <PatientBilling />
           </RequireAuth>
         }
       />

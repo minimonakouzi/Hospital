@@ -17,10 +17,20 @@ import {
   LogIn,
   HeartPulse,
   BedDouble,
+  Bell,
+  MessageSquareText,
+  FileText,
+  CreditCard,
 } from "lucide-react";
 
 // Clerk
-import { SignedIn, SignedOut, useClerk } from "@clerk/clerk-react";
+import { SignedIn, SignedOut, useAuth, useClerk } from "@clerk/clerk-react";
+
+const API_ROOT =
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_BACKEND_URL ||
+  "http://localhost:4000";
+const API_BASE = `${API_ROOT.replace(/\/$/, "")}/api`;
 
 /* ================= ANIMATED LOGOUT BUTTON ================= */
 function AnimatedLogoutButton({ onLogout }) {
@@ -534,10 +544,47 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [showNavbar, setShowNavbar] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const location = useLocation();
   const navRef = useRef(null);
   const clerk = useClerk();
+  const { isLoaded, isSignedIn, getToken } = useAuth();
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadUnreadCount() {
+      if (!isLoaded || !isSignedIn) {
+        setUnreadCount(0);
+        return;
+      }
+
+      try {
+        const token = await getToken();
+        const res = await fetch(
+          `${API_BASE}/patient-notifications/my?status=All&limit=1`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
+        const body = await res.json().catch(() => null);
+        if (!res.ok) return;
+        if (active) setUnreadCount(Number(body?.unreadCount || 0));
+      } catch (err) {
+        console.error("load notification badge error:", err);
+        if (active) setUnreadCount(0);
+      }
+    }
+
+    loadUnreadCount();
+    window.addEventListener("revive:notifications-updated", loadUnreadCount);
+
+    return () => {
+      active = false;
+      window.removeEventListener("revive:notifications-updated", loadUnreadCount);
+    };
+  }, [getToken, isLoaded, isSignedIn, location.pathname]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -586,6 +633,13 @@ export default function Navbar() {
   ];
 
   const isActive = (href) => location.pathname === href;
+
+  const notificationBadge =
+    unreadCount > 0 ? (
+      <span className="ml-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-black leading-none text-white">
+        {unreadCount > 99 ? "99+" : unreadCount}
+      </span>
+    ) : null;
 
   return (
     <div
@@ -702,6 +756,62 @@ export default function Navbar() {
                   <ClipboardList className="h-3.5 w-3.5 text-[#2563eb]" />
                   My Prescriptions
                 </Link>
+                <Link
+                  to="/notifications"
+                  className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-semibold transition ${
+                    isActive("/notifications")
+                      ? "border-[#bfdbfe] bg-[#eff6ff] text-[#2563eb]"
+                      : "border-[#dbe6f7] bg-white text-[#334155] hover:bg-[#f8fbff] hover:text-[#2563eb]"
+                  }`}
+                >
+                  <Bell className="h-3.5 w-3.5 text-[#2563eb]" />
+                  Notifications
+                  {notificationBadge}
+                </Link>
+                <Link
+                  to="/support"
+                  className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-semibold transition ${
+                    isActive("/support")
+                      ? "border-[#bfdbfe] bg-[#eff6ff] text-[#2563eb]"
+                      : "border-[#dbe6f7] bg-white text-[#334155] hover:bg-[#f8fbff] hover:text-[#2563eb]"
+                  }`}
+                >
+                  <MessageSquareText className="h-3.5 w-3.5 text-[#2563eb]" />
+                  Help Desk
+                </Link>
+                <Link
+                  to="/my-radiology-reports"
+                  className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-semibold transition ${
+                    isActive("/my-radiology-reports")
+                      ? "border-[#bfdbfe] bg-[#eff6ff] text-[#2563eb]"
+                      : "border-[#dbe6f7] bg-white text-[#334155] hover:bg-[#f8fbff] hover:text-[#2563eb]"
+                  }`}
+                >
+                  <FileText className="h-3.5 w-3.5 text-[#2563eb]" />
+                  Radiology
+                </Link>
+                <Link
+                  to="/my-lab-reports"
+                  className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-semibold transition ${
+                    isActive("/my-lab-reports")
+                      ? "border-[#bfdbfe] bg-[#eff6ff] text-[#2563eb]"
+                      : "border-[#dbe6f7] bg-white text-[#334155] hover:bg-[#f8fbff] hover:text-[#2563eb]"
+                  }`}
+                >
+                  <FlaskConical className="h-3.5 w-3.5 text-[#2563eb]" />
+                  Lab Reports
+                </Link>
+                <Link
+                  to="/my-billing"
+                  className={`inline-flex h-9 items-center gap-1.5 rounded-xl border px-2.5 text-xs font-semibold transition ${
+                    isActive("/my-billing")
+                      ? "border-[#bfdbfe] bg-[#eff6ff] text-[#2563eb]"
+                      : "border-[#dbe6f7] bg-white text-[#334155] hover:bg-[#f8fbff] hover:text-[#2563eb]"
+                  }`}
+                >
+                  <CreditCard className="h-3.5 w-3.5 text-[#2563eb]" />
+                  Billing
+                </Link>
                 <AnimatedLogoutButton
                   onLogout={() => clerk.signOut({ redirectUrl: "/" })}
                 />
@@ -814,6 +924,67 @@ export default function Navbar() {
                   >
                     <ClipboardList className="h-4 w-4" />
                     My Prescriptions
+                  </Link>
+                  <Link
+                    to="/notifications"
+                    onClick={() => setIsOpen(false)}
+                    className={`inline-flex h-11 items-center gap-2.5 rounded-xl px-3 text-sm font-semibold transition ${
+                      isActive("/notifications")
+                        ? "bg-[#2563eb] text-white"
+                        : "bg-[#f8fbff] text-[#334155] hover:text-[#2563eb]"
+                    }`}
+                  >
+                    <Bell className="h-4 w-4" />
+                    Notifications
+                    {notificationBadge}
+                  </Link>
+                  <Link
+                    to="/support"
+                    onClick={() => setIsOpen(false)}
+                    className={`inline-flex h-11 items-center gap-2.5 rounded-xl px-3 text-sm font-semibold transition ${
+                      isActive("/support")
+                        ? "bg-[#2563eb] text-white"
+                        : "bg-[#f8fbff] text-[#334155] hover:text-[#2563eb]"
+                    }`}
+                  >
+                    <MessageSquareText className="h-4 w-4" />
+                    Help Desk
+                  </Link>
+                  <Link
+                    to="/my-radiology-reports"
+                    onClick={() => setIsOpen(false)}
+                    className={`inline-flex h-11 items-center gap-2.5 rounded-xl px-3 text-sm font-semibold transition ${
+                      isActive("/my-radiology-reports")
+                        ? "bg-[#2563eb] text-white"
+                        : "bg-[#f8fbff] text-[#334155] hover:text-[#2563eb]"
+                    }`}
+                  >
+                    <FileText className="h-4 w-4" />
+                    Radiology Reports
+                  </Link>
+                  <Link
+                    to="/my-lab-reports"
+                    onClick={() => setIsOpen(false)}
+                    className={`inline-flex h-11 items-center gap-2.5 rounded-xl px-3 text-sm font-semibold transition ${
+                      isActive("/my-lab-reports")
+                        ? "bg-[#2563eb] text-white"
+                        : "bg-[#f8fbff] text-[#334155] hover:text-[#2563eb]"
+                    }`}
+                  >
+                    <FlaskConical className="h-4 w-4" />
+                    Lab Reports
+                  </Link>
+                  <Link
+                    to="/my-billing"
+                    onClick={() => setIsOpen(false)}
+                    className={`inline-flex h-11 items-center gap-2.5 rounded-xl px-3 text-sm font-semibold transition ${
+                      isActive("/my-billing")
+                        ? "bg-[#2563eb] text-white"
+                        : "bg-[#f8fbff] text-[#334155] hover:text-[#2563eb]"
+                    }`}
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    Billing
                   </Link>
                   <div className="flex justify-start sm:col-span-2">
                     <AnimatedLogoutButton

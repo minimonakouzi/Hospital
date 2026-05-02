@@ -4,6 +4,7 @@ import ServiceAppointment from "../models/serviceAppointment.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { createAuditLog } from "../utils/auditLog.js";
+import { createPatientNotification } from "../utils/createPatientNotification.js";
 
 const VALID_SHIFTS = ["Morning", "Evening", "Night", "Rotating"];
 const VALID_STATUSES = ["Active", "On Leave", "Inactive"];
@@ -120,6 +121,24 @@ function mapServiceAppointment(appointment = {}) {
     checkedInAt: appointment.checkedInAt || null,
     checkedInByNurseId: appointment.checkedInByNurseId || null,
   };
+}
+
+function notifyServiceCheckInUpdated(appointment, nurseId = "") {
+  void createPatientNotification({
+    clerkUserId: appointment.createdBy,
+    title: "Service appointment updated",
+    message: "Your service appointment has been updated.",
+    type: "Appointment",
+    link: "/appointments",
+    createdByRole: "Nurse",
+    createdById: cleanString(nurseId),
+    dedupeKey: `serviceAppointment:${appointment._id}:checkIn:${appointment.checkInStatus || ""}`,
+    metadata: {
+      serviceAppointmentId: String(appointment._id),
+      status: appointment.status || "",
+      checkInStatus: appointment.checkInStatus || "",
+    },
+  });
 }
 
 function validateRequired(data, includePassword = false) {
@@ -606,6 +625,9 @@ export async function markNurseCheckIn(req, res) {
     appointment.checkedInAt = new Date();
     appointment.checkedInByNurseId = req.nurse._id;
     await appointment.save();
+    if (type === "service") {
+      notifyServiceCheckInUpdated(appointment, req.nurse?._id || req.nurse?.id || "");
+    }
     await createAuditLog(req, {
       action: "patient.checked_in",
       entityType: type === "doctor" ? "appointment" : "serviceAppointment",

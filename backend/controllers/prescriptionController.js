@@ -3,6 +3,7 @@ import { getAuth } from "@clerk/express";
 import Appointment from "../models/Appointment.js";
 import PatientProfile from "../models/PatientProfile.js";
 import Prescription from "../models/Prescription.js";
+import { createPatientNotification } from "../utils/createPatientNotification.js";
 
 function cleanString(value) {
   return String(value ?? "").trim();
@@ -33,6 +34,24 @@ function populatePrescription(query) {
     .populate("patientId", "patientCode name email phone age gender clerkUserId")
     .populate("doctorId", "name email specialization imageUrl")
     .populate("appointmentId", "patientName mobile age gender date time status");
+}
+
+function notifyPrescriptionAdded(prescription, patient, doctorId) {
+  void createPatientNotification({
+    patientId: prescription.patientId,
+    clerkUserId: patient?.clerkUserId,
+    title: "New prescription added",
+    message: "A new prescription is available in your account.",
+    type: "Prescription",
+    link: "/my-prescriptions",
+    createdByRole: "Doctor",
+    createdById: cleanString(doctorId),
+    dedupeKey: `prescription:${prescription._id}:created`,
+    metadata: {
+      prescriptionId: String(prescription._id),
+      appointmentId: prescription.appointmentId ? String(prescription.appointmentId) : "",
+    },
+  });
 }
 
 function normalizeMedicines(raw = []) {
@@ -144,6 +163,7 @@ export async function createPrescription(req, res) {
       notes: cleanString(req.body?.notes),
       status: "Active",
     });
+    notifyPrescriptionAdded(prescription, patient, doctorId);
 
     const populated = await populatePrescription(Prescription.findById(prescription._id)).lean();
     return res.status(201).json({

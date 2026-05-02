@@ -14,6 +14,9 @@ import {
   UserCog,
   ChartNoAxesCombined,
   History,
+  FileText,
+  FlaskConical,
+  CreditCard,
   Menu,
   X,
   LogOut,
@@ -48,6 +51,9 @@ const navItems = [
     label: "Service Appointments",
     icon: CalendarClock,
   },
+  { to: "/radiology-reports", label: "Radiology Reports", icon: FileText },
+  { to: "/lab-reports", label: "Lab Reports", icon: FlaskConical },
+  { to: "/patient-billing", label: "Patient Billing", icon: CreditCard },
   { to: "/audit-logs", label: "Audit Logs", icon: History },
 ];
 

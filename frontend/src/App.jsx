@@ -13,6 +13,11 @@ import Appointments from "./pages/Appointments/Appointments";
 import MedicalRecords from "./pages/MedicalRecords/MedicalRecords";
 import MyAdmission from "./pages/MyAdmission/MyAdmission";
 import MyPrescriptions from "./pages/MyPrescriptions/MyPrescriptions";
+import Notifications from "./pages/Notifications/Notifications";
+import Support from "./pages/Support/Support";
+import MyRadiologyReports from "./pages/MyRadiologyReports/MyRadiologyReports";
+import MyLabReports from "./pages/MyLabReports/MyLabReports";
+import MyBilling from "./pages/MyBilling/MyBilling";
 import Login from "./pages/Login/Login";
 import NurseLogin from "./pages/NurseLogin/NurseLogin";
 import NurseDashboard from "./pages/NurseDashboard/NurseDashboard";
@@ -30,6 +35,8 @@ import EditProfile from "./pages/EditProfile/EditProfile";
 import ScheduleCalendar from "./pages/ScheduleCalendar/ScheduleCalendar";
 import DoctorAdmittedPatients from "./pages/DoctorAdmittedPatients/DoctorAdmittedPatients";
 import DoctorPrescriptions from "./pages/DoctorPrescriptions/DoctorPrescriptions";
+import DoctorRadiologyReports from "./pages/DoctorRadiologyReports/DoctorRadiologyReports";
+import DoctorLabReports from "./pages/DoctorLabReports/DoctorLabReports";
 
 // Lucide icon
 import { CircleChevronUp } from "lucide-react";
@@ -121,6 +128,11 @@ const App = () => {
           <Route path="/medical-records" element={<MedicalRecords />} />
           <Route path="/my-admission" element={<MyAdmission />} />
           <Route path="/my-prescriptions" element={<MyPrescriptions />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/support" element={<Support />} />
+          <Route path="/my-radiology-reports" element={<MyRadiologyReports />} />
+          <Route path="/my-lab-reports" element={<MyLabReports />} />
+          <Route path="/my-billing" element={<MyBilling />} />
           <Route path="/doctor-admin/login" element={<Login />} />
           <Route path="/nurse/login" element={<NurseLogin />} />
           <Route path="/nurse" element={<NurseLayout />}>
@@ -157,6 +169,19 @@ const App = () => {
             path="/doctor-admin/:id/prescriptions"
             element={<DoctorPrescriptions />}
           />
+          <Route
+            path="/doctor-admin/:id/radiology-reports"
+            element={<DoctorRadiologyReports />}
+          />
+          <Route
+            path="/doctor-admin/:id/lab-reports"
+            element={<DoctorLabReports />}
+          />
+          <Route
+            path="/doctor/radiology-reports"
+            element={<DoctorRadiologyReports />}
+          />
+          <Route path="/doctor/lab-reports" element={<DoctorLabReports />} />
           <Route
             path="/doctor/admitted-patients"
             element={<DoctorAdmittedPatients />}

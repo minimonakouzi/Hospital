@@ -6,6 +6,8 @@ import {
   BedDouble,
   CalendarClock,
   ClipboardPlus,
+  FileText,
+  FlaskConical,
   SquarePen,
   LogOut,
   Menu,
@@ -105,6 +107,18 @@ export default function Navbar() {
       name: "Prescriptions",
       to: doctorId ? `${basePath}/prescriptions` : "/doctor-admin/login",
       icon: ClipboardPlus,
+      end: false,
+    },
+    {
+      name: "Radiology Reports",
+      to: doctorId ? `${basePath}/radiology-reports` : "/doctor/radiology-reports",
+      icon: FileText,
+      end: false,
+    },
+    {
+      name: "Lab Reports",
+      to: doctorId ? `${basePath}/lab-reports` : "/doctor/lab-reports",
+      icon: FlaskConical,
       end: false,
     },
     {

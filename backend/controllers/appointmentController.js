@@ -1,10 +1,12 @@
 // controllers/appointmentController.js
 import Stripe from "stripe";
+import mongoose from "mongoose";
 import Appointment from "../models/Appointment.js";
 import Doctor from "../models/Doctor.js";
 import dotenv from "dotenv";
 import { getAuth } from "@clerk/express";
 import { clerkClient } from "@clerk/clerk-sdk-node";
+import { createPatientNotification } from "../utils/createPatientNotification.js";
 dotenv.config();
 
 const STRIPE_KEY = process.env.STRIPE_SECRET_KEY;
@@ -40,6 +42,44 @@ function resolveClerkUserId(req) {
   } catch (e) {
     return null;
   }
+}
+
+function isValidObjectId(id) {
+  return mongoose.Types.ObjectId.isValid(String(id || ""));
+}
+
+function notifyAppointmentBooked(appointment) {
+  void createPatientNotification({
+    clerkUserId: appointment.createdBy,
+    title: "Appointment booked",
+    message: "Your appointment has been booked successfully.",
+    type: "Appointment",
+    link: "/appointments",
+    createdByRole: "Patient",
+    createdById: appointment.createdBy,
+    dedupeKey: `appointment:${appointment._id}:booked`,
+    metadata: {
+      appointmentId: String(appointment._id),
+      status: appointment.status,
+    },
+  });
+}
+
+function notifyAppointmentStatusUpdated(appointment, createdByRole = "System", createdById = "") {
+  void createPatientNotification({
+    clerkUserId: appointment.createdBy,
+    title: "Appointment status updated",
+    message: "Your appointment status has been updated.",
+    type: "Appointment",
+    link: "/appointments",
+    createdByRole,
+    createdById,
+    dedupeKey: `appointment:${appointment._id}:status:${appointment.status}`,
+    metadata: {
+      appointmentId: String(appointment._id),
+      status: appointment.status,
+    },
+  });
 }
 
 /* ---------------- list / single / by-patient ---------------- */
@@ -81,6 +121,9 @@ export const getAppointments = async (req, res) => {
 export const getAppointmentById = async (req, res) => {
   try {
     const { id } = req.params;
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ success: false, message: "Invalid appointment id." });
+    }
     const appt = await Appointment.findById(id).populate("doctorId", "name specialization owner imageUrl image").lean();
     if (!appt) return res.status(404).json({ success: false, message: "Appointment not found" });
     return res.json({ success: true, appointment: appt });
@@ -234,6 +277,7 @@ export const createAppointment = async (req, res) => {
         payment: { method: base.payment.method, status: "Paid", amount: 0 },
         paidAt: new Date(),
       });
+      notifyAppointmentBooked(created);
       return res.status(201).json({ success: true, appointment: created, checkoutUrl: null });
     }
 
@@ -244,6 +288,7 @@ export const createAppointment = async (req, res) => {
         status: "Pending",
         payment: { method: "Cash", status: "Pending", amount: numericFee },
       });
+      notifyAppointmentBooked(created);
       return res.status(201).json({ success: true, appointment: created, checkoutUrl: null });
     }
 
@@ -298,6 +343,7 @@ export const createAppointment = async (req, res) => {
         payment: { ...base.payment, providerId: session.payment_intent || session.paymentIntent || null },
         status: "Pending",
       });
+      notifyAppointmentBooked(created);
       return res.status(201).json({ success: true, appointment: created, checkoutUrl: session.url || null });
     } catch (dbErr) {
       console.error("DB error saving appointment after stripe session:", dbErr);
@@ -386,6 +432,7 @@ export const confirmPayment = async (req, res) => {
       return res.status(404).json({ success: false, message: "Appointment not found for this payment session" });
     }
 
+    notifyAppointmentStatusUpdated(appt, "System");
     return res.json({ success: true, appointment: appt });
   } catch (err) {
     console.error("confirmPayment:", err);
@@ -399,6 +446,9 @@ export const updateAppointment = async (req, res) => {
   try {
     const { id } = req.params;
     const body = req.body || {};
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ success: false, message: "Invalid appointment id." });
+    }
 
     const appt = await Appointment.findById(id);
     if (!appt) return res.status(404).json({ success: false, message: "Appointment not found" });
@@ -426,6 +476,10 @@ export const updateAppointment = async (req, res) => {
       .populate({ path: "doctorId", select: "name imageUrl" })
       .lean();
 
+    if (updated && (update.status || update.rescheduledTo)) {
+      notifyAppointmentStatusUpdated(updated, "System");
+    }
+
     return res.json({ success: true, appointment: updated });
   } catch (err) {
     console.error("updateAppointment:", err);
@@ -436,11 +490,15 @@ export const updateAppointment = async (req, res) => {
 export const cancelAppointment = async (req, res) => {
   try {
     const { id } = req.params;
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ success: false, message: "Invalid appointment id." });
+    }
     const appt = await Appointment.findById(id);
     if (!appt) return res.status(404).json({ success: false, message: "Appointment not found" });
 
     appt.status = "Canceled";
     await appt.save();
+    notifyAppointmentStatusUpdated(appt, "System");
     return res.json({ success: true, appointment: appt });
   } catch (err) {
     console.error("cancelAppointment:", err);

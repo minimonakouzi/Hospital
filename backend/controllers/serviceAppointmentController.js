@@ -7,6 +7,7 @@ import Prescription from "../models/Prescription.js";
 import Stripe from "stripe";
 import { getAuth } from "@clerk/express";
 import { createAuditLog } from "../utils/auditLog.js";
+import { createPatientNotification } from "../utils/createPatientNotification.js";
 
 const stripeKey = process.env.STRIPE_SECRET_KEY || null;
 const stripe = stripeKey ? new Stripe(stripeKey, { apiVersion: "2022-11-15" }) : null;
@@ -80,6 +81,44 @@ function resolveClerkUserId(req) {
 
 function isValidObjectId(id) {
   return mongoose.Types.ObjectId.isValid(String(id || ""));
+}
+
+const SERVICE_APPOINTMENT_LINK = "/appointments";
+
+function notifyServiceAppointmentBooked(appointment) {
+  void createPatientNotification({
+    clerkUserId: appointment.createdBy,
+    title: "Service appointment booked",
+    message: "Your service appointment has been booked successfully.",
+    type: "Appointment",
+    link: SERVICE_APPOINTMENT_LINK,
+    createdByRole: "Patient",
+    createdById: appointment.createdBy,
+    dedupeKey: `serviceAppointment:${appointment._id}:booked`,
+    metadata: {
+      serviceAppointmentId: String(appointment._id),
+      status: appointment.status,
+    },
+  });
+}
+
+function notifyServiceAppointmentUpdated(appointment, createdByRole = "System", createdById = "") {
+  void createPatientNotification({
+    clerkUserId: appointment.createdBy,
+    title: "Service appointment updated",
+    message: "Your service appointment has been updated.",
+    type: "Appointment",
+    link: SERVICE_APPOINTMENT_LINK,
+    createdByRole,
+    createdById,
+    dedupeKey: `serviceAppointment:${appointment._id}:updated:${appointment.status}:${appointment.payment?.status || ""}:${appointment.checkInStatus || ""}`,
+    metadata: {
+      serviceAppointmentId: String(appointment._id),
+      status: appointment.status,
+      paymentStatus: appointment.payment?.status || "",
+      checkInStatus: appointment.checkInStatus || "",
+    },
+  });
 }
 
 /* CREATE */
@@ -231,12 +270,14 @@ export const createServiceAppointment = async (req, res) => {
     // Free appointment
     if (numericAmount === 0) {
       const created = await ServiceAppointment.create({ ...base, status: "Pending", payment: { method: "Cash", status: "Pending", amount: 0, paidAt: new Date() } });
+      notifyServiceAppointmentBooked(created);
       return res.status(201).json({ success: true, appointment: created });
     }
 
     // Cash booking
     if (paymentMethod === "Cash") {
       const created = await ServiceAppointment.create({ ...base, status: "Pending", payment: { method: "Cash", status: "Pending", amount: numericAmount, meta } });
+      notifyServiceAppointmentBooked(created);
       return res.status(201).json({ success: true, appointment: created, checkoutUrl: null });
     }
 
@@ -290,6 +331,7 @@ export const createServiceAppointment = async (req, res) => {
         status: "Confirmed",
         payment: { method: "Online", status: "Pending", amount: numericAmount, sessionId: session.id || "" },
       });
+      notifyServiceAppointmentBooked(created);
       return res.status(201).json({ success: true, appointment: created, checkoutUrl: session.url || null });
     } catch (dbErr) {
       console.error("DB error saving service appointment after stripe session:", dbErr);
@@ -345,6 +387,7 @@ export const confirmServicePayment = async (req, res) => {
     }
 
     if (!appt) return res.status(404).json({ success: false, message: "Service appointment not found" });
+    notifyServiceAppointmentUpdated(appt, "System");
     return res.json({ success: true, appointment: appt });
   } catch (err) {
     console.error("confirmServicePayment:", err);
@@ -388,6 +431,9 @@ export const getServiceAppointments = async (req, res) => {
 export const updateServiceAppointmentStatus = async (req, res) => {
   try {
     const { id } = req.params;
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ success: false, message: "Invalid service appointment id." });
+    }
     const status = normalizeStaffStatus(req.body?.status);
 
     if (!status) {
@@ -424,6 +470,11 @@ export const updateServiceAppointmentStatus = async (req, res) => {
 
     appointment.status = status;
     await appointment.save();
+    notifyServiceAppointmentUpdated(
+      appointment,
+      "Staff",
+      String(req.staff?._id || req.staff?.id || "")
+    );
     await createAuditLog(req, {
       action: "service_appointment.status_changed",
       entityType: "serviceAppointment",
@@ -462,6 +513,9 @@ export const updateServiceAppointmentStatus = async (req, res) => {
 export const getServiceAppointmentById = async (req, res) => {
   try {
     const { id } = req.params;
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ success: false, message: "Invalid service appointment id." });
+    }
     const appt = await ServiceAppointment.findById(id).lean();
     if (!appt) return res.status(404).json({ success: false, message: "Not found" });
     return res.json({ success: true, data: appt });
@@ -476,6 +530,9 @@ export const updateServiceAppointment = async (req, res) => {
   try {
     const { id } = req.params;
     const body = req.body || {};
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ success: false, message: "Invalid service appointment id." });
+    }
     const updates = {};
 
     if (body.status !== undefined) updates.status = body.status;
@@ -512,8 +569,17 @@ export const updateServiceAppointment = async (req, res) => {
       }
     }
 
+    const previous = await ServiceAppointment.findById(id).lean();
     const updated = await ServiceAppointment.findByIdAndUpdate(id, { $set: updates }, { new: true, runValidators: true });
     if (!updated) return res.status(404).json({ success: false, message: "Not found" });
+    const statusChanged = updates.status !== undefined && previous?.status !== updated.status;
+    const paymentChanged =
+      (updates.payment !== undefined || updates["payment.status"] !== undefined) &&
+      previous?.payment?.status !== updated.payment?.status;
+    const rescheduled = updates.rescheduledTo !== undefined;
+    if (statusChanged || paymentChanged || rescheduled) {
+      notifyServiceAppointmentUpdated(updated, "System");
+    }
     return res.json({ success: true, data: updated });
   } catch (err) {
     console.error("updateServiceAppointment:", err);
@@ -525,6 +591,9 @@ export const updateServiceAppointment = async (req, res) => {
 export const cancelServiceAppointment = async (req, res) => {
   try {
     const { id } = req.params;
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ success: false, message: "Invalid service appointment id." });
+    }
     const appt = await ServiceAppointment.findById(id);
     if (!appt) return res.status(404).json({ success: false, message: "Not found" });
     if (appt.status === "Completed") return res.status(400).json({ success: false, message: "Cannot cancel a completed appointment" });
@@ -532,6 +601,7 @@ export const cancelServiceAppointment = async (req, res) => {
     appt.status = "Cancelled";
     if (appt.payment) appt.payment.status = appt.payment.status === "Confirmed" ? "Canceled" : "Pending";
     await appt.save();
+    notifyServiceAppointmentUpdated(appt, "System");
     return res.json({ success: true, data: appt });
   } catch (err) {
     console.error("cancelServiceAppointment:", err);

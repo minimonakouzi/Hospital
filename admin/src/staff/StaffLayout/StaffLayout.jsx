@@ -4,6 +4,10 @@ import {
   BriefcaseMedical,
   CalendarCheck,
   ClipboardList,
+  MessageSquareText,
+  FileText,
+  FlaskConical,
+  CreditCard,
   LogOut,
   Menu,
   PlusSquare,
@@ -13,7 +17,11 @@ import {
 } from "lucide-react";
 import logoImg from "../../assets/logo.png";
 
-const API_BASE = "http://localhost:4000";
+const API_ROOT =
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_BACKEND_URL ||
+  "http://localhost:4000";
+const API_BASE = API_ROOT.replace(/\/$/, "");
 const STAFF_TOKEN_KEY = "staffToken_v1";
 const STAFF_INFO_KEY = "staffInfo_v1";
 
@@ -25,6 +33,10 @@ const navItems = [
     icon: CalendarCheck,
   },
   { to: "/staff/admissions", label: "Admissions", icon: ClipboardList },
+  { to: "/staff/support-tickets", label: "Support Tickets", icon: MessageSquareText },
+  { to: "/staff/radiology-reports", label: "Radiology Reports", icon: FileText },
+  { to: "/staff/lab-reports", label: "Lab Reports", icon: FlaskConical },
+  { to: "/staff/billing", label: "Billing", icon: CreditCard },
   { to: "/staff/add-service", label: "Add Service", icon: PlusSquare },
 ];
 
