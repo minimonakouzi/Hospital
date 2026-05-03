@@ -95,12 +95,13 @@ function Field({ label, children }) {
 }
 
 const inputClass =
-  "h-11 w-full rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] px-4 text-sm text-slate-800 outline-none transition focus:border-blue-300 focus:bg-white";
+  "admin-input";
+const selectClass = "admin-select";
 
 function Modal({ title, subtitle, children, onClose }) {
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/45 px-3 py-4 sm:items-center">
-      <div className="w-full max-w-2xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+      <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
           <div>
             <h2 className="text-lg font-bold text-slate-950">{title}</h2>
@@ -409,7 +410,7 @@ export default function WardManagement() {
             <select
               value={filters.wardType}
               onChange={(event) => setFilters((prev) => ({ ...prev, wardType: event.target.value }))}
-              className={inputClass}
+              className={selectClass}
             >
               <option value="">All ward types</option>
               {WARD_TYPES.map((type) => <option key={type}>{type}</option>)}
@@ -417,7 +418,7 @@ export default function WardManagement() {
             <select
               value={filters.floorNumber}
               onChange={(event) => setFilters((prev) => ({ ...prev, floorNumber: event.target.value }))}
-              className={inputClass}
+              className={selectClass}
             >
               <option value="">All floors</option>
               {floorOptions.map((floor) => <option key={floor}>{floor}</option>)}
@@ -425,7 +426,7 @@ export default function WardManagement() {
             <select
               value={filters.status}
               onChange={(event) => setFilters((prev) => ({ ...prev, status: event.target.value }))}
-              className={inputClass}
+              className={selectClass}
             >
               <option value="">All ward statuses</option>
               {WARD_STATUSES.map((status) => <option key={status}>{status}</option>)}
@@ -433,7 +434,7 @@ export default function WardManagement() {
             <select
               value={filters.bedStatus}
               onChange={(event) => setFilters((prev) => ({ ...prev, bedStatus: event.target.value }))}
-              className={inputClass}
+              className={selectClass}
             >
               <option value="">All bed statuses</option>
               {BED_STATUSES.map((status) => <option key={status}>{status}</option>)}
@@ -686,22 +687,22 @@ function SetupFormModal({ modal, saving, onClose, onChange, onSubmit }) {
   }`;
   const subtitle =
     modal.type === "ward"
-      ? "Update the ward profile used by admissions and bed planning."
+      ? "Add ward details."
       : modal.type === "room"
         ? `Ward: ${modal.ward?.wardName || "Selected ward"}`
         : `Room ${modal.room?.roomNumber || ""} in ${modal.ward?.wardName || "selected ward"}`;
 
   return (
     <Modal title={title} subtitle={subtitle} onClose={onClose}>
-      <form onSubmit={onSubmit}>
-        <div className="grid gap-4 px-5 py-5 sm:grid-cols-2">
+      <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
+        <div className="grid flex-1 gap-4 overflow-y-auto px-5 py-5 sm:grid-cols-2">
           {modal.type === "ward" ? (
             <>
               <Field label="Ward Name">
                 <input className={inputClass} value={modal.form.wardName} onChange={(e) => onChange("wardName", e.target.value)} required />
               </Field>
               <Field label="Ward Type">
-                <select className={inputClass} value={modal.form.wardType} onChange={(e) => onChange("wardType", e.target.value)} required>
+                <select className={selectClass} value={modal.form.wardType} onChange={(e) => onChange("wardType", e.target.value)} required>
                   {WARD_TYPES.map((item) => <option key={item}>{item}</option>)}
                 </select>
               </Field>
@@ -709,14 +710,14 @@ function SetupFormModal({ modal, saving, onClose, onChange, onSubmit }) {
                 <input className={inputClass} value={modal.form.floorNumber} onChange={(e) => onChange("floorNumber", e.target.value)} required />
               </Field>
               <Field label="Status">
-                <select className={inputClass} value={modal.form.status} onChange={(e) => onChange("status", e.target.value)}>
+                <select className={selectClass} value={modal.form.status} onChange={(e) => onChange("status", e.target.value)}>
                   {WARD_STATUSES.map((item) => <option key={item}>{item}</option>)}
                 </select>
               </Field>
               <label className="grid gap-1.5 text-sm font-semibold text-slate-700 sm:col-span-2">
                 <span>Description</span>
                 <textarea
-                  className="min-h-24 w-full resize-none rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-300 focus:bg-white"
+                  className="admin-textarea min-h-24 resize-none"
                   value={modal.form.description}
                   onChange={(e) => onChange("description", e.target.value)}
                 />
@@ -730,7 +731,7 @@ function SetupFormModal({ modal, saving, onClose, onChange, onSubmit }) {
                 <input className={inputClass} value={modal.form.roomNumber} onChange={(e) => onChange("roomNumber", e.target.value)} required />
               </Field>
               <Field label="Room Type">
-                <select className={inputClass} value={modal.form.roomType} onChange={(e) => onChange("roomType", e.target.value)} required>
+                <select className={selectClass} value={modal.form.roomType} onChange={(e) => onChange("roomType", e.target.value)} required>
                   {ROOM_TYPES.map((item) => <option key={item}>{item}</option>)}
                 </select>
               </Field>
@@ -738,7 +739,7 @@ function SetupFormModal({ modal, saving, onClose, onChange, onSubmit }) {
                 <input className={inputClass} value={modal.form.floorNumber} onChange={(e) => onChange("floorNumber", e.target.value)} required />
               </Field>
               <Field label="Status">
-                <select className={inputClass} value={modal.form.status} onChange={(e) => onChange("status", e.target.value)}>
+                <select className={selectClass} value={modal.form.status} onChange={(e) => onChange("status", e.target.value)}>
                   {ROOM_STATUSES.map((item) => <option key={item}>{item}</option>)}
                 </select>
               </Field>
@@ -751,14 +752,14 @@ function SetupFormModal({ modal, saving, onClose, onChange, onSubmit }) {
                 <input className={inputClass} value={modal.form.bedNumber} onChange={(e) => onChange("bedNumber", e.target.value)} required />
               </Field>
               <Field label="Bed Status">
-                <select className={inputClass} value={modal.form.bedStatus} onChange={(e) => onChange("bedStatus", e.target.value)}>
+                <select className={selectClass} value={modal.form.bedStatus} onChange={(e) => onChange("bedStatus", e.target.value)}>
                   {BED_STATUSES.map((item) => <option key={item}>{item}</option>)}
                 </select>
               </Field>
               <label className="grid gap-1.5 text-sm font-semibold text-slate-700 sm:col-span-2">
                 <span>Notes</span>
                 <textarea
-                  className="min-h-24 w-full resize-none rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-300 focus:bg-white"
+                  className="admin-textarea min-h-24 resize-none"
                   value={modal.form.notes}
                   onChange={(e) => onChange("notes", e.target.value)}
                 />

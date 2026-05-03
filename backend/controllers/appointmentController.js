@@ -506,6 +506,25 @@ export const cancelAppointment = async (req, res) => {
   }
 };
 
+export const deleteAppointment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ success: false, message: "Invalid appointment id." });
+    }
+
+    const deleted = await Appointment.findByIdAndDelete(id).lean();
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Appointment not found." });
+    }
+
+    return res.json({ success: true, message: "Appointment record deleted." });
+  } catch (err) {
+    console.error("deleteAppointment:", err);
+    return res.status(500).json({ success: false, message: "Unable to delete appointment record." });
+  }
+};
+
 export const getStats = async (req, res) => {
   try {
     const total = await Appointment.countDocuments();
@@ -574,6 +593,7 @@ export default {
   confirmPayment,
   updateAppointment,
   cancelAppointment,
+  deleteAppointment,
   getStats,
   getAppointmentsByDoctor,
   getRegisteredUserCount,

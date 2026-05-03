@@ -406,7 +406,13 @@ export const getServiceAppointments = async (req, res) => {
     const filter = {};
     if (serviceId) filter.serviceId = serviceId;
     if (mobile) filter.mobile = mobile;
-    if (status) filter.status = status;
+    if (status) {
+      const normalizedStatus = normalizeServiceStatus(status);
+      filter.status =
+        normalizedStatus === "Cancelled"
+          ? { $in: ["Cancelled", "Canceled"] }
+          : normalizedStatus;
+    }
     if (search) {
       const re = new RegExp(search, "i");
       filter.$or = [{ patientName: re }, { mobile: re }, { notes: re }];
@@ -609,6 +615,25 @@ export const cancelServiceAppointment = async (req, res) => {
   }
 };
 
+export const deleteServiceAppointment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ success: false, message: "Invalid service appointment id." });
+    }
+
+    const deleted = await ServiceAppointment.findByIdAndDelete(id).lean();
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: "Service appointment not found." });
+    }
+
+    return res.json({ success: true, message: "Service appointment record deleted." });
+  } catch (err) {
+    console.error("deleteServiceAppointment:", err);
+    return res.status(500).json({ success: false, message: "Unable to delete service appointment record." });
+  }
+};
+
 /* STATS */
 export const getServiceAppointmentStats = async (req, res) => {
   try {
@@ -663,6 +688,7 @@ export default {
   updateServiceAppointment,
   updateServiceAppointmentStatus,
   cancelServiceAppointment,
+  deleteServiceAppointment,
   getServiceAppointmentStats,
   getServiceAppointmentsByPatient,
 };

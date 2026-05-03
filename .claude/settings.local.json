@@ -3,7 +3,10 @@
     "allow": [
       "PowerShell(Get-ChildItem \"c:\\\\REVIVE\\\\frontend\\\\src\" -Recurse -File | Where-Object { $_.Name -match \"nav|header|layout|auth|route|login|signup|App\" -or $_.DirectoryName -match \"nav|auth|layout|route\" } | Select-Object FullName)",
       "PowerShell(Get-ChildItem \"c:\\\\REVIVE\\\\admin\\\\src\" -Recurse -File | Where-Object { $_.Name -match \"nav|header|layout|auth|route|login|signup|App|Staff\" -or $_.DirectoryName -match \"nav|auth|layout|route|Staff\" } | Select-Object FullName)",
-      "PowerShell(Get-ChildItem \"c:\\\\REVIVE\\\\backend\" -Recurse -File | Where-Object { $_.Name -match \"auth|route|index|middleware\" } | Select-Object FullName)"
+      "PowerShell(Get-ChildItem \"c:\\\\REVIVE\\\\backend\" -Recurse -File | Where-Object { $_.Name -match \"auth|route|index|middleware\" } | Select-Object FullName)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('scripts',{}\\), indent=2\\)\\)\")",
+      "Bash(node --input-type=module)",
+      "Bash(node -e ' *)"
     ]
   }
 }

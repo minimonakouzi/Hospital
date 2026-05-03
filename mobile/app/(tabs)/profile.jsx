@@ -61,6 +61,14 @@ function normalizeProfile(value) {
   return { ...defaultProfile, ...(value || {}) };
 }
 
+function splitName(name = "") {
+  const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts[0] || "",
+    lastName: parts.slice(1).join(" "),
+  };
+}
+
 function CollapsibleSection({ title, icon, defaultOpen = true, children }) {
   const [open, setOpen] = useState(defaultOpen);
   const rotation = useRef(new Animated.Value(defaultOpen ? 1 : 0)).current;
@@ -186,10 +194,11 @@ export default function ProfileScreen() {
       }
 
       const backendProfile = await getMyPatientProfile(token);
+      const backendName = splitName(backendProfile?.name);
 
       const loadedProfile = normalizeProfile({
-        firstName: clerkFirstName,
-        lastName: clerkLastName,
+        firstName: clerkFirstName || backendName.firstName,
+        lastName: clerkLastName || backendName.lastName,
         imageUri: backendProfile?.imageUrl || "",
         phone: backendProfile?.phone || "",
         age:
@@ -325,6 +334,8 @@ export default function ProfileScreen() {
       }
 
       const payload = {
+        name: `${trimmedFirstName} ${trimmedLastName}`.trim(),
+        email,
         phone: profile.phone || "",
         age: profile.age === "" ? null : Number(profile.age),
         gender: profile.gender || "",

@@ -1,8 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  DollarSign,
   Calendar,
-  Check,
   ChevronDown,
   Loader2,
   Phone,
@@ -15,20 +13,23 @@ import {
 import { useAuth } from "@clerk/clerk-react";
 import { adminAuthHeaders } from "../../utils/adminAuthHeaders";
 
-/* ----------------------
-  Config
------------------------- */
 const API_BASE = "http://localhost:4000";
+const STATUS_OPTIONS = [
+  { value: "Pending", label: "Pending" },
+  { value: "Confirmed", label: "Confirmed" },
+  { value: "In Progress", label: "In Progress" },
+  { value: "Rescheduled", label: "Rescheduled" },
+  { value: "Completed", label: "Completed" },
+  { value: "Cancelled", label: "Canceled" },
+];
+const PAGE_SIZES = [25, 50, 100];
 
-/* ----------------------
-  Helpers
------------------------- */
 function formatTwo(n) {
   return String(n).padStart(2, "0");
 }
 
 function formatDateNice(dateStr) {
-  if (!dateStr) return "";
+  if (!dateStr) return "Not scheduled";
   const d = new Date(`${dateStr}T00:00:00`);
   return d.toLocaleDateString("en-GB", {
     day: "numeric",
@@ -42,7 +43,7 @@ function parseTimeToParts(timeStr) {
 
   const m = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
   if (m) {
-    let hh = Number(m[1]);
+    const hh = Number(m[1]);
     const mm = Number(m[2]);
     const ampm = m[3] ? m[3].toUpperCase() : null;
 
@@ -91,47 +92,17 @@ function isDateBefore(aDateStr, bDateStr) {
   }
 }
 
-function getTimestamp(a) {
-  try {
-    const [y, m, d] = (a.date || "1970-01-01").split("-").map(Number);
-    let hour = Number(a.hour) || 0;
-    const minute = Number(a.minute) || 0;
-    const ampm = (a.ampm || "AM").toUpperCase();
-
-    if (ampm === "AM" && hour === 12) hour = 0;
-    else if (ampm === "PM" && hour !== 12) hour += 12;
-
-    return new Date(y, (m || 1) - 1, d || 1, hour, minute, 0, 0).getTime();
-  } catch {
-    return 0;
-  }
-}
-
-function getInitials(name = "") {
-  const parts = String(name).trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "PT";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
-}
-
 function extractUpdated(body) {
   return body?.data || body?.appointment || body?.item || body || {};
 }
 
 function statusClasses(status) {
   const s = (status || "").toLowerCase();
-  if (s === "confirmed") {
-    return "border-cyan-200 bg-cyan-50 text-cyan-700";
-  }
-  if (s === "completed") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  }
-  if (s === "rescheduled") {
-    return "border-violet-200 bg-violet-50 text-violet-700";
-  }
-  if (s === "canceled" || s === "cancelled") {
-    return "border-rose-200 bg-rose-50 text-rose-700";
-  }
+  if (s === "confirmed") return "border-cyan-200 bg-cyan-50 text-cyan-700";
+  if (s === "completed") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (s === "rescheduled") return "border-violet-200 bg-violet-50 text-violet-700";
+  if (s === "canceled" || s === "cancelled") return "border-rose-200 bg-rose-50 text-rose-700";
+  if (s === "in progress") return "border-blue-200 bg-blue-50 text-blue-700";
   return "border-amber-200 bg-amber-50 text-amber-700";
 }
 
@@ -141,9 +112,53 @@ function prescriptionClasses(status = "Not Required") {
   return "border-slate-200 bg-slate-100 text-slate-600";
 }
 
-/* ----------------------
-  Toast
------------------------- */
+function isFinalStatus(status = "") {
+  return status === "Completed" || status === "Canceled" || status === "Cancelled";
+}
+
+function displayStatus(status = "") {
+  return status === "Cancelled" ? "Canceled" : status;
+}
+
+function backendStatusValue(status = "") {
+  return status === "Canceled" ? "Cancelled" : status;
+}
+
+function normalizeServiceAppointment(a) {
+  let timeStr = "";
+
+  if (a.time) {
+    timeStr = a.time;
+  } else if (
+    a.hour !== undefined &&
+    a.minute !== undefined &&
+    a.ampm !== undefined
+  ) {
+    timeStr = `${formatTwo(a.hour)}:${formatTwo(a.minute)} ${a.ampm}`;
+  } else if (a.rescheduledTo?.time) {
+    timeStr = a.rescheduledTo.time;
+  }
+
+  const parsed = parseTimeToParts(timeStr);
+
+  return {
+    id: a._id || a.id,
+    patientName: a.patientName || "",
+    mobile: a.mobile || "",
+    age: a.age || "",
+    gender: a.gender || "",
+    serviceName: a.serviceName || "Service",
+    fees: a.fees ?? a.payment?.amount ?? a.raw?.fees ?? 0,
+    date: a.date || a.rescheduledTo?.date || "",
+    hour: parsed.hour,
+    minute: parsed.minute,
+    ampm: parsed.ampm,
+    status: a.status || "Pending",
+    prescriptionStatus: a.prescriptionStatus || "Not Required",
+    raw: a,
+  };
+}
+
 function Toasts({ toasts, removeToast }) {
   if (!toasts.length) return null;
 
@@ -159,9 +174,7 @@ function Toasts({ toasts, removeToast }) {
           </div>
 
           <div className="flex-1">
-            <div className="text-sm font-semibold text-slate-900">
-              {t.title}
-            </div>
+            <div className="text-sm font-semibold text-slate-900">{t.title}</div>
             <div className="mt-1 text-xs text-slate-500">{t.message}</div>
           </div>
 
@@ -170,7 +183,7 @@ function Toasts({ toasts, removeToast }) {
             className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
             aria-label="Close toast"
           >
-            ✕
+            <X className="h-4 w-4" />
           </button>
         </div>
       ))}
@@ -178,30 +191,22 @@ function Toasts({ toasts, removeToast }) {
   );
 }
 
-/* ----------------------
-  Status Select
------------------------- */
 function StatusSelect({ appointment, onChange, disabled }) {
-  const terminal =
-    appointment.status === "Completed" || appointment.status === "Canceled";
-
-  const options = ["Pending", "Confirmed", "Completed", "Canceled"];
+  const terminal = isFinalStatus(appointment.status);
 
   return (
-    <div className="relative">
+    <div className="relative w-40">
       <select
-        value={appointment.status}
+        value={backendStatusValue(appointment.status)}
         onChange={(e) => onChange(e.target.value)}
         disabled={terminal || disabled}
-        className={`h-11 w-full appearance-none rounded-2xl border px-4 pr-10 text-sm font-semibold outline-none transition ${
-          terminal
-            ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-            : "border-blue-100 bg-white text-slate-700 focus:border-blue-300"
+        className={`admin-select h-10 rounded-xl ${
+          terminal ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400" : ""
         }`}
       >
-        {options.map((opt) => (
-          <option key={opt} value={opt}>
-            {opt}
+        {STATUS_OPTIONS.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
           </option>
         ))}
       </select>
@@ -210,12 +215,8 @@ function StatusSelect({ appointment, onChange, disabled }) {
   );
 }
 
-/* ----------------------
-  Reschedule Button
------------------------- */
 function ReschedulePanel({ appointment, onReschedule, disabled }) {
-  const terminal =
-    appointment.status === "Completed" || appointment.status === "Canceled";
+  const terminal = isFinalStatus(appointment.status);
   const [editing, setEditing] = useState(false);
   const todayISO = getTodayISO();
 
@@ -251,9 +252,7 @@ function ReschedulePanel({ appointment, onReschedule, disabled }) {
   function cancel() {
     const baseDate = appointment.date || "";
     const restoreDate =
-      baseDate && !isDateBefore(baseDate, getTodayISO())
-        ? baseDate
-        : getTodayISO();
+      baseDate && !isDateBefore(baseDate, getTodayISO()) ? baseDate : getTodayISO();
 
     setDate(restoreDate);
     setTime(timePartsToInputValue(appointment));
@@ -265,7 +264,7 @@ function ReschedulePanel({ appointment, onReschedule, disabled }) {
       <button
         onClick={() => setEditing(true)}
         disabled={terminal || disabled}
-        className={`h-11 rounded-2xl border px-4 text-sm font-semibold transition ${
+        className={`h-10 rounded-xl border px-3 text-sm font-medium transition ${
           terminal || disabled
             ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
             : "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
@@ -277,43 +276,40 @@ function ReschedulePanel({ appointment, onReschedule, disabled }) {
   }
 
   return (
-    <div className="space-y-3 rounded-2xl border border-blue-100 bg-blue-50 p-3">
-      <input
-        type="date"
-        value={date}
-        min={getTodayISO()}
-        onChange={(e) => setDate(e.target.value)}
-        className="h-11 w-full rounded-xl border border-blue-100 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-300"
-      />
-
-      <input
-        type="time"
-        value={time}
-        onChange={(e) => setTime(e.target.value)}
-        className="h-11 w-full rounded-xl border border-blue-100 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-300"
-      />
-
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          onClick={save}
-          className="h-10 rounded-xl bg-blue-600 text-sm font-semibold text-white transition hover:bg-blue-700"
-        >
-          Save
-        </button>
+    <div className="min-w-[270px] rounded-2xl border border-blue-100 bg-blue-50 p-3">
+      <div className="grid grid-cols-2 gap-2">
+        <input
+          type="date"
+          value={date}
+          min={getTodayISO()}
+          onChange={(e) => setDate(e.target.value)}
+          className="h-10 rounded-xl border border-blue-100 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-300"
+        />
+        <input
+          type="time"
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
+          className="h-10 rounded-xl border border-blue-100 bg-white px-3 text-sm text-slate-700 outline-none focus:border-blue-300"
+        />
+      </div>
+      <div className="mt-2 flex justify-end gap-2">
         <button
           onClick={cancel}
-          className="h-10 rounded-xl bg-rose-50 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
+          className="h-9 rounded-xl bg-white px-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
         >
-          Cancel
+          Close
+        </button>
+        <button
+          onClick={save}
+          className="h-9 rounded-xl bg-blue-600 px-3 text-sm font-medium text-white transition hover:bg-blue-700"
+        >
+          Save
         </button>
       </div>
     </div>
   );
 }
 
-/* ----------------------
-  Main Component
------------------------- */
 export default function ServiceAppointmentsPage() {
   const { getToken } = useAuth();
   const [appointments, setAppointments] = useState([]);
@@ -324,16 +320,18 @@ export default function ServiceAppointmentsPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [showAll, setShowAll] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [meta, setMeta] = useState({ page: 1, limit: 25, total: 0, count: 0 });
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search.trim()), 220);
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 250);
     return () => clearTimeout(t);
   }, [search]);
 
   useEffect(() => {
-    fetchAppointments();
-  }, []);
+    setPage(1);
+  }, [debouncedSearch, statusFilter, pageSize]);
 
   function pushToast(title, message) {
     const toastId = Date.now() + Math.random();
@@ -344,22 +342,26 @@ export default function ServiceAppointmentsPage() {
     setToasts((t) => t.filter((x) => x.id !== id));
   }
 
-  async function fetchAppointments() {
+  const fetchAppointments = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const url = `${API_BASE}/api/service-appointments?limit=500`;
-      const res = await fetch(url, {
-        headers: await adminAuthHeaders(getToken),
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(pageSize),
       });
+      if (debouncedSearch) params.set("search", debouncedSearch);
+      if (statusFilter) params.set("status", statusFilter);
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(
-          body?.message || `Failed to fetch appointments (${res.status})`,
-        );
-      }
+      const res = await fetch(
+        `${API_BASE}/api/service-appointments?${params.toString()}`,
+        {
+          headers: await adminAuthHeaders(getToken),
+        },
+      );
+
+      if (!res.ok) throw new Error("Unable to load service appointments right now.");
 
       const body = await res.json();
 
@@ -369,75 +371,57 @@ export default function ServiceAppointmentsPage() {
       else if (Array.isArray(body.items)) list = body.items;
       else if (Array.isArray(body)) list = body;
 
-      const normalized = (Array.isArray(list) ? list : []).map((a) => {
-        let timeStr = "";
-
-        if (a.time) {
-          timeStr = a.time;
-        } else if (
-          a.hour !== undefined &&
-          a.minute !== undefined &&
-          a.ampm !== undefined
-        ) {
-          timeStr = `${formatTwo(a.hour)}:${formatTwo(a.minute)} ${a.ampm}`;
-        } else if (a.rescheduledTo?.time) {
-          timeStr = a.rescheduledTo.time;
-        }
-
-        const parsed = parseTimeToParts(timeStr);
-
-        return {
-          id: a._id || a.id,
-          patientName: a.patientName || "",
-          mobile: a.mobile || "",
-          age: a.age || "",
-          gender: a.gender || "",
-          serviceName: a.serviceName || "Service",
-          fees: a.fees ?? a.payment?.amount ?? a.raw?.fees ?? 0,
-          date: a.date || a.rescheduledTo?.date || "",
-          hour: parsed.hour,
-          minute: parsed.minute,
-          ampm: parsed.ampm,
-          status: a.status || "Pending",
-          prescriptionStatus: a.prescriptionStatus || "Not Required",
-          raw: a,
-        };
-      });
+      const normalized = (Array.isArray(list) ? list : []).map(normalizeServiceAppointment);
 
       setAppointments(normalized);
+      setMeta({
+        page: body?.meta?.page || page,
+        limit: body?.meta?.limit || pageSize,
+        total: body?.meta?.total || normalized.length,
+        count: body?.meta?.count || normalized.length,
+      });
     } catch (err) {
       console.error("fetchAppointments:", err);
-      setError(err.message || "Failed to load appointments");
+      setError(err.message || "Unable to load service appointments right now.");
       setAppointments([]);
+      setMeta((current) => ({ ...current, count: 0 }));
     } finally {
       setLoading(false);
     }
-  }
+  }, [debouncedSearch, getToken, page, pageSize, statusFilter]);
+
+  useEffect(() => {
+    fetchAppointments();
+  }, [fetchAppointments]);
 
   async function changeStatusRemote(id, newStatus) {
     const old = appointments.find((a) => a.id === id);
     if (!old) return;
 
     setAppointments((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: newStatus } : a)),
+        prev.map((a) => (a.id === id ? { ...a, status: newStatus } : a)),
     );
 
-    pushToast("Updating status", "Appointment status is updating...");
+    pushToast("Updating status", "Appointment status is updating.");
 
     try {
       const res = await fetch(`${API_BASE}/api/service-appointments/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: await adminAuthHeaders(getToken, {
+          "Content-Type": "application/json",
+        }),
         body: JSON.stringify({ status: newStatus }),
       });
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body?.message || `Update failed (${res.status})`);
-      }
+      if (!res.ok) throw new Error("Unable to update appointment status.");
 
       const body = await res.json();
       const updated = extractUpdated(body);
+      const parsed = parseTimeToParts(
+        updated.time ||
+          updated.rescheduledTo?.time ||
+          `${formatTwo(old.hour)}:${formatTwo(old.minute)} ${old.ampm}`,
+      );
 
       setAppointments((prev) =>
         prev.map((a) =>
@@ -446,21 +430,9 @@ export default function ServiceAppointmentsPage() {
                 ...a,
                 status: updated.status || newStatus,
                 date: updated.date || updated.rescheduledTo?.date || a.date,
-                hour: parseTimeToParts(
-                  updated.time ||
-                    updated.rescheduledTo?.time ||
-                    `${formatTwo(a.hour)}:${formatTwo(a.minute)} ${a.ampm}`,
-                ).hour,
-                minute: parseTimeToParts(
-                  updated.time ||
-                    updated.rescheduledTo?.time ||
-                    `${formatTwo(a.hour)}:${formatTwo(a.minute)} ${a.ampm}`,
-                ).minute,
-                ampm: parseTimeToParts(
-                  updated.time ||
-                    updated.rescheduledTo?.time ||
-                    `${formatTwo(a.hour)}:${formatTwo(a.minute)} ${a.ampm}`,
-                ).ampm,
+                hour: parsed.hour,
+                minute: parsed.minute,
+                ampm: parsed.ampm,
                 raw: updated || a.raw,
               }
             : a,
@@ -473,7 +445,7 @@ export default function ServiceAppointmentsPage() {
       setAppointments((prev) =>
         prev.map((a) => (a.id === id ? { ...a, status: old.status } : a)),
       );
-      pushToast("Update failed", err.message || "Unable to update appointment.");
+      pushToast("Update failed", "Unable to update appointment status.");
     }
   }
 
@@ -501,38 +473,30 @@ export default function ServiceAppointmentsPage() {
       ),
     );
 
-    pushToast(
-      "Rescheduling",
-      `Appointment is being moved to ${formatDateNice(dateStr)} ${timeStr}`,
-    );
+    pushToast("Rescheduling", `Moving appointment to ${formatDateNice(dateStr)} ${timeStr}.`);
 
     try {
       const res = await fetch(`${API_BASE}/api/service-appointments/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: await adminAuthHeaders(getToken, {
+          "Content-Type": "application/json",
+        }),
         body: JSON.stringify({
           rescheduledTo: { date: dateStr, time: timeStr },
           status: "Rescheduled",
         }),
       });
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body?.message || `Reschedule failed (${res.status})`);
-      }
+      if (!res.ok) throw new Error("Unable to reschedule appointment.");
 
       const body = await res.json();
       const updated = extractUpdated(body);
-
-      const finalDate =
-        updated.date || updated.rescheduledTo?.date || dateStr || appt.date;
-
+      const finalDate = updated.date || updated.rescheduledTo?.date || dateStr || appt.date;
       const finalTimeStr =
         updated.time ||
         updated.rescheduledTo?.time ||
         timeStr ||
         `${formatTwo(appt.hour)}:${formatTwo(appt.minute)} ${appt.ampm}`;
-
       const parsed = parseTimeToParts(finalTimeStr);
 
       setAppointments((prev) =>
@@ -551,54 +515,43 @@ export default function ServiceAppointmentsPage() {
         ),
       );
 
-      pushToast(
-        "Rescheduled",
-        `Appointment moved to ${formatDateNice(finalDate)} ${finalTimeStr}`,
-      );
+      pushToast("Rescheduled", `Appointment moved to ${formatDateNice(finalDate)} ${finalTimeStr}.`);
     } catch (err) {
       console.error("rescheduleRemote:", err);
-      pushToast(
-        "Reschedule failed",
-        err.message || "Unable to reschedule appointment. Reloading...",
-      );
+      pushToast("Reschedule failed", "Unable to reschedule appointment. Reloading.");
       await fetchAppointments();
     }
   }
 
   async function cancelRemote(id) {
     const appt = appointments.find((a) => a.id === id);
-    if (!appt) return;
-    if (appt.status === "Canceled") return;
+    if (!appt || isFinalStatus(appt.status)) return;
 
     if (
       !window.confirm(
-        `Mark appointment for ${appt.patientName} on ${formatDateNice(
+        `Cancel appointment for ${appt.patientName || "this patient"} on ${formatDateNice(
           appt.date,
-        )} as CANCELED?`,
+        )}?`,
       )
     ) {
       return;
     }
 
     setAppointments((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: "Canceled" } : a)),
+      prev.map((a) => (a.id === id ? { ...a, status: "Cancelled" } : a)),
     );
 
-    pushToast("Canceling", "Appointment is being canceled...");
+    pushToast("Canceling", "Appointment is being canceled.");
 
     try {
-      const res = await fetch(
-        `${API_BASE}/api/service-appointments/${id}/cancel`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        },
-      );
+      const res = await fetch(`${API_BASE}/api/service-appointments/${id}/cancel`, {
+        method: "POST",
+        headers: await adminAuthHeaders(getToken, {
+          "Content-Type": "application/json",
+        }),
+      });
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body?.message || `Cancel failed (${res.status})`);
-      }
+      if (!res.ok) throw new Error("Unable to cancel appointment.");
 
       const body = await res.json();
       const updated = extractUpdated(body);
@@ -608,7 +561,7 @@ export default function ServiceAppointmentsPage() {
           a.id === id
             ? {
                 ...a,
-                status: updated.status || "Canceled",
+                status: updated.status || "Cancelled",
                 raw: updated || a.raw,
               }
             : a,
@@ -618,113 +571,121 @@ export default function ServiceAppointmentsPage() {
       pushToast("Canceled", "Appointment canceled successfully.");
     } catch (err) {
       console.error("cancelRemote:", err);
-      pushToast("Cancel failed", err.message || "Unable to cancel appointment. Reloading...");
+      pushToast("Cancel failed", "Unable to cancel appointment. Reloading.");
       await fetchAppointments();
     }
   }
 
-  const filtered = useMemo(() => {
-    const q = debouncedSearch.toLowerCase();
+  async function deleteRemote(id) {
+    const appt = appointments.find((a) => a.id === id);
+    if (!appt) return;
 
-    return appointments
-      .filter((a) =>
-        q
-          ? (a.patientName || "").toLowerCase().includes(q) ||
-            (a.serviceName || "").toLowerCase().includes(q)
-          : true,
+    if (
+      !window.confirm(
+        "This will permanently delete this appointment record from history. Continue?",
       )
-      .filter((a) => (statusFilter ? a.status === statusFilter : true))
-      .sort((a, b) => getTimestamp(b) - getTimestamp(a));
-  }, [appointments, debouncedSearch, statusFilter]);
+    ) {
+      return;
+    }
 
-  const displayed = useMemo(
-    () => (showAll ? filtered : filtered.slice(0, 8)),
-    [filtered, showAll],
-  );
+    try {
+      const res = await fetch(`${API_BASE}/api/service-appointments/${id}`, {
+        method: "DELETE",
+        headers: await adminAuthHeaders(getToken),
+      });
+
+      if (!res.ok) throw new Error("Unable to delete appointment record.");
+
+      pushToast("Deleted", "Appointment record deleted successfully.");
+
+      if (appointments.length === 1 && page > 1) {
+        setPage((current) => Math.max(1, current - 1));
+      } else {
+        await fetchAppointments();
+      }
+    } catch (err) {
+      console.error("deleteRemote:", err);
+      pushToast("Delete failed", "Unable to delete appointment record.");
+    }
+  }
+
+  const sortedAppointments = useMemo(() => appointments, [appointments]);
+  const totalPages = Math.max(1, Math.ceil((meta.total || 0) / pageSize));
+  const pageStart = meta.total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const pageEnd = Math.min(page * pageSize, meta.total || 0);
+
+  function clearFilters() {
+    setSearch("");
+    setStatusFilter("");
+    setPage(1);
+  }
 
   return (
     <div className="space-y-6">
       <Toasts toasts={toasts} removeToast={removeToast} />
 
-      {/* Header */}
       <section className="rounded-3xl border border-[#dbe6f7] bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div>
             <h1 className="text-[2rem] font-bold tracking-tight text-slate-900">
-              Appointments
+              Service Appointments
             </h1>
-            <p className="mt-1 text-sm italic text-slate-500">
-              Manage patient bookings — quick search & status controls
+            <p className="mt-1 text-sm text-slate-500">
+              Manage service bookings, status updates, and reschedules.
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative min-w-[240px]">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setShowAll(false);
-                }}
-                placeholder="Search by patient or service"
-                className="h-12 w-full rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] pl-11 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white"
-              />
-            </div>
+          <div className="inline-flex h-10 items-center gap-2 rounded-2xl border border-[#dbe6f7] bg-[#eef4fb] px-4 text-sm font-medium text-[#2563eb]">
+            <ShieldCheck className="h-4 w-4" />
+            Secure Admin Session
+          </div>
+        </div>
 
-            <div className="relative min-w-[130px]">
+        <div className="mt-6 grid gap-3 xl:grid-cols-[minmax(260px,1fr)_auto] xl:items-center">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search patient, phone, or notes"
+              className="admin-input h-12 pl-11"
+            />
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-[170px_auto_auto]">
+            <div className="relative">
               <select
                 value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value);
-                  setShowAll(false);
-                }}
-                className="h-12 w-full appearance-none rounded-2xl border border-slate-200 bg-white px-4 pr-10 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-300"
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="admin-select h-12"
               >
-                <option value="">All</option>
-                <option value="Pending">Pending</option>
-                <option value="Confirmed">Confirmed</option>
-                <option value="Rescheduled">Rescheduled</option>
-                <option value="Completed">Completed</option>
-                <option value="Canceled">Canceled</option>
+                <option value="">All Statuses</option>
+                {STATUS_OPTIONS.map((status) => (
+                  <option key={status.value} value={status.value}>
+                    {status.label}
+                  </option>
+                ))}
               </select>
               <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             </div>
 
             <button
-              onClick={() => {
-                setSearch("");
-                setStatusFilter("");
-                setShowAll(false);
-              }}
+              onClick={clearFilters}
               className="h-12 rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700"
             >
               Clear
             </button>
-          </div>
-        </div>
 
-        <div className="mt-8 flex items-center justify-between">
-          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
-            {filtered.length} Results
+            <button
+              onClick={fetchAppointments}
+              className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-5 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </button>
           </div>
-
-          <button
-            onClick={fetchAppointments}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 transition hover:text-blue-700"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </button>
         </div>
       </section>
-
-      {/* State */}
-      {loading && (
-        <div className="rounded-3xl border border-[#dbe6f7] bg-white p-6 text-sm text-slate-500 shadow-sm">
-          Loading appointments...
-        </div>
-      )}
 
       {error && (
         <div className="rounded-[24px] border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 shadow-sm">
@@ -732,138 +693,179 @@ export default function ServiceAppointmentsPage() {
         </div>
       )}
 
-      {!loading && !error && (
-        <>
-          {displayed.length === 0 ? (
-            <div className="rounded-3xl border border-[#dbe6f7] bg-white p-8 text-center text-sm text-slate-500 shadow-sm">
-              No appointments found.
-            </div>
-          ) : (
-            <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-              {displayed.map((a) => {
-                const terminal =
-                  a.status === "Completed" || a.status === "Canceled";
+      <section className="overflow-hidden rounded-3xl border border-[#dbe6f7] bg-white shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-[#edf2fb] px-5 py-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">
+              Service Appointment Queue
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Showing {pageStart}-{pageEnd} of {meta.total}
+            </p>
+          </div>
 
-                return (
-                  <article
-                    key={a.id}
-                    className="rounded-3xl border border-[#dbe6f7] bg-white p-5 shadow-sm transition hover:border-blue-200 hover:shadow-md"
-                  >
-                    {/* Top */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-                          <User className="h-5 w-5" />
-                        </div>
+          <label className="flex items-center gap-2 text-sm text-slate-500">
+            Rows
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              className="admin-select h-10 w-24 rounded-xl"
+            >
+              {PAGE_SIZES.map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
-                        <div className="min-w-0">
-                          <h3 className="truncate text-xl font-bold text-slate-900">
-                            {a.patientName || "Unknown"}
-                          </h3>
-                          <div className="mt-1 text-xs font-medium text-slate-400">
-                            {a.gender || "Unknown"}{" "}
-                            {a.age ? `• ${a.age} yrs` : ""}
+        {loading ? (
+          <div className="p-8 text-center text-sm text-slate-500">Loading appointments...</div>
+        ) : sortedAppointments.length === 0 ? (
+          <div className="p-8 text-center text-sm text-slate-500">
+            No service appointments found.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-[1060px] w-full text-left text-sm">
+              <thead className="sticky top-0 z-10 bg-[#f8fbff] text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                <tr>
+                  <th className="px-5 py-3">Patient</th>
+                  <th className="px-5 py-3">Service</th>
+                  <th className="px-5 py-3">Date / Time</th>
+                  <th className="px-5 py-3">Fee</th>
+                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3">Prescription</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#edf2fb]">
+                {sortedAppointments.map((a) => {
+                  const terminal = isFinalStatus(a.status);
+
+                  return (
+                    <tr key={a.id} className="align-middle transition hover:bg-[#f8fbff]">
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                            <User className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="truncate font-medium text-slate-900">
+                              {a.patientName || "Unknown Patient"}
+                            </div>
+                            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+                              <span>
+                                {a.age ? `${a.age} yrs` : "Age N/A"}
+                                {a.gender ? ` / ${a.gender}` : ""}
+                              </span>
+                              <span className="inline-flex items-center gap-1">
+                                <Phone className="h-3.5 w-3.5" />
+                                {a.mobile || "No phone"}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-
-                      <div
-                        className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] ${statusClasses(
-                          a.status,
-                        )}`}
-                      >
-                        {a.status}
-                      </div>
-                      <div
-                        className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] ${prescriptionClasses(
-                          a.prescriptionStatus,
-                        )}`}
-                      >
-                        Prescription {a.prescriptionStatus}
-                      </div>
-                    </div>
-
-                    {/* Info */}
-                    <div className="mt-5 space-y-3 text-sm text-slate-700">
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-blue-600" />
-                        <span>{a.mobile || "No phone"}</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 text-blue-600" />
-                        <span>Fees: ${a.fees}</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-blue-600" />
-                        <span>Date: {formatDateNice(a.date)}</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 rotate-90 text-blue-600" />
-                        <span>Time: {formatTimeDisplay(a)}</span>
-                      </div>
-                    </div>
-
-                    {/* Service */}
-                    <div className="mt-5">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                        Service
-                      </div>
-                      <div className="mt-2 text-xl font-bold text-blue-700">
+                      </td>
+                      <td className="px-5 py-4 font-medium text-slate-800">
                         {a.serviceName}
-                      </div>
-                    </div>
-
-                    {/* Controls */}
-                    <div className="mt-5 space-y-3">
-                      <StatusSelect
-                        appointment={a}
-                        onChange={(value) => changeStatusRemote(a.id, value)}
-                        disabled={loading}
-                      />
-
-                      <div className="grid grid-cols-[1fr_auto] gap-3">
-                        <ReschedulePanel
-                          appointment={a}
-                          onReschedule={(date, time) =>
-                            rescheduleRemote(a.id, date, time)
-                          }
-                          disabled={loading}
-                        />
-
-                        <button
-                          onClick={() => cancelRemote(a.id)}
-                          disabled={terminal || loading}
-                          className={`h-11 rounded-2xl px-4 text-sm font-semibold transition ${
-                            terminal || loading
-                              ? "cursor-not-allowed border border-slate-200 bg-slate-100 text-slate-400"
-                              : "border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
-                          }`}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="inline-flex items-center gap-2 font-medium text-slate-800">
+                          <Calendar className="h-4 w-4 text-blue-600" />
+                          {formatDateNice(a.date)}
+                        </div>
+                        <div className="mt-1 pl-6 text-xs text-slate-500">
+                          {formatTimeDisplay(a)}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 font-medium text-slate-800">
+                        ${a.fees || 0}
+                      </td>
+                      <td className="px-5 py-4">
+                        <span
+                          className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${statusClasses(
+                            a.status,
+                          )}`}
                         >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </section>
-          )}
+                          {displayStatus(a.status)}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <span
+                          className={`inline-flex max-w-[180px] rounded-full border px-2.5 py-1 text-xs font-medium ${prescriptionClasses(
+                            a.prescriptionStatus,
+                          )}`}
+                        >
+                          <span className="truncate">{a.prescriptionStatus}</span>
+                        </span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <StatusSelect
+                            appointment={a}
+                            onChange={(value) => changeStatusRemote(a.id, value)}
+                            disabled={loading}
+                          />
 
-          {filtered.length > 8 && (
-            <div className="flex justify-center">
-              <button
-                onClick={() => setShowAll((s) => !s)}
-                className="rounded-[22px] border border-slate-200 bg-slate-100 px-8 py-4 text-base font-semibold text-slate-600 shadow-sm transition hover:bg-slate-200"
-              >
-                {showAll ? "Show less" : `Show more (${filtered.length - 8})`}
-              </button>
-            </div>
-          )}
-        </>
-      )}
+                          <ReschedulePanel
+                            appointment={a}
+                            onReschedule={(date, time) => rescheduleRemote(a.id, date, time)}
+                            disabled={loading}
+                          />
+
+                          <button
+                            onClick={() => cancelRemote(a.id)}
+                            disabled={terminal || loading}
+                            className={`h-10 rounded-xl border px-3 text-sm font-medium transition ${
+                              terminal || loading
+                                ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                                : "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
+                            }`}
+                          >
+                            Cancel
+                          </button>
+
+                          <button
+                            onClick={() => deleteRemote(a.id)}
+                            disabled={loading}
+                            className="h-10 rounded-xl border border-red-200 bg-red-600 px-3 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-3 border-t border-[#edf2fb] px-5 py-4 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
+          <span>
+            Page {page} of {totalPages}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1 || loading}
+              className="h-10 rounded-xl border border-slate-200 bg-white px-4 font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages || loading}
+              className="h-10 rounded-xl border border-slate-200 bg-white px-4 font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

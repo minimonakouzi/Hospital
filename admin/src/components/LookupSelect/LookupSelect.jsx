@@ -1,7 +1,7 @@
 import React from "react";
 
 const inputClass =
-  "h-11 w-full rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] px-4 text-sm text-slate-800 outline-none focus:border-blue-300 focus:bg-white";
+  "admin-select";
 
 export function itemId(item = {}) {
   return item?._id || item?.id || "";
@@ -74,7 +74,7 @@ export default function LookupSelect({
   const labelFor = typeof getLabel === "function" ? getLabel : String;
 
   return (
-    <label className="grid gap-1 text-sm font-bold text-slate-700">
+    <label className="admin-field">
       {label}
       <select
         required={required}

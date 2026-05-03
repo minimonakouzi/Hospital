@@ -189,6 +189,7 @@ export const getDoctors = async (req, res) => {
       _id: d._id,
       id: d._id,
       name: d.name || "",
+      email: d.email || "",
       specialization: d.specialization || d.speciality || "",
       fee: d.fee ?? d.fees ?? d.consultationFee ?? 0,
       imageUrl: d.imageUrl || d.image || d.avatar || null,

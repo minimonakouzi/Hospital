@@ -15,6 +15,16 @@ const initialForm = {
   confirmPassword: "",
 };
 
+const STAFF_DEPARTMENTS = [
+  "Services",
+  "Laboratory",
+  "Radiology",
+  "Billing",
+  "Reception",
+  "Pharmacy",
+  "Administration",
+];
+
 function Field({ label, required, children }) {
   return (
     <label className="block">
@@ -133,9 +143,7 @@ export default function AddStaffPage() {
               <h2 className="text-2xl font-bold tracking-tight text-slate-900">
                 Add Staff
               </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Create a service management account.
-              </p>
+              <p className="mt-1 text-sm text-slate-500">Create a staff account.</p>
             </div>
           </div>
         </div>
@@ -183,12 +191,18 @@ export default function AddStaffPage() {
             </Field>
 
             <Field label="Department" required>
-              <input
+              <select
                 value={form.department}
                 onChange={(e) => updateField("department", e.target.value)}
                 className={inputClass(errors.department)}
-                placeholder="Services"
-              />
+              >
+                <option value="">Select department...</option>
+                {STAFF_DEPARTMENTS.map((department) => (
+                  <option key={department} value={department}>
+                    {department}
+                  </option>
+                ))}
+              </select>
             </Field>
 
             <Field label="Status" required>

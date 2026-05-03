@@ -12,6 +12,7 @@ import {
   updateServiceAppointment,
   updateServiceAppointmentStatus,
   cancelServiceAppointment,
+  deleteServiceAppointment,
   getServiceAppointmentStats,
   getServiceAppointmentsByPatient,
 } from "../controllers/serviceAppointmentController.js";
@@ -39,5 +40,6 @@ router.get("/:id", getServiceAppointmentById);
 router.patch("/:id/status", staffAuth, updateServiceAppointmentStatus);
 router.put("/:id", updateServiceAppointment);
 router.post("/:id/cancel", cancelServiceAppointment);
+router.delete("/:id", clerkMiddleware(), requireAuth(), adminAuth, deleteServiceAppointment);
 
 export default router;

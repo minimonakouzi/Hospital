@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@clerk/clerk-react";
 import {
-  BadgeCheck,
   CheckCircle2,
-  ClipboardList,
   Eye,
   EyeOff,
   Loader2,
@@ -31,6 +29,8 @@ const initialForm = {
   password: "",
   confirmPassword: "",
 };
+
+const selectClass = "admin-select";
 
 function FieldLabel({ children, required = false }) {
   return (
@@ -223,14 +223,12 @@ export default function AddNursePage() {
               <h2 className="text-lg font-semibold text-slate-900">
                 Nurse Profile
               </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Required fields create a backend nurse login.
-              </p>
+              <p className="mt-1 text-sm text-slate-500">Create a nurse account.</p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_300px] sm:p-6">
+        <div className="p-5 sm:p-6">
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div>
               <FieldLabel required>Full Name</FieldLabel>
@@ -267,7 +265,7 @@ export default function AddNursePage() {
               <select
                 value={form.department}
                 onChange={(e) => updateField("department", e.target.value)}
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:bg-white"
+                className={selectClass}
               >
                 <option value="">Select department...</option>
                 <option>Emergency</option>
@@ -284,7 +282,7 @@ export default function AddNursePage() {
               <select
                 value={form.shift}
                 onChange={(e) => updateField("shift", e.target.value)}
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:bg-white"
+                className={selectClass}
               >
                 <option>Morning</option>
                 <option>Evening</option>
@@ -298,7 +296,7 @@ export default function AddNursePage() {
               <select
                 value={form.status}
                 onChange={(e) => updateField("status", e.target.value)}
-                className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:bg-white"
+                className={selectClass}
               >
                 <option>Active</option>
                 <option>On Leave</option>
@@ -357,45 +355,10 @@ export default function AddNursePage() {
               />
             </div>
           </div>
-
-          <aside className="lg:pt-1">
-            <div className="rounded-3xl border border-[#dbe6f7] bg-[#f8fbff] p-5">
-              <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-blue-700 shadow-sm">
-                  <ClipboardList className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-900">
-                    Create Record
-                  </h3>
-                  <p className="text-sm text-slate-500">Backend connected</p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {[
-                  "Password is hashed",
-                  "No Clerk nurse user",
-                  "Admin-only API access",
-                  "Optional profile details",
-                ].map((item) => (
-                  <div
-                    key={item}
-                    className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm text-slate-600"
-                  >
-                    <BadgeCheck className="h-4 w-4 text-blue-600" />
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </aside>
         </div>
 
         <div className="flex flex-col-reverse gap-3 border-t border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p className="text-sm text-slate-400">
-            Nurse credentials are stored with hashed passwords.
-          </p>
+          <p className="text-sm text-slate-400">Complete the required fields to add a nurse.</p>
           <div className="flex flex-col gap-3 sm:flex-row">
             <button
               type="button"

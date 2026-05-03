@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -57,6 +57,8 @@ const navItems = [
   { to: "/audit-logs", label: "Audit Logs", icon: History },
 ];
 
+const SIDEBAR_SCROLL_KEY = "revive-admin-sidebar-scroll";
+
 function SidebarLink({ item, onClick }) {
   const Icon = item.icon;
 
@@ -95,6 +97,7 @@ function SidebarLink({ item, onClick }) {
 
 export default function AdminLayout({ title, subtitle, children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const navRef = useRef(null);
   const { user } = useUser();
   const clerk = useClerk();
   const navigate = useNavigate();
@@ -108,6 +111,21 @@ export default function AdminLayout({ title, subtitle, children }) {
 
   const resolvedSubtitle =
     subtitle || "Manage your hospital operations from one place";
+
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+
+    const saved = Number(sessionStorage.getItem(SIDEBAR_SCROLL_KEY) || 0);
+    if (Number.isFinite(saved)) nav.scrollTop = saved;
+
+    const saveScroll = () => {
+      sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(nav.scrollTop));
+    };
+
+    nav.addEventListener("scroll", saveScroll, { passive: true });
+    return () => nav.removeEventListener("scroll", saveScroll);
+  }, []);
 
   async function handleSignOut() {
     try {
@@ -212,7 +230,10 @@ export default function AdminLayout({ title, subtitle, children }) {
             </div>
           </div>
 
-          <nav className="mt-5 min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pb-4 [scrollbar-gutter:stable]">
+          <nav
+            ref={navRef}
+            className="mt-5 min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-4 pb-4 scroll-smooth [scrollbar-gutter:stable]"
+          >
             {navItems.map((item) => (
               <SidebarLink
                 key={item.to}

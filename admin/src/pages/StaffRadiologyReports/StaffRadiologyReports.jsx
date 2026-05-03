@@ -18,6 +18,20 @@ const date = (v) => { const d = v ? new Date(v) : null; return d && !Number.isNa
 const patient = (x) => x?.name || x?.email || x?.phone || x?.patientCode || "Patient";
 const doctor = (x) => x?.name || x?.email || "Doctor";
 
+function badgeClass(value) {
+  if (value === "Completed" || value === "Reviewed") return "bg-emerald-50 text-emerald-700 ring-emerald-100";
+  if (value === "Pending") return "bg-amber-50 text-amber-700 ring-amber-100";
+  return "bg-blue-50 text-blue-700 ring-blue-100";
+}
+
+function Badge({ children }) {
+  return (
+    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1 ${badgeClass(children)}`}>
+      {children || "-"}
+    </span>
+  );
+}
+
 function ReportFileButton({ report }) {
   const fileUrl = getReportFileUrl(report);
   if (!fileUrl) return <span className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-500">No file attached</span>;
@@ -101,7 +115,7 @@ export default function StaffRadiologyReports() {
 function Select({ value, options, onChange }) { return <select className={inputClass} value={value} onChange={(e) => onChange(e.target.value)}>{options.map((x) => <option key={x}>{x}</option>)}</select>; }
 function Stat({ label, value }) { return <div className="rounded-3xl border border-[#dbe6f7] bg-white p-4 shadow-sm"><p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">{label}</p><p className="mt-2 text-2xl font-black text-blue-700">{value}</p></div>; }
 function Notice({ msg, close }) { const ok = msg.type === "success"; return <div className={`flex justify-between rounded-2xl border p-4 text-sm font-bold ${ok ? "border-emerald-100 bg-emerald-50 text-emerald-700" : "border-rose-100 bg-rose-50 text-rose-700"}`}><span>{ok ? <CheckCircle2 className="mr-2 inline h-4 w-4" /> : <AlertCircle className="mr-2 inline h-4 w-4" />}{msg.text}</span><button onClick={close}><X className="h-4 w-4" /></button></div>; }
-function Empty() { return <div className="p-14 text-center"><FileText className="mx-auto h-12 w-12 text-blue-700" /><h2 className="mt-3 font-black">No radiology reports found.</h2></div>; }
+function Empty() { return <div className="p-14 text-center"><FileText className="mx-auto h-12 w-12 text-blue-700" /><h2 className="mt-3 font-black text-slate-950">No radiology reports found.</h2><p className="mt-2 text-sm text-slate-500">Created imaging reports will appear here.</p></div>; }
 
 function ReportForm({ mode, form, setForm, submit, saving, close, lookups, lookupLoading, lookupError }) {
   const setField = (key, value) => setForm((p) => ({ ...p, [key]: value }));

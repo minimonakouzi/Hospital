@@ -708,9 +708,9 @@ export default function AddPage() {
                 </div>
 
                 <div>
-                  <FieldLabel>Availability</FieldLabel>
+                  <FieldLabel>Status</FieldLabel>
                   <select
-                    className="h-12 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition focus:border-blue-300 focus:bg-white"
+                    className="admin-select h-12"
                     value={form.availability}
                     onChange={(e) =>
                       setForm((prev) => ({
@@ -719,8 +719,8 @@ export default function AddPage() {
                       }))
                     }
                   >
-                    <option value="Available">Available</option>
-                    <option value="Unavailable">Unavailable</option>
+                    <option value="Available">Active</option>
+                    <option value="Unavailable">Inactive</option>
                   </select>
                 </div>
               </div>
@@ -871,8 +871,7 @@ export default function AddPage() {
           {/* Bottom actions */}
           <div className="mt-8 flex flex-col-reverse gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-slate-400">
-              Main categories preserved: doctor profile, credentials,
-              professional details, availability, and image.
+              Complete the doctor profile, credentials, status, and availability slots.
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">

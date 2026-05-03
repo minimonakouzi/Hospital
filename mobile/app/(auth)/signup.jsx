@@ -17,8 +17,10 @@ import {
 import { useSignUp } from "@clerk/clerk-expo";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as SecureStore from "expo-secure-store";
 
 const GENDER_OPTIONS = ["Male", "Female"];
+const PENDING_PATIENT_PROFILE_KEY = "pendingPatientProfile_v1";
 
 function onlyDigits(value) {
   return String(value || "").replace(/\D/g, "");
@@ -138,6 +140,20 @@ export default function SignupScreen() {
           emergencyContact: trimmedEmergencyContact,
         },
       });
+
+      await SecureStore.setItemAsync(PENDING_PATIENT_PROFILE_KEY, JSON.stringify({
+        name: `${trimmedFirstName} ${trimmedLastName}`.trim(),
+        email: trimmedEmail,
+        phone: trimmedPhone,
+        age: ageNumber,
+        gender,
+        address: address.trim(),
+        emergencyContact: trimmedEmergencyContact,
+        allergies: "",
+        medicalHistory: "",
+        notificationsEnabled: true,
+        imageUrl: "",
+      }));
 
       await signUp.prepareEmailAddressVerification({
         strategy: "email_code",

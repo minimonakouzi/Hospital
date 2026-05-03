@@ -289,7 +289,7 @@ export default function ListPage({ apiBase }) {
               }`}
             >
               <Filter className="h-4 w-4" />
-              Available
+              Active
             </button>
 
             <button
@@ -302,7 +302,7 @@ export default function ListPage({ apiBase }) {
               }`}
             >
               <Filter className="h-4 w-4" />
-              Unavailable
+              Inactive
             </button>
 
             <button
@@ -339,7 +339,7 @@ export default function ListPage({ apiBase }) {
         displayed.map((doc, index) => {
           const id = doc._id || doc.id;
           const isOpen = expanded === id;
-          const isAvailable =
+          const isActive =
             (doc.availability || "").toString().toLowerCase() === "available";
 
           const scheduleMap = buildScheduleMap(doc.schedule || {});
@@ -368,13 +368,13 @@ export default function ListPage({ apiBase }) {
 
                         <span
                           className={`inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
-                            isAvailable
+                            isActive
                               ? "bg-emerald-50 text-emerald-700"
                               : "bg-rose-50 text-rose-700"
                           }`}
                         >
                           <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                          {isAvailable ? "Available" : "Unavailable"}
+                          {isActive ? "Active" : "Inactive"}
                         </span>
                       </div>
 
@@ -569,8 +569,14 @@ export default function ListPage({ apiBase }) {
                         Delete Profile
                       </button>
 
-                      <div className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-5 text-sm font-semibold text-white">
-                        Doctor Profile Active
+                      <div
+                        className={`inline-flex h-12 items-center justify-center rounded-2xl px-5 text-sm font-semibold ${
+                          isActive
+                            ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
+                            : "bg-rose-50 text-rose-700 ring-1 ring-rose-100"
+                        }`}
+                      >
+                        {isActive ? "Doctor Active" : "Doctor Inactive"}
                       </div>
                     </div>
                   </>

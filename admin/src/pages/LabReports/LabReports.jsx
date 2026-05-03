@@ -76,7 +76,8 @@ const emptyForm = {
   notes: "",
 };
 const inputClass =
-  "h-11 w-full rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] px-4 text-sm outline-none focus:border-blue-300 focus:bg-white";
+  "admin-input";
+const selectClass = "admin-select";
 
 const getId = (item = {}) => item._id || item.id || "";
 const fmtDate = (value) => {
@@ -420,7 +421,7 @@ export default function LabReports() {
 function Select({ value, options, onChange }) {
   return (
     <select
-      className={inputClass}
+      className={selectClass}
       value={value}
       onChange={(event) => onChange(event.target.value)}
     >
@@ -434,8 +435,8 @@ function Select({ value, options, onChange }) {
 function Stat({ label, value }) {
   return (
     <div className="rounded-3xl border border-[#dbe6f7] bg-white p-4">
-      <p className="text-xs font-black uppercase text-slate-400">{label}</p>
-      <p className="mt-2 text-2xl font-black text-blue-700">{value}</p>
+      <p className="text-xs font-semibold uppercase text-slate-400">{label}</p>
+      <p className="mt-2 text-2xl font-bold text-blue-700">{value}</p>
     </div>
   );
 }
@@ -474,10 +475,7 @@ function LabForm({ title, form, setForm, submit, saving, close, lookups, lookupL
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-black text-slate-950">{title}</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              Select saved patient and visit records. File upload is currently handled with fileUrl/fileName fields.
-            </p>
+            <h2 className="text-xl font-bold text-slate-950">{title}</h2>
           </div>
           <button type="button" onClick={close}>
             <X />
@@ -497,13 +495,13 @@ function LabForm({ title, form, setForm, submit, saving, close, lookups, lookupL
           <LookupSelect label="Admission" value={form.admissionId} onChange={(value) => setForm((current) => ({ ...current, admissionId: value }))} options={lookups.admissions} getLabel={admissionLabel} loading={lookupLoading} />
           <LookupSelect label="Service Appointment" value={form.serviceAppointmentId} onChange={(value) => setForm((current) => ({ ...current, serviceAppointmentId: value }))} options={lookups.serviceAppointments} getLabel={serviceAppointmentLabel} loading={lookupLoading} />
           {["title", "specimen"].map((key) => (
-            <label key={key} className="grid gap-1 text-sm font-bold">
+            <label key={key} className="admin-field">
               {key}
               <input required={key === "title"} className={inputClass} value={form[key] || ""} onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))} />
             </label>
           ))}
           <FileField form={form} setForm={setForm} />
-          <label className="grid gap-1 text-sm font-bold">
+          <label className="admin-field">
             Test Type
             <Select
               value={form.testType || "Blood Test"}
@@ -513,7 +511,7 @@ function LabForm({ title, form, setForm, submit, saving, close, lookups, lookupL
               }
             />
           </label>
-          <label className="grid gap-1 text-sm font-bold">
+          <label className="admin-field">
             Status
             <Select
               value={form.status || "Requested"}
@@ -523,7 +521,7 @@ function LabForm({ title, form, setForm, submit, saving, close, lookups, lookupL
               }
             />
           </label>
-          <label className="grid gap-1 text-sm font-bold">
+          <label className="admin-field">
             requestedDate
             <input
               type="date"
@@ -537,7 +535,7 @@ function LabForm({ title, form, setForm, submit, saving, close, lookups, lookupL
               }
             />
           </label>
-          <label className="grid gap-1 text-sm font-bold">
+          <label className="admin-field">
             resultDate
             <input
               type="date"
@@ -550,10 +548,10 @@ function LabForm({ title, form, setForm, submit, saving, close, lookups, lookupL
           </label>
           {["description", "resultSummary", "interpretation", "notes"].map(
             (key) => (
-              <label key={key} className="grid gap-1 text-sm font-bold md:col-span-2">
+              <label key={key} className="admin-field md:col-span-2">
                 {key}
                 <textarea
-                  className={`${inputClass} min-h-20 py-3`}
+                  className="admin-textarea min-h-20"
                   value={form[key] || ""}
                   onChange={(event) =>
                     setForm((current) => ({
@@ -617,7 +615,7 @@ function ResultRows({ form, setForm }) {
   return (
     <div className="mt-5 rounded-3xl border border-[#dbe6f7] bg-[#f8fbff] p-4">
       <div className="flex justify-between gap-3">
-        <h3 className="font-black text-slate-950">Result Rows</h3>
+        <h3 className="font-semibold text-slate-950">Result Rows</h3>
         <button
           type="button"
           onClick={add}
@@ -642,7 +640,7 @@ function ResultRows({ form, setForm }) {
               />
             ))}
             <select
-              className={inputClass}
+              className={selectClass}
               value={row.flag || ""}
               onChange={(event) => update(index, "flag", event.target.value)}
             >
@@ -743,7 +741,7 @@ function Info({ label, value, wide }) {
         wide ? "md:col-span-2" : ""
       }`}
     >
-      <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
         {label}
       </p>
       <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">
@@ -755,7 +753,7 @@ function Info({ label, value, wide }) {
 
 function FileField({ form, setForm }) {
   return (
-    <label className="grid gap-1 text-sm font-bold">
+    <label className="admin-field">
       Report file
       <input
         type="file"

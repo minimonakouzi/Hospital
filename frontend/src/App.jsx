@@ -27,6 +27,7 @@ import NurseBookings from "./pages/NurseBookings/NurseBookings";
 import NurseProfile from "./pages/NurseProfile/NurseProfile";
 import NurseWardPatients from "./pages/NurseWardPatients/NurseWardPatients";
 import NurseLayout from "./nurse/NurseLayout/NurseLayout";
+import PatientProfileSync from "./components/PatientProfileSync/PatientProfileSync";
 
 // Doctor Admin
 import DHome from "./pages/DHome/DHome";
@@ -109,6 +110,7 @@ const App = () => {
 
   return (
     <>
+      <PatientProfileSync />
       <ScrollToTop />
 
       <div

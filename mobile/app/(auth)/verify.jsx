@@ -15,11 +15,17 @@ import {
 } from "react-native";
 import { useSignUp } from "@clerk/clerk-expo";
 import { router } from "expo-router";
+import { useAuth } from "@clerk/clerk-expo";
+import { saveMyPatientProfile } from "../../services/patientProfile";
+import * as SecureStore from "expo-secure-store";
 
 const CODE_LENGTH = 6;
+const PENDING_PATIENT_PROFILE_KEY = "pendingPatientProfile_v1";
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function VerifyScreen() {
   const { signUp, setActive, isLoaded } = useSignUp();
+  const { getToken } = useAuth();
 
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -76,6 +82,7 @@ export default function VerifyScreen() {
 
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
+        await savePendingProfileDetails();
         router.replace("/(tabs)");
       } else {
         Alert.alert("Verification incomplete", "Please try again.");
@@ -85,6 +92,34 @@ export default function VerifyScreen() {
       console.log("SIGNUP VERIFY ERROR:", JSON.stringify(err, null, 2));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const savePendingProfileDetails = async () => {
+    try {
+      const rawProfile = await SecureStore.getItemAsync(PENDING_PATIENT_PROFILE_KEY);
+      const pendingProfile = rawProfile ? JSON.parse(rawProfile) : null;
+      if (!pendingProfile) return;
+
+      let token = null;
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        token = await getToken({ template: "default", skipCache: true });
+        if (token) break;
+        await delay(250);
+      }
+
+      if (!token) {
+        throw new Error("No Clerk token available after signup verification.");
+      }
+
+      await saveMyPatientProfile(token, pendingProfile);
+      await SecureStore.deleteItemAsync(PENDING_PATIENT_PROFILE_KEY);
+    } catch (err) {
+      console.log("SIGNUP PROFILE SAVE ERROR:", err);
+      Alert.alert(
+        "Profile details not saved",
+        "Account created, but we could not save your profile details. Please update them from your profile.",
+      );
     }
   };
 

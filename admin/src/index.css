@@ -2,6 +2,24 @@
 
 @import "tailwindcss";
 
+@layer components {
+  .admin-field {
+    @apply grid gap-1.5 text-sm font-medium text-slate-700;
+  }
+
+  .admin-input {
+    @apply h-11 w-full rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] px-4 text-sm font-normal text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white;
+  }
+
+  .admin-select {
+    @apply h-11 w-full appearance-none rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] px-4 pr-10 text-sm font-normal text-slate-800 outline-none transition focus:border-blue-300 focus:bg-white;
+  }
+
+  .admin-textarea {
+    @apply w-full rounded-2xl border border-[#dbe6f7] bg-[#f8fbff] px-4 py-3 text-sm font-normal text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white;
+  }
+}
+
 .admin-landing,
 .admin-landing button {
   font-family: "Manrope", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",

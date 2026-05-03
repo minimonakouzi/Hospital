@@ -10,6 +10,7 @@ import {
   confirmPayment,
   updateAppointment,
   cancelAppointment,
+  deleteAppointment,
   getStats,
   getAppointmentsByPatient,
   getAppointmentsByDoctor,
@@ -60,6 +61,7 @@ appointmentRouter.get(
 appointmentRouter.post("/:id/cancel", cancelAppointment);
 appointmentRouter.get("/paitents/count",getRegisteredUserCount); 
 appointmentRouter.put("/:id", updateAppointment);
+appointmentRouter.delete("/:id", clerkMiddleware(), requireAuth(), adminAuth, deleteAppointment);
 
 
 export default appointmentRouter;
