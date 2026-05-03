@@ -19,6 +19,7 @@ import {
 import adminAuth from "../middlewares/adminAuth.js";
 import doctorAuth from "../middlewares/doctorAuth.js";
 import staffAuth from "../middlewares/staffAuth.js";
+import { uploadReportFile } from "../middlewares/reportUpload.js";
 
 const labReportRouter = express.Router();
 
@@ -30,15 +31,15 @@ labReportRouter.get("/doctor", doctorAuth, getDoctorLabReports);
 labReportRouter.get("/doctor/:id", doctorAuth, getDoctorLabReportById);
 
 labReportRouter.get("/staff", staffAuth, getStaffLabReports);
-labReportRouter.post("/staff", staffAuth, createStaffLabReport);
-labReportRouter.put("/staff/:id/result", staffAuth, updateLabReportResult);
+labReportRouter.post("/staff", staffAuth, uploadReportFile, createStaffLabReport);
+labReportRouter.put("/staff/:id/result", staffAuth, uploadReportFile, updateLabReportResult);
 labReportRouter.put("/staff/:id/status", staffAuth, updateLabReportStatus);
 labReportRouter.delete("/staff/:id", staffAuth, deleteLabReport);
 
 labReportRouter.get("/", clerkMiddleware(), requireAuth(), adminAuth, getAdminLabReports);
 labReportRouter.get("/:id", clerkMiddleware(), requireAuth(), adminAuth, getAdminLabReportById);
-labReportRouter.post("/", clerkMiddleware(), requireAuth(), adminAuth, createAdminLabReport);
-labReportRouter.put("/:id", clerkMiddleware(), requireAuth(), adminAuth, updateAdminLabReport);
+labReportRouter.post("/", clerkMiddleware(), requireAuth(), adminAuth, uploadReportFile, createAdminLabReport);
+labReportRouter.put("/:id", clerkMiddleware(), requireAuth(), adminAuth, uploadReportFile, updateAdminLabReport);
 labReportRouter.delete("/:id", clerkMiddleware(), requireAuth(), adminAuth, deleteLabReport);
 
 export default labReportRouter;

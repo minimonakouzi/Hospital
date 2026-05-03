@@ -27,7 +27,30 @@ async function parseResponse(res, fallbackMessage) {
   const body = await res.json().catch(() => null);
 
   if (!res.ok) {
+    if (
+      res.status === 403 &&
+      String(body?.message || "").toLowerCase().includes("admin")
+    ) {
+      throw new Error("Only admin users can manage wards.");
+    }
+
     throw new Error(body?.message || fallbackMessage || `Ward request failed (${res.status})`);
+  }
+
+  return normalizeResponse(body);
+}
+
+function normalizeResponse(body) {
+  if (!body || typeof body !== "object") return body;
+  if (body.data !== undefined || body.stats !== undefined) return body;
+
+  const data = body.ward || body.room || body.bed || body.item || body.record;
+  if (data !== undefined) {
+    return { ...body, data };
+  }
+
+  if (Array.isArray(body.wards)) {
+    return { ...body, data: body.wards };
   }
 
   return body;

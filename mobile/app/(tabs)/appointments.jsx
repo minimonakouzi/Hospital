@@ -138,7 +138,7 @@ function getDoctorImageUri(item) {
     return doctorImageValue.imageUrl;
   }
 
-  return "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80";
+  return "";
 }
 
 function getServiceImageUri(item) {
@@ -164,7 +164,7 @@ function getServiceImageUri(item) {
     return serviceImage.url;
   }
 
-  return "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80";
+  return "";
 }
 
 function getStatusMeta(status) {
@@ -221,13 +221,13 @@ function normalizeDoctorAppointment(item) {
   return {
     id: item?._id || item?.id || Math.random().toString(),
     type: "doctor",
-    name: doctor?.name || item?.doctorName || "Doctor",
+    name: doctor?.name || item?.doctorName || "Doctor appointment",
     specialty:
       doctor?.specialization ||
       item?.speciality ||
       item?.doctorSpecialty ||
-      "General",
-    location: doctor?.location || item?.doctorHospital || "Revive Center",
+      "Not specified",
+    location: doctor?.location || item?.doctorHospital || "",
     image: getDoctorImageUri(item),
     dateText: formatApiDate(item?.date),
     time: item?.time || "Time not available",
@@ -243,9 +243,9 @@ function normalizeServiceAppointment(item) {
   return {
     id: item?._id || item?.id || Math.random().toString(),
     type: "service",
-    name: item?.serviceName || "Service",
-    specialty: "Hospital Service",
-    location: "Revive Center",
+    name: item?.serviceName || "Service appointment",
+    specialty: item?.serviceCategory || item?.category || "Not specified",
+    location: item?.location || item?.serviceLocation || "",
     image: getServiceImageUri(item),
     dateText: formatApiDate(item?.date),
     time: formatServiceTime(item),
@@ -261,10 +261,8 @@ function isUpcoming(item) {
   return item.appointmentDate >= new Date();
 }
 
-function isPast(item) {
-  if (item.status === "Completed") return true;
-  if (!item.appointmentDate) return false;
-  return item.appointmentDate < new Date();
+function isPending(item) {
+  return item.status === "Pending" || item.status === "Rescheduled";
 }
 
 export default function AppointmentsScreen() {
@@ -274,7 +272,7 @@ export default function AppointmentsScreen() {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeFilter, setActiveFilter] = useState("Upcoming");
+  const [activeFilter, setActiveFilter] = useState("All");
 
   const loadAppointments = async (isRefresh = false) => {
     try {
@@ -338,9 +336,8 @@ export default function AppointmentsScreen() {
     [appointments],
   );
 
-  const pastAppointments = useMemo(
-    () =>
-      appointments.filter((item) => isPast(item) && item.status !== "Canceled"),
+  const completedAppointments = useMemo(
+    () => appointments.filter((item) => item.status === "Completed"),
     [appointments],
   );
 
@@ -349,26 +346,62 @@ export default function AppointmentsScreen() {
     [appointments],
   );
 
+  const pendingAppointments = useMemo(
+    () => appointments.filter(isPending),
+    [appointments],
+  );
+
+  const canceledPendingAppointments = useMemo(
+    () => [...canceledAppointments, ...pendingAppointments],
+    [canceledAppointments, pendingAppointments],
+  );
+
   const stats = useMemo(
     () => ({
+      all: appointments.length,
       upcoming: upcomingAppointments.length,
-      past: pastAppointments.length,
-      canceled: canceledAppointments.length,
+      completed: completedAppointments.length,
+      pending: pendingAppointments.length,
+      canceledPending: canceledPendingAppointments.length,
     }),
-    [upcomingAppointments, pastAppointments, canceledAppointments],
+    [
+      appointments,
+      upcomingAppointments,
+      completedAppointments,
+      canceledAppointments,
+      pendingAppointments,
+      canceledPendingAppointments,
+    ],
   );
+
+  const filterOptions = useMemo(() => {
+    const options = [
+      { label: "All", count: stats.all },
+      { label: "Upcoming", count: stats.upcoming },
+      { label: "Completed", count: stats.completed },
+    ];
+
+    if (stats.canceledPending > 0) {
+      options.push({
+        label: "Cancelled/Pending",
+        count: stats.canceledPending,
+      });
+    }
+
+    return options;
+  }, [stats]);
 
   const filteredAppointments = useMemo(() => {
     if (activeFilter === "Upcoming") return upcomingAppointments;
-    if (activeFilter === "Past") return pastAppointments;
-    if (activeFilter === "Canceled") return canceledAppointments;
+    if (activeFilter === "Completed") return completedAppointments;
+    if (activeFilter === "Cancelled/Pending") return canceledPendingAppointments;
     return appointments;
   }, [
     activeFilter,
     appointments,
     upcomingAppointments,
-    pastAppointments,
-    canceledAppointments,
+    completedAppointments,
+    canceledPendingAppointments,
   ]);
 
   const nextAppointment = upcomingAppointments[0] || null;
@@ -406,7 +439,21 @@ export default function AppointmentsScreen() {
 
     return (
       <View key={`${appointment.type}-${appointment.id}`} style={styles.card}>
-        <Image source={{ uri: appointment.image }} style={styles.cardImage} />
+        {appointment.image ? (
+          <Image source={{ uri: appointment.image }} style={styles.cardImage} />
+        ) : (
+          <View style={styles.cardImagePlaceholder}>
+            <Ionicons
+              name={
+                appointment.type === "service"
+                  ? "layers-outline"
+                  : "person-outline"
+              }
+              size={30}
+              color="#7D8CA3"
+            />
+          </View>
+        )}
 
         <View style={styles.cardContent}>
           <View style={styles.cardTopRow}>
@@ -461,7 +508,9 @@ export default function AppointmentsScreen() {
               size={13}
               color="#6C7685"
             />
-            <Text style={styles.infoText}>{appointment.location}</Text>
+            <Text style={styles.infoText}>
+              {appointment.location || "Not specified"}
+            </Text>
           </View>
         </View>
       </View>
@@ -512,7 +561,7 @@ export default function AppointmentsScreen() {
           </View>
         </View>
 
-        {nextAppointment && activeFilter === "Upcoming" && (
+        {nextAppointment && (activeFilter === "Upcoming" || activeFilter === "All") && (
           <View style={styles.highlightCard}>
             <View style={styles.highlightHeader}>
               <Text style={styles.highlightBadge}>NEXT APPOINTMENT</Text>
@@ -545,9 +594,9 @@ export default function AppointmentsScreen() {
         )}
 
         <View style={styles.filtersRow}>
-          {renderFilterChip("Upcoming", stats.upcoming)}
-          {renderFilterChip("Past", stats.past)}
-          {renderFilterChip("Canceled", stats.canceled)}
+          {filterOptions.map((filter) =>
+            renderFilterChip(filter.label, filter.count),
+          )}
         </View>
 
         <View style={styles.sectionHeader}>
@@ -570,10 +619,26 @@ export default function AppointmentsScreen() {
               No {activeFilter.toLowerCase()} appointments
             </Text>
             <Text style={styles.emptySubtitle}>
-              {activeFilter === "Upcoming"
+              {activeFilter === "Upcoming" || activeFilter === "All"
                 ? "Book a doctor or service appointment and it will appear here."
                 : `You do not have any ${activeFilter.toLowerCase()} appointments yet.`}
             </Text>
+            <View style={styles.emptyActions}>
+              <TouchableOpacity
+                style={styles.emptyActionButton}
+                onPress={() => router.push("/(tabs)/doctors")}
+              >
+                <Ionicons name="person-add-outline" size={16} color="#FFFFFF" />
+                <Text style={styles.emptyActionText}>Book Doctor</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.emptyActionButton, styles.emptyActionButtonAlt]}
+                onPress={() => router.push("/(tabs)/services")}
+              >
+                <Ionicons name="layers-outline" size={16} color="#0D63D8" />
+                <Text style={styles.emptyActionTextAlt}>Book Service</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ) : (
           <View style={styles.cardsWrap}>
@@ -785,6 +850,34 @@ const styles = StyleSheet.create({
     color: "#6C7685",
     textAlign: "center",
   },
+  emptyActions: {
+    marginTop: 18,
+    flexDirection: "row",
+    gap: 10,
+  },
+  emptyActionButton: {
+    minHeight: 44,
+    borderRadius: 16,
+    backgroundColor: "#0D63D8",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    paddingHorizontal: 14,
+  },
+  emptyActionButtonAlt: {
+    backgroundColor: "#E8F0FF",
+  },
+  emptyActionText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  emptyActionTextAlt: {
+    color: "#0D63D8",
+    fontSize: 13,
+    fontWeight: "900",
+  },
   cardsWrap: {
     paddingHorizontal: 20,
     gap: 14,
@@ -799,6 +892,13 @@ const styles = StyleSheet.create({
     width: 110,
     height: 150,
     backgroundColor: "#E9EDF5",
+  },
+  cardImagePlaceholder: {
+    width: 110,
+    height: 150,
+    backgroundColor: "#E9EDF5",
+    justifyContent: "center",
+    alignItems: "center",
   },
   cardContent: {
     flex: 1,

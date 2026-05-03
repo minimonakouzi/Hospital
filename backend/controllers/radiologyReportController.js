@@ -15,6 +15,14 @@ function cleanString(value) {
   return String(value ?? "").trim();
 }
 
+function uploadedFileData(file) {
+  if (!file) return {};
+  return {
+    fileUrl: `/uploads/${file.filename}`,
+    fileName: cleanString(file.originalname || file.filename),
+  };
+}
+
 function isValidObjectId(id) {
   return mongoose.Types.ObjectId.isValid(String(id || ""));
 }
@@ -182,8 +190,8 @@ async function normalizeReportPayload(req, res, actor) {
       findings: cleanString(body.findings),
       impression: cleanString(body.impression),
       reportDate: reportDate || new Date(),
-      fileUrl: cleanString(body.fileUrl),
-      fileName: cleanString(body.fileName),
+      fileUrl: uploadedFileData(req.file).fileUrl || "",
+      fileName: uploadedFileData(req.file).fileName || "",
       status,
       notes: cleanString(body.notes),
     },
@@ -364,8 +372,6 @@ export async function updateStaffRadiologyReport(req, res) {
       "description",
       "findings",
       "impression",
-      "fileUrl",
-      "fileName",
       "notes",
     ];
     allowed.forEach((field) => {
@@ -386,6 +392,11 @@ export async function updateStaffRadiologyReport(req, res) {
       const reportDate = parseDate(req.body.reportDate);
       if (!reportDate) return badRequest(res, "Invalid reportDate.");
       report.reportDate = reportDate;
+    }
+    if (req.file) {
+      const fileData = uploadedFileData(req.file);
+      report.fileUrl = fileData.fileUrl;
+      report.fileName = fileData.fileName;
     }
 
     await report.save();

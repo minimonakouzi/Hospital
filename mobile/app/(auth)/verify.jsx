@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
-  Image,
   SafeAreaView,
   TextInput,
   KeyboardAvoidingView,
@@ -94,10 +93,13 @@ export default function VerifyScreen() {
 
     try {
       setResending(true);
+
       await signUp.prepareEmailAddressVerification({
         strategy: "email_code",
       });
+
       setCode("");
+
       Alert.alert(
         "Code resent",
         "A new verification code was sent to your email.",
@@ -107,6 +109,7 @@ export default function VerifyScreen() {
         err?.errors?.[0]?.longMessage ||
         err?.errors?.[0]?.message ||
         "Could not resend code.";
+
       Alert.alert("Resend failed", message);
       console.log("SIGNUP RESEND ERROR:", JSON.stringify(err, null, 2));
     } finally {
@@ -117,6 +120,7 @@ export default function VerifyScreen() {
   const renderCodeBoxes = () => {
     return Array.from({ length: CODE_LENGTH }).map((_, index) => {
       const digit = code[index] || "";
+
       return (
         <TouchableOpacity
           key={index}
@@ -157,13 +161,12 @@ export default function VerifyScreen() {
           />
 
           <View style={styles.content}>
-            <Image
-              source={require("../../assets/revive-verification.png")}
-              style={styles.illustration}
-              resizeMode="contain"
-            />
+            <View style={styles.iconCircle}>
+              <Text style={styles.iconText}>✓</Text>
+            </View>
 
             <Text style={styles.title}>Enter Code</Text>
+
             <Text style={styles.subtitle}>
               A code has been sent to your email
             </Text>
@@ -182,7 +185,7 @@ export default function VerifyScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.confirmButton}
+              style={[styles.confirmButton, loading && styles.disabledButton]}
               onPress={onVerifyPress}
               activeOpacity={0.9}
               disabled={loading}
@@ -229,16 +232,27 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingBottom: 40,
   },
-  illustration: {
-    width: 220,
-    height: 220,
+  iconCircle: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    backgroundColor: "#E8F0FF",
     alignSelf: "center",
-    marginBottom: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "#CFE0FF",
+  },
+  iconText: {
+    fontSize: 38,
+    fontWeight: "800",
+    color: "#1976F3",
   },
   title: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#20242A",
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#0B1736",
     textAlign: "center",
   },
   subtitle: {
@@ -284,10 +298,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  disabledButton: {
+    opacity: 0.75,
+  },
   confirmText: {
     color: "#FFFFFF",
     fontSize: 15,
-    fontWeight: "500",
+    fontWeight: "700",
   },
   backWrap: {
     alignSelf: "center",

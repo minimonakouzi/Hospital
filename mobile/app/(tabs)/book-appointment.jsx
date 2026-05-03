@@ -71,33 +71,33 @@ function normalizeDoctorFromApi(apiDoctor = {}, fallback = {}) {
       apiDoctor.specialization ||
       apiDoctor.speciality ||
       fallback.specialty ||
-      "General",
-    hospital: apiDoctor.location || fallback.hospital || "Revive Center",
+      "Not specified",
+    hospital: apiDoctor.location || fallback.hospital || "",
     rating:
       apiDoctor.rating !== undefined && apiDoctor.rating !== null
         ? String(apiDoctor.rating)
-        : fallback.rating || "4.9",
-    experience: apiDoctor.experience || fallback.experience || "Experience",
-    reviews: fallback.reviews || "0 reviews",
+        : fallback.rating || "",
+    experience: apiDoctor.experience || fallback.experience || "Not specified",
+    reviews: fallback.reviews || "",
     image:
       apiDoctor.imageUrl ||
       apiDoctor.image ||
       fallback.image ||
-      "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80",
+      "",
     schedule: parseSchedule(apiDoctor.schedule) || {},
     fee:
       apiDoctor.fee !== undefined && apiDoctor.fee !== null
         ? Number(apiDoctor.fee)
         : fallback.fee || 0,
     about:
-      apiDoctor.about || fallback.about || "No doctor description available.",
+      apiDoctor.about || fallback.about || "Details unavailable",
     qualifications:
-      apiDoctor.qualifications || fallback.qualifications || "Specialist",
-    location: apiDoctor.location || fallback.location || "Revive Center",
+      apiDoctor.qualifications || fallback.qualifications || "Not specified",
+    location: apiDoctor.location || fallback.location || "",
     availability:
       apiDoctor.availability || fallback.availability || "Available",
-    patients: apiDoctor.patients || fallback.patients || "0",
-    success: apiDoctor.success || fallback.success || "0%",
+    patients: apiDoctor.patients || fallback.patients || "Not specified",
+    success: apiDoctor.success || fallback.success || "Not specified",
   };
 }
 
@@ -147,23 +147,20 @@ export default function BookAppointmentScreen() {
     () => ({
       id: doctorId,
       name: String(params.doctorName || "Doctor"),
-      specialty: String(params.doctorSpecialty || "General"),
-      hospital: String(params.doctorHospital || "Revive Center"),
-      rating: String(params.doctorRating || "4.9"),
-      experience: String(params.doctorExperience || "Experience"),
-      reviews: String(params.doctorReviews || "0 reviews"),
-      image: String(
-        params.doctorImage ||
-          "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80",
-      ),
+      specialty: String(params.doctorSpecialty || "Not specified"),
+      hospital: String(params.doctorHospital || ""),
+      rating: String(params.doctorRating || ""),
+      experience: String(params.doctorExperience || "Not specified"),
+      reviews: String(params.doctorReviews || ""),
+      image: String(params.doctorImage || ""),
       schedule: parseSchedule(params.schedule),
       fee: Number(params.doctorFee || 0),
-      about: String(params.doctorAbout || "No doctor description available."),
-      qualifications: String(params.doctorQualifications || "Specialist"),
-      location: String(params.doctorHospital || "Revive Center"),
+      about: String(params.doctorAbout || "Details unavailable"),
+      qualifications: String(params.doctorQualifications || "Not specified"),
+      location: String(params.doctorHospital || ""),
       availability: String(params.doctorAvailability || "Available"),
-      patients: String(params.doctorPatients || "0"),
-      success: String(params.doctorSuccess || "0%"),
+      patients: String(params.doctorPatients || "Not specified"),
+      success: String(params.doctorSuccess || "Not specified"),
     }),
     [
       doctorId,
@@ -487,10 +484,16 @@ export default function BookAppointmentScreen() {
         <View style={styles.topDoctorCard}>
           <View style={styles.topDoctorLeft}>
             <View style={styles.imageGlow}>
-              <Image
-                source={{ uri: doctor.image }}
-                style={styles.topDoctorImage}
-              />
+              {doctor.image ? (
+                <Image
+                  source={{ uri: doctor.image }}
+                  style={styles.topDoctorImage}
+                />
+              ) : (
+                <View style={styles.topDoctorImagePlaceholder}>
+                  <Ionicons name="person-outline" size={46} color="#7D8CA3" />
+                </View>
+              )}
             </View>
 
             <View style={styles.statsRow}>
@@ -532,7 +535,9 @@ export default function BookAppointmentScreen() {
 
               <View style={styles.infoCard}>
                 <Text style={styles.infoCardLabel}>Location</Text>
-                <Text style={styles.infoCardValue}>{doctor.location}</Text>
+                <Text style={styles.infoCardValue}>
+                  {doctor.location || "Not specified"}
+                </Text>
               </View>
 
               <View style={styles.infoCard}>
@@ -863,6 +868,14 @@ const styles = StyleSheet.create({
     height: 138,
     borderRadius: 69,
     backgroundColor: "#E8EEF9",
+  },
+  topDoctorImagePlaceholder: {
+    width: 138,
+    height: 138,
+    borderRadius: 69,
+    backgroundColor: "#E8EEF9",
+    justifyContent: "center",
+    alignItems: "center",
   },
   statsRow: {
     flexDirection: "row",

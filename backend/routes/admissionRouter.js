@@ -2,6 +2,7 @@ import express from "express";
 import { clerkMiddleware } from "@clerk/express";
 import {
   admitPatient,
+  assignNurseByQr,
   dischargeAdmission,
   getAdmissionById,
   getAdmissionStats,
@@ -27,6 +28,7 @@ admissionRouter.get("/stats", staffAuth, getAdmissionStats);
 admissionRouter.get("/lookups/patients", staffAuth, lookupPatients);
 admissionRouter.get("/lookups/nurses", staffAuth, lookupNurses);
 admissionRouter.get("/nurse", nurseAuth, getNurseAdmissions);
+admissionRouter.post("/nurse/assign-by-qr", nurseAuth, assignNurseByQr);
 admissionRouter.get("/doctor", doctorAuth, getDoctorAdmissions);
 admissionRouter.get("/my-admission", clerkMiddleware(), getMyAdmission);
 admissionRouter.post("/admit", staffAuth, admitPatient);

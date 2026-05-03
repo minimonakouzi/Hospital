@@ -36,6 +36,8 @@ export default function PatientBilling() {
         subtitle="Manage hospital invoices, manual payments, and insurance tracking."
         api={api}
         header="admin"
+        authMode="admin"
+        getToken={getToken}
       />
     </AdminLayout>
   );

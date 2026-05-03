@@ -20,6 +20,7 @@ import {
   RefreshControl,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
   Animated,
   Pressable,
 } from "react-native";
@@ -49,6 +50,8 @@ const defaultProfile = {
 };
 
 const GENDER_OPTIONS = ["Male", "Female"];
+const PROFILE_TOP_PADDING =
+  Platform.OS === "android" ? (StatusBar.currentHeight || 0) + 18 : 18;
 
 function onlyDigits(value) {
   return String(value || "").replace(/\D/g, "");
@@ -108,7 +111,9 @@ function ReadOnlyField({ label, value }) {
   return (
     <>
       <Text style={styles.inputLabel}>{label}</Text>
-      <Text style={styles.readOnlyText}>{value ? String(value) : "—"}</Text>
+      <Text style={styles.readOnlyText}>
+        {value ? String(value) : "Not specified"}
+      </Text>
     </>
   );
 }
@@ -357,7 +362,7 @@ export default function ProfileScreen() {
       setOriginalProfile(updatedProfile);
       setIsEditing(false);
 
-      Alert.alert("Saved ✓", "Your profile was updated successfully.");
+      Alert.alert("Saved", "Your profile was updated successfully.");
     } catch (err) {
       console.log("SAVE PROFILE ERROR:", err);
       Alert.alert(
@@ -424,9 +429,10 @@ export default function ProfileScreen() {
   if (loadingProfile) {
     return (
       <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="dark-content" backgroundColor="#F2F5FA" />
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color="#0D63D8" />
-          <Text style={styles.loadingText}>Loading profile…</Text>
+          <Text style={styles.loadingText}>Loading profile...</Text>
         </View>
       </SafeAreaView>
     );
@@ -434,6 +440,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F2F5FA" />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -537,7 +544,7 @@ export default function ProfileScreen() {
                 <Ionicons name="calendar-outline" size={20} color="#0D63D8" />
               </View>
               <Text style={styles.statValue}>
-                {loadingStats ? "—" : doctorAppointmentsCount}
+                {loadingStats ? "-" : doctorAppointmentsCount}
               </Text>
               <Text style={styles.statLabel}>Doctor{"\n"}Appointments</Text>
             </View>
@@ -549,7 +556,7 @@ export default function ProfileScreen() {
                 <Ionicons name="layers-outline" size={20} color="#0B8F83" />
               </View>
               <Text style={styles.statValue}>
-                {loadingStats ? "—" : serviceAppointmentsCount}
+                {loadingStats ? "-" : serviceAppointmentsCount}
               </Text>
               <Text style={styles.statLabel}>Service{"\n"}Bookings</Text>
             </View>
@@ -571,7 +578,7 @@ export default function ProfileScreen() {
               />
             ) : (
               <Text style={styles.readOnlyText}>
-                {profile.firstName || "—"}
+                {profile.firstName || "Not specified"}
               </Text>
             )}
 
@@ -586,7 +593,9 @@ export default function ProfileScreen() {
                 returnKeyType="next"
               />
             ) : (
-              <Text style={styles.readOnlyText}>{profile.lastName || "—"}</Text>
+              <Text style={styles.readOnlyText}>
+                {profile.lastName || "Not specified"}
+              </Text>
             )}
 
             <Text style={styles.inputLabel}>Phone Number</Text>
@@ -601,7 +610,9 @@ export default function ProfileScreen() {
                 returnKeyType="next"
               />
             ) : (
-              <Text style={styles.readOnlyText}>{profile.phone || "—"}</Text>
+              <Text style={styles.readOnlyText}>
+                {profile.phone || "Not specified"}
+              </Text>
             )}
 
             <Text style={styles.inputLabel}>Age</Text>
@@ -615,7 +626,9 @@ export default function ProfileScreen() {
                 keyboardType="number-pad"
               />
             ) : (
-              <Text style={styles.readOnlyText}>{profile.age || "—"}</Text>
+              <Text style={styles.readOnlyText}>
+                {profile.age || "Not specified"}
+              </Text>
             )}
 
             <Text style={styles.inputLabel}>Gender</Text>
@@ -657,7 +670,9 @@ export default function ProfileScreen() {
                 returnKeyType="next"
               />
             ) : (
-              <Text style={styles.readOnlyText}>{profile.address || "—"}</Text>
+              <Text style={styles.readOnlyText}>
+                {profile.address || "Not specified"}
+              </Text>
             )}
 
             <Text style={styles.inputLabel}>Emergency Contact</Text>
@@ -672,7 +687,7 @@ export default function ProfileScreen() {
               />
             ) : (
               <Text style={[styles.readOnlyText, { marginBottom: 0 }]}>
-                {profile.emergencyContact || "—"}
+                {profile.emergencyContact || "Not specified"}
               </Text>
             )}
           </CollapsibleSection>
@@ -686,7 +701,7 @@ export default function ProfileScreen() {
             {isEditing ? (
               <TextInput
                 style={[styles.input, styles.multilineInput]}
-                placeholder="e.g. Penicillin, peanuts…"
+                placeholder="e.g. Penicillin, peanuts..."
                 placeholderTextColor="#A8B4C4"
                 value={profile.allergies}
                 onChangeText={(t) => updateField("allergies", t)}
@@ -695,7 +710,7 @@ export default function ProfileScreen() {
               />
             ) : (
               <Text style={styles.readOnlyText}>
-                {profile.allergies || "—"}
+                {profile.allergies || "Not specified"}
               </Text>
             )}
 
@@ -707,7 +722,7 @@ export default function ProfileScreen() {
                   styles.multilineInput,
                   { marginBottom: 0 },
                 ]}
-                placeholder="Brief medical history…"
+                placeholder="Brief medical history..."
                 placeholderTextColor="#A8B4C4"
                 value={profile.medicalHistory}
                 onChangeText={(t) => updateField("medicalHistory", t)}
@@ -716,7 +731,7 @@ export default function ProfileScreen() {
               />
             ) : (
               <Text style={[styles.readOnlyText, styles.readOnlyMultiline]}>
-                {profile.medicalHistory || "—"}
+                {profile.medicalHistory || "Not specified"}
               </Text>
             )}
           </CollapsibleSection>
@@ -779,7 +794,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 17,
-    paddingTop: 30,
+    paddingTop: PROFILE_TOP_PADDING,
     paddingBottom: 40,
   },
 

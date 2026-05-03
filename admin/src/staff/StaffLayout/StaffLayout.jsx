@@ -32,7 +32,7 @@ const navItems = [
     label: "Appointments",
     icon: CalendarCheck,
   },
-  { to: "/staff/admissions", label: "Admissions", icon: ClipboardList },
+  { to: "/staff/admissions", label: "Staff Admissions", icon: ClipboardList },
   { to: "/staff/support-tickets", label: "Support Tickets", icon: MessageSquareText },
   { to: "/staff/radiology-reports", label: "Radiology Reports", icon: FileText },
   { to: "/staff/lab-reports", label: "Lab Reports", icon: FlaskConical },

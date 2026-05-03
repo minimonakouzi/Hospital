@@ -83,6 +83,34 @@ export default function TabsLayout() {
           href: null,
         }}
       />
+
+      <Tabs.Screen
+        name="reports"
+        options={{
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="billing"
+        options={{
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          href: null,
+        }}
+      />
+
+      <Tabs.Screen
+        name="prescriptions"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

@@ -58,7 +58,8 @@ const emptyBedForm = {
   notes: "",
 };
 
-function itemId(item = {}) {
+function itemId(item) {
+  if (!item || typeof item !== "object") return "";
   return item._id || item.id || "";
 }
 
@@ -273,20 +274,19 @@ export default function WardManagement() {
       setNotice({ type: "", text: "" });
 
       if (modal.type === "ward") {
-        const id = itemId(modal.ward);
         const body =
           modal.mode === "edit"
-            ? await updateWard(id, modal.form, getToken)
+            ? await updateWard(itemId(modal.ward), modal.form, getToken)
             : await createWard(modal.form, getToken);
         setNotice({ type: "success", text: body?.message || "Ward saved successfully." });
       }
 
       if (modal.type === "room") {
         const wardId = itemId(modal.ward);
-        const roomId = itemId(modal.room);
+        if (!wardId) throw new Error("Select a ward before saving a room.");
         const body =
           modal.mode === "edit"
-            ? await updateRoom(wardId, roomId, modal.form, getToken)
+            ? await updateRoom(wardId, itemId(modal.room), modal.form, getToken)
             : await createRoom(wardId, modal.form, getToken);
         setNotice({ type: "success", text: body?.message || "Room saved successfully." });
       }
@@ -294,10 +294,10 @@ export default function WardManagement() {
       if (modal.type === "bed") {
         const wardId = itemId(modal.ward);
         const roomId = itemId(modal.room);
-        const bedId = itemId(modal.bed);
+        if (!wardId || !roomId) throw new Error("Select a ward and room before saving a bed.");
         const body =
           modal.mode === "edit"
-            ? await updateBed(wardId, roomId, bedId, modal.form, getToken)
+            ? await updateBed(wardId, roomId, itemId(modal.bed), modal.form, getToken)
             : await createBed(wardId, roomId, modal.form, getToken);
         setNotice({ type: "success", text: body?.message || "Bed saved successfully." });
       }

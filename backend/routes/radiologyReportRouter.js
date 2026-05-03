@@ -17,6 +17,7 @@ import {
 import adminAuth from "../middlewares/adminAuth.js";
 import doctorAuth from "../middlewares/doctorAuth.js";
 import staffAuth from "../middlewares/staffAuth.js";
+import { uploadReportFile } from "../middlewares/reportUpload.js";
 
 const radiologyReportRouter = express.Router();
 
@@ -27,12 +28,12 @@ radiologyReportRouter.post("/doctor", doctorAuth, createDoctorRadiologyReport);
 radiologyReportRouter.get("/doctor", doctorAuth, getDoctorRadiologyReports);
 radiologyReportRouter.get("/doctor/:id", doctorAuth, getDoctorRadiologyReportById);
 
-radiologyReportRouter.post("/staff", staffAuth, createStaffRadiologyReport);
+radiologyReportRouter.post("/staff", staffAuth, uploadReportFile, createStaffRadiologyReport);
 radiologyReportRouter.get("/staff", staffAuth, getStaffRadiologyReports);
-radiologyReportRouter.put("/staff/:id", staffAuth, updateStaffRadiologyReport);
+radiologyReportRouter.put("/staff/:id", staffAuth, uploadReportFile, updateStaffRadiologyReport);
 radiologyReportRouter.delete("/staff/:id", staffAuth, deleteRadiologyReport);
 
-radiologyReportRouter.post("/", clerkMiddleware(), requireAuth(), adminAuth, createAdminRadiologyReport);
+radiologyReportRouter.post("/", clerkMiddleware(), requireAuth(), adminAuth, uploadReportFile, createAdminRadiologyReport);
 radiologyReportRouter.get("/", clerkMiddleware(), requireAuth(), adminAuth, getAdminRadiologyReports);
 radiologyReportRouter.get("/:id", clerkMiddleware(), requireAuth(), adminAuth, getAdminRadiologyReportById);
 radiologyReportRouter.delete("/:id", clerkMiddleware(), requireAuth(), adminAuth, deleteRadiologyReport);

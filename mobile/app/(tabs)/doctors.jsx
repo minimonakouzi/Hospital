@@ -33,24 +33,25 @@ export default function DoctorsScreen() {
       const normalizedDoctors = (data || []).map((doctor) => ({
         id: doctor._id || doctor.id,
         name: doctor.name || "Unknown Doctor",
-        specialty: doctor.specialization || "General",
-        category: doctor.specialization || "General",
-        hospital: doctor.location || "Revive Center",
-        price: doctor.fee ? `$${doctor.fee}` : "$0",
+        specialty: doctor.specialization || "Not specified",
+        category: doctor.specialization || "",
+        hospital: doctor.location || "",
+        price:
+          doctor.fee !== undefined && doctor.fee !== null
+            ? `$${doctor.fee}`
+            : "Not specified",
         fee: Number(doctor.fee || 0),
-        rating: doctor.rating ? String(doctor.rating) : "4.8",
+        rating: doctor.rating ? String(doctor.rating) : "",
         experience: doctor.experience || "Experience not available",
-        reviews: doctor.reviews ? String(doctor.reviews) : "0 reviews",
-        image:
-          doctor.imageUrl ||
-          "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80",
-        verified: true,
+        reviews: doctor.reviews ? String(doctor.reviews) : "",
+        image: doctor.imageUrl || "",
+        verified: Boolean(doctor.verified),
         schedule: doctor.schedule || {},
-        about: doctor.about || "No doctor description available.",
-        qualifications: doctor.qualifications || "Specialist",
-        availability: doctor.availability || "Available",
-        patients: doctor.patients || "0",
-        success: doctor.success || "0%",
+        about: doctor.about || "",
+        qualifications: doctor.qualifications || "",
+        availability: doctor.availability || "",
+        patients: doctor.patients || "",
+        success: doctor.success || "",
       }));
 
       setDoctorsData(normalizedDoctors);
@@ -92,8 +93,8 @@ export default function DoctorsScreen() {
         doctorAbout: doctor.about,
         doctorQualifications: doctor.qualifications,
         doctorAvailability: doctor.availability,
-        doctorPatients: String(doctor.patients || "0"),
-        doctorSuccess: String(doctor.success || "0%"),
+        doctorPatients: String(doctor.patients || ""),
+        doctorSuccess: String(doctor.success || ""),
         schedule: JSON.stringify(doctor.schedule || {}),
       },
     });
@@ -140,7 +141,7 @@ export default function DoctorsScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.sectionTitle}>Top Rated Doctors</Text>
+        <Text style={styles.sectionTitle}>Available Doctors</Text>
 
         {loading ? (
           <View style={styles.loadingWrap}>
@@ -150,10 +151,16 @@ export default function DoctorsScreen() {
         ) : (
           filteredDoctors.map((doctor) => (
             <View key={doctor.id} style={styles.doctorCard}>
-              <Image
-                source={{ uri: doctor.image }}
-                style={styles.doctorImage}
-              />
+              {doctor.image ? (
+                <Image
+                  source={{ uri: doctor.image }}
+                  style={styles.doctorImage}
+                />
+              ) : (
+                <View style={styles.doctorImagePlaceholder}>
+                  <Ionicons name="person-outline" size={28} color="#7D8CA3" />
+                </View>
+              )}
 
               <View style={styles.doctorContent}>
                 <View style={styles.doctorTopRow}>
@@ -161,22 +168,37 @@ export default function DoctorsScreen() {
                     {doctor.name}
                   </Text>
 
-                  <View style={styles.ratingBadge}>
-                    <Ionicons name="star" size={12} color="#F4B400" />
-                    <Text style={styles.ratingText}>{doctor.rating}</Text>
-                  </View>
+                  {doctor.rating ? (
+                    <View style={styles.ratingBadge}>
+                      <Ionicons name="star" size={12} color="#F4B400" />
+                      <Text style={styles.ratingText}>{doctor.rating}</Text>
+                    </View>
+                  ) : null}
                 </View>
 
                 <Text style={styles.doctorSpecialty} numberOfLines={1}>
                   {doctor.specialty}
                 </Text>
 
-                <View style={styles.locationRow}>
-                  <Ionicons name="location-sharp" size={14} color="#4E596A" />
-                  <Text style={styles.locationText} numberOfLines={1}>
-                    {doctor.hospital}
-                  </Text>
-                </View>
+                {doctor.hospital ? (
+                  <View style={styles.locationRow}>
+                    <Ionicons name="location-sharp" size={14} color="#4E596A" />
+                    <Text style={styles.locationText} numberOfLines={1}>
+                      {doctor.hospital}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.locationRow}>
+                    <Ionicons
+                      name="information-circle-outline"
+                      size={14}
+                      color="#4E596A"
+                    />
+                    <Text style={styles.locationText} numberOfLines={1}>
+                      Not specified
+                    </Text>
+                  </View>
+                )}
 
                 <View style={styles.doctorBottomRow}>
                   <Text style={styles.priceText}>{doctor.price}</Text>
@@ -325,6 +347,15 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: "#D7E8F1",
     marginRight: 12,
+  },
+  doctorImagePlaceholder: {
+    width: 76,
+    height: 92,
+    borderRadius: 16,
+    backgroundColor: "#E7EDF7",
+    marginRight: 12,
+    justifyContent: "center",
+    alignItems: "center",
   },
   doctorContent: {
     flex: 1,

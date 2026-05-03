@@ -16,6 +16,14 @@ function cleanString(value) {
   return String(value ?? "").trim();
 }
 
+function uploadedFileData(file) {
+  if (!file) return {};
+  return {
+    fileUrl: `/uploads/${file.filename}`,
+    fileName: cleanString(file.originalname || file.filename),
+  };
+}
+
 function escapeRegex(value = "") {
   return cleanString(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -64,6 +72,13 @@ function populateReport(query) {
 }
 
 function normalizeResults(raw = []) {
+  if (typeof raw === "string") {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      raw = [];
+    }
+  }
   if (!Array.isArray(raw)) return [];
   return raw
     .map((item = {}) => ({
@@ -78,11 +93,9 @@ function normalizeResults(raw = []) {
 
 function hasUsefulResultPayload(body = {}) {
   return Boolean(
-    normalizeResults(body.results).length ||
+      normalizeResults(body.results).length ||
       cleanString(body.resultSummary) ||
       cleanString(body.interpretation) ||
-      cleanString(body.fileUrl) ||
-      cleanString(body.fileName) ||
       cleanString(body.notes) ||
       cleanString(body.status)
   );
@@ -195,8 +208,8 @@ async function normalizeCreatePayload(req, actor = {}) {
       results: normalizeResults(body.results),
       resultSummary: cleanString(body.resultSummary),
       interpretation: cleanString(body.interpretation),
-      fileUrl: cleanString(body.fileUrl),
-      fileName: cleanString(body.fileName),
+      fileUrl: uploadedFileData(req.file).fileUrl || "",
+      fileName: uploadedFileData(req.file).fileName || "",
       status,
       notes: cleanString(body.notes),
     },
@@ -340,15 +353,20 @@ export async function updateLabReportResult(req, res) {
   try {
     const { id } = req.params;
     if (!isValidObjectId(id)) return badRequest(res, "Invalid lab report id.");
-    if (!hasUsefulResultPayload(req.body)) return badRequest(res, "At least one result field is required.");
+    if (!hasUsefulResultPayload(req.body) && !req.file) return badRequest(res, "At least one result field is required.");
 
     const report = await LabReport.findById(id);
     if (!report) return notFound(res);
 
     if (req.body?.results !== undefined) report.results = normalizeResults(req.body.results);
-    ["resultSummary", "interpretation", "fileUrl", "fileName", "notes", "specimen"].forEach((field) => {
+    ["resultSummary", "interpretation", "notes", "specimen"].forEach((field) => {
       if (req.body?.[field] !== undefined) report[field] = cleanString(req.body[field]);
     });
+    if (req.file) {
+      const fileData = uploadedFileData(req.file);
+      report.fileUrl = fileData.fileUrl;
+      report.fileName = fileData.fileName;
+    }
     if (req.body?.status !== undefined) {
       const status = cleanString(req.body.status);
       if (!STATUSES.includes(status)) return badRequest(res, "Invalid status.");
@@ -407,9 +425,14 @@ export async function updateAdminLabReport(req, res) {
     const report = await LabReport.findById(id);
     if (!report) return notFound(res);
 
-    ["title", "description", "specimen", "resultSummary", "interpretation", "fileUrl", "fileName", "notes"].forEach((field) => {
+    ["title", "description", "specimen", "resultSummary", "interpretation", "notes"].forEach((field) => {
       if (req.body?.[field] !== undefined) report[field] = cleanString(req.body[field]);
     });
+    if (req.file) {
+      const fileData = uploadedFileData(req.file);
+      report.fileUrl = fileData.fileUrl;
+      report.fileName = fileData.fileName;
+    }
     if (req.body?.results !== undefined) report.results = normalizeResults(req.body.results);
     if (req.body?.testType !== undefined) {
       const testType = cleanString(req.body.testType);

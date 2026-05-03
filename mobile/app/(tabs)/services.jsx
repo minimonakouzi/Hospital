@@ -30,9 +30,8 @@ function normalizeService(service) {
   return {
     id: service?._id || service?.id || "",
     name: service?.name || "Service",
-    shortDescription:
-      service?.shortDescription || "No short description available.",
-    about: service?.about || "No service description available.",
+    shortDescription: service?.shortDescription || "",
+    about: service?.about || "",
     price:
       service?.price !== undefined && service?.price !== null
         ? Number(service.price)
@@ -42,7 +41,7 @@ function normalizeService(service) {
     image:
       service?.imageUrl ||
       service?.image ||
-      "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80",
+      "",
     slots:
       service?.slots && typeof service.slots === "object" ? service.slots : {},
   };
@@ -83,12 +82,10 @@ export default function ServicesScreen() {
     const text = searchText.toLowerCase().trim();
     if (!text) return servicesData;
     return servicesData.filter(
-      (service) =>
+        (service) =>
         service.name.toLowerCase().includes(text) ||
-        (service.shortDescription !== "No short description available." &&
-          service.shortDescription.toLowerCase().includes(text)) ||
-        (service.about !== "No service description available." &&
-          service.about.toLowerCase().includes(text)),
+        service.shortDescription.toLowerCase().includes(text) ||
+        service.about.toLowerCase().includes(text),
     );
   }, [servicesData, searchText]);
 
@@ -184,10 +181,16 @@ export default function ServicesScreen() {
                 activeOpacity={0.9}
                 onPress={() => openBookService(service)}
               >
-                <Image
-                  source={{ uri: service.image }}
-                  style={styles.cardImage}
-                />
+                {service.image ? (
+                  <Image
+                    source={{ uri: service.image }}
+                    style={styles.cardImage}
+                  />
+                ) : (
+                  <View style={styles.cardImagePlaceholder}>
+                    <Ionicons name="layers-outline" size={34} color="#7D8CA3" />
+                  </View>
+                )}
                 <View
                   style={[
                     styles.badge,
@@ -214,13 +217,11 @@ export default function ServicesScreen() {
                   </Text>
 
                   {/* Logic Change: Conditionally render the description */}
-                  {service.shortDescription &&
-                    service.shortDescription !==
-                      "No short description available." && (
-                      <Text style={styles.cardDescription} numberOfLines={2}>
-                        {service.shortDescription}
-                      </Text>
-                    )}
+                  {service.shortDescription ? (
+                    <Text style={styles.cardDescription} numberOfLines={2}>
+                      {service.shortDescription}
+                    </Text>
+                  ) : null}
 
                   {/* Style Change: Reverted to your original icon-based meta row */}
                   <View style={styles.metaRow}>
@@ -348,6 +349,15 @@ const styles = StyleSheet.create({
     height: 150,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+  },
+  cardImagePlaceholder: {
+    width: "100%",
+    height: 150,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    backgroundColor: "#E7EDF7",
+    justifyContent: "center",
+    alignItems: "center",
   },
   cardBody: { padding: 16 },
   cardTitle: {

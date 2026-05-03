@@ -13,6 +13,7 @@ import { router } from "expo-router";
 
 export default function IntroScreen() {
   const [showChoices, setShowChoices] = useState(false);
+  const [selectedPortal, setSelectedPortal] = useState(null);
 
   const logoScale = useRef(new Animated.Value(0.65)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
@@ -85,26 +86,79 @@ export default function IntroScreen() {
             },
           ]}
         >
-          <Text style={styles.title}>Welcome to REVIVE</Text>
-          <Text style={styles.subtitle}>
-            Your hospital app for appointments, services, and patient care.
+          <Text style={styles.title}>
+            {selectedPortal ? `${selectedPortal} Portal` : "Welcome to REVIVE"}
           </Text>
 
-          <TouchableOpacity
-            style={styles.primaryButton}
-            activeOpacity={0.9}
-            onPress={() => router.push("/(auth)/login")}
-          >
-            <Text style={styles.primaryButtonText}>Login</Text>
-          </TouchableOpacity>
+          <Text style={styles.subtitle}>
+            {selectedPortal
+              ? "Choose how you want to continue."
+              : "Select your portal to continue."}
+          </Text>
 
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            activeOpacity={0.9}
-            onPress={() => router.push("/(auth)/signup")}
-          >
-            <Text style={styles.secondaryButtonText}>Sign Up</Text>
-          </TouchableOpacity>
+          {!selectedPortal ? (
+            <>
+              <TouchableOpacity
+                style={styles.primaryButton}
+                activeOpacity={0.9}
+                onPress={() => setSelectedPortal("Patient")}
+              >
+                <Text style={styles.primaryButtonText}>Patient Portal</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.nurseButton}
+                activeOpacity={0.9}
+                onPress={() => setSelectedPortal("Nurse")}
+              >
+                <Text style={styles.nurseButtonText}>Nurse Portal</Text>
+              </TouchableOpacity>
+            </>
+          ) : selectedPortal === "Patient" ? (
+            <>
+              <TouchableOpacity
+                style={styles.primaryButton}
+                activeOpacity={0.9}
+                onPress={() => router.push("/(auth)/login")}
+              >
+                <Text style={styles.primaryButtonText}>Login</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                activeOpacity={0.9}
+                onPress={() => router.push("/(auth)/signup")}
+              >
+                <Text style={styles.secondaryButtonText}>Sign Up</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.backChoiceButton}
+                activeOpacity={0.9}
+                onPress={() => setSelectedPortal(null)}
+              >
+                <Text style={styles.backChoiceText}>Back</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={styles.primaryButton}
+                activeOpacity={0.9}
+                onPress={() => router.push("/nurse/login")}
+              >
+                <Text style={styles.primaryButtonText}>Login</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.backChoiceButton}
+                activeOpacity={0.9}
+                onPress={() => setSelectedPortal(null)}
+              >
+                <Text style={styles.backChoiceText}>Back</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </Animated.View>
       )}
     </View>
@@ -178,5 +232,32 @@ const styles = StyleSheet.create({
     color: "#0D63D8",
     fontSize: 17,
     fontWeight: "800",
+  },
+  nurseButton: {
+    height: 52,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#C9D9F4",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 12,
+    backgroundColor: "#FFFFFF",
+  },
+  nurseButtonText: {
+    color: "#1541B7",
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  backChoiceButton: {
+    height: 52,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 12,
+  },
+  backChoiceText: {
+    color: "#5B6472",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });

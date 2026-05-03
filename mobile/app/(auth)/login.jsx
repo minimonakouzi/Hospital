@@ -52,6 +52,10 @@ export default function LoginScreen() {
     ]).start();
   }, [fadeAnim, slideAnim, logoAnim]);
 
+  const handleBack = () => {
+    router.replace("/");
+  };
+
   const onSignInPress = async () => {
     if (!isLoaded) return;
 
@@ -114,6 +118,14 @@ export default function LoginScreen() {
       style={styles.keyboard}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={handleBack}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="arrow-back" size={22} color="#0D63D8" />
+      </TouchableOpacity>
+
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
@@ -154,6 +166,7 @@ export default function LoginScreen() {
               value={emailAddress}
               onChangeText={setEmailAddress}
               autoCapitalize="none"
+              autoCorrect={false}
               keyboardType="email-address"
               placeholderTextColor="#7A8799"
             />
@@ -169,7 +182,10 @@ export default function LoginScreen() {
               secureTextEntry={!showPassword}
               placeholderTextColor="#7A8799"
             />
-            <TouchableOpacity onPress={() => setShowPassword((prev) => !prev)}>
+            <TouchableOpacity
+              onPress={() => setShowPassword((prev) => !prev)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
               <Ionicons
                 name={showPassword ? "eye-outline" : "eye-off-outline"}
                 size={20}
@@ -178,9 +194,14 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.button} onPress={onSignInPress}>
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={onSignInPress}
+            disabled={loading}
+            activeOpacity={0.9}
+          >
             {loading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color="#FFFFFF" />
             ) : (
               <Text style={styles.buttonText}>Sign In</Text>
             )}
@@ -199,6 +220,23 @@ const styles = StyleSheet.create({
   keyboard: {
     flex: 1,
     backgroundColor: "#F5F8FE",
+  },
+  backButton: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 58 : 34,
+    left: 22,
+    zIndex: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#0D63D8",
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 5,
   },
   scroll: {
     flexGrow: 1,
@@ -259,8 +297,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 8,
   },
+  buttonDisabled: {
+    opacity: 0.75,
+  },
   buttonText: {
-    color: "#fff",
+    color: "#FFFFFF",
     fontSize: 17,
     fontWeight: "800",
   },

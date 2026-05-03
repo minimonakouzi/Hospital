@@ -41,9 +41,8 @@ function normalizeService(apiService = {}, fallback = {}) {
     shortDescription:
       apiService.shortDescription ||
       fallback.shortDescription ||
-      "No short description available.",
-    about:
-      apiService.about || fallback.about || "No service description available.",
+      "",
+    about: apiService.about || fallback.about || "",
     price:
       apiService.price !== undefined && apiService.price !== null
         ? Number(apiService.price)
@@ -51,7 +50,7 @@ function normalizeService(apiService = {}, fallback = {}) {
     image:
       apiService.imageUrl ||
       fallback.image ||
-      "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80",
+      "",
     available:
       apiService.available !== undefined
         ? apiService.available
@@ -111,15 +110,10 @@ export default function BookServiceScreen() {
     () => ({
       id: serviceId,
       name: String(params.serviceName || "Service"),
-      shortDescription: String(
-        params.serviceShortDescription || "No short description available.",
-      ),
-      about: String(params.serviceAbout || "No service description available."),
+      shortDescription: String(params.serviceShortDescription || ""),
+      about: String(params.serviceAbout || ""),
       price: Number(params.servicePrice || 0),
-      image: String(
-        params.serviceImage ||
-          "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80",
-      ),
+      image: String(params.serviceImage || ""),
       available: String(params.serviceAvailable || "true") !== "false",
       slots: parseSlots(params.slots),
       instructions: [],
@@ -221,10 +215,7 @@ export default function BookServiceScreen() {
     () =>
       Array.isArray(service.instructions) && service.instructions.length > 0
         ? service.instructions
-        : [
-            "Please arrive 10 minutes before your appointment.",
-            "Bring any previous medical reports if available.",
-          ],
+        : [],
     [service.instructions],
   );
   // --- End Hooks ---
@@ -370,7 +361,9 @@ export default function BookServiceScreen() {
               </TouchableOpacity>
             </View>
             <Text style={styles.modalServiceName}>{service.name}</Text>
-            <Text style={styles.modalDescription}>{service.about}</Text>
+            <Text style={styles.modalDescription}>
+              {service.about || "Details unavailable"}
+            </Text>
             <TouchableOpacity
               style={styles.modalCloseButton}
               onPress={() => setAboutModalVisible(false)}
@@ -387,7 +380,13 @@ export default function BookServiceScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.heroCard}>
-          <Image source={{ uri: service.image }} style={styles.heroImage} />
+          {service.image ? (
+            <Image source={{ uri: service.image }} style={styles.heroImage} />
+          ) : (
+            <View style={styles.heroImagePlaceholder}>
+              <Ionicons name="layers-outline" size={44} color="#7D8CA3" />
+            </View>
+          )}
           <View style={styles.heroOverlay} />
           <TouchableOpacity
             style={styles.backButton}
@@ -397,9 +396,11 @@ export default function BookServiceScreen() {
           </TouchableOpacity>
           <View style={styles.heroBottom}>
             <Text style={styles.serviceName}>{service.name}</Text>
-            <Text style={styles.serviceDescription} numberOfLines={2}>
-              {service.shortDescription}
-            </Text>
+            {service.shortDescription ? (
+              <Text style={styles.serviceDescription} numberOfLines={2}>
+                {service.shortDescription}
+              </Text>
+            ) : null}
           </View>
         </View>
 
@@ -432,12 +433,18 @@ export default function BookServiceScreen() {
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Pre-Test Instructions</Text>
-          {instructions.map((item, index) => (
-            <View key={`${item}-${index}`} style={styles.instructionRow}>
-              <Text style={styles.bullet}>•</Text>
-              <Text style={styles.instructionText}>{item}</Text>
-            </View>
-          ))}
+          {instructions.length > 0 ? (
+            instructions.map((item, index) => (
+              <View key={`${item}-${index}`} style={styles.instructionRow}>
+                <Text style={styles.bullet}>-</Text>
+                <Text style={styles.instructionText}>{item}</Text>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.instructionText}>
+              No special instructions provided.
+            </Text>
+          )}
         </View>
 
         <View style={styles.card}>
@@ -717,6 +724,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#DDE7F8",
   },
   heroImage: { width: "100%", height: "100%" },
+  heroImagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#E7EDF7",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.1)",

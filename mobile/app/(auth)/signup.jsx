@@ -18,6 +18,12 @@ import { useSignUp } from "@clerk/clerk-expo";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
+const GENDER_OPTIONS = ["Male", "Female"];
+
+function onlyDigits(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
 export default function SignupScreen() {
   const { signUp, isLoaded } = useSignUp();
 
@@ -25,6 +31,13 @@ export default function SignupScreen() {
   const [lastName, setLastName] = useState("");
   const [emailAddress, setEmailAddress] = useState("");
   const [password, setPassword] = useState("");
+
+  const [phone, setPhone] = useState("");
+  const [age, setAge] = useState("");
+  const [gender, setGender] = useState("");
+  const [address, setAddress] = useState("");
+  const [emergencyContact, setEmergencyContact] = useState("");
+
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -57,15 +70,52 @@ export default function SignupScreen() {
   const onSignUpPress = async () => {
     if (!isLoaded) return;
 
+    const trimmedFirstName = firstName.trim();
+    const trimmedLastName = lastName.trim();
+    const trimmedEmail = emailAddress.trim().toLowerCase();
+    const trimmedPhone = onlyDigits(phone);
+    const trimmedAge = age.trim();
+    const trimmedEmergencyContact = onlyDigits(emergencyContact);
+
     if (
-      !firstName.trim() ||
-      !lastName.trim() ||
-      !emailAddress.trim() ||
-      !password
+      !trimmedFirstName ||
+      !trimmedLastName ||
+      !trimmedEmail ||
+      !password ||
+      !trimmedPhone ||
+      !trimmedAge ||
+      !gender
     ) {
       Alert.alert(
         "Missing fields",
-        "Please enter first name, last name, email, and password.",
+        "Please enter first name, last name, email, password, phone, age, and gender.",
+      );
+      return;
+    }
+
+    const ageNumber = Number(trimmedAge);
+
+    if (!Number.isInteger(ageNumber) || ageNumber < 1 || ageNumber > 120) {
+      Alert.alert("Invalid age", "Please enter a valid age.");
+      return;
+    }
+
+    if (trimmedPhone.length < 8 || trimmedPhone.length > 15) {
+      Alert.alert(
+        "Invalid phone",
+        "Please enter a valid phone number between 8 and 15 digits.",
+      );
+      return;
+    }
+
+    if (
+      trimmedEmergencyContact &&
+      (trimmedEmergencyContact.length < 8 ||
+        trimmedEmergencyContact.length > 15)
+    ) {
+      Alert.alert(
+        "Invalid emergency contact",
+        "Please enter a valid emergency contact number.",
       );
       return;
     }
@@ -74,10 +124,19 @@ export default function SignupScreen() {
       setLoading(true);
 
       await signUp.create({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        emailAddress: emailAddress.trim(),
+        firstName: trimmedFirstName,
+        lastName: trimmedLastName,
+        emailAddress: trimmedEmail,
         password,
+
+        unsafeMetadata: {
+          role: "patient",
+          phone: trimmedPhone,
+          age: ageNumber,
+          gender,
+          address: address.trim(),
+          emergencyContact: trimmedEmergencyContact,
+        },
       });
 
       await signUp.prepareEmailAddressVerification({
@@ -189,7 +248,92 @@ export default function SignupScreen() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.button} onPress={onSignUpPress}>
+          <Text style={styles.sectionLabel}>Basic Patient Information</Text>
+
+          <View style={styles.inputWrap}>
+            <Ionicons name="call-outline" size={20} color="#6B7A90" />
+            <TextInput
+              style={styles.input}
+              placeholder="Phone Number"
+              value={phone}
+              onChangeText={(value) => setPhone(onlyDigits(value))}
+              keyboardType="phone-pad"
+              placeholderTextColor="#7A8799"
+            />
+          </View>
+
+          <View style={styles.inputWrap}>
+            <Ionicons name="calendar-outline" size={20} color="#6B7A90" />
+            <TextInput
+              style={styles.input}
+              placeholder="Age"
+              value={age}
+              onChangeText={(value) => setAge(onlyDigits(value))}
+              keyboardType="number-pad"
+              placeholderTextColor="#7A8799"
+            />
+          </View>
+
+          <View style={styles.genderRow}>
+            {GENDER_OPTIONS.map((option) => {
+              const selected = gender === option;
+
+              return (
+                <TouchableOpacity
+                  key={option}
+                  style={[
+                    styles.genderButton,
+                    selected && styles.genderButtonSelected,
+                  ]}
+                  activeOpacity={0.85}
+                  onPress={() => setGender(option)}
+                >
+                  <Ionicons
+                    name={option === "Male" ? "male-outline" : "female-outline"}
+                    size={18}
+                    color={selected ? "#FFFFFF" : "#0D63D8"}
+                  />
+                  <Text
+                    style={[
+                      styles.genderText,
+                      selected && styles.genderTextSelected,
+                    ]}
+                  >
+                    {option}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <View style={styles.inputWrap}>
+            <Ionicons name="location-outline" size={20} color="#6B7A90" />
+            <TextInput
+              style={styles.input}
+              placeholder="Address"
+              value={address}
+              onChangeText={setAddress}
+              placeholderTextColor="#7A8799"
+            />
+          </View>
+
+          <View style={styles.inputWrap}>
+            <Ionicons name="alert-circle-outline" size={20} color="#6B7A90" />
+            <TextInput
+              style={styles.input}
+              placeholder="Emergency Contact"
+              value={emergencyContact}
+              onChangeText={(value) => setEmergencyContact(onlyDigits(value))}
+              keyboardType="phone-pad"
+              placeholderTextColor="#7A8799"
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={onSignUpPress}
+            disabled={loading}
+          >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
@@ -247,8 +391,15 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 24,
   },
+  sectionLabel: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#0B1736",
+    marginTop: 6,
+    marginBottom: 12,
+  },
   inputWrap: {
-    height: 58,
+    minHeight: 58,
     backgroundColor: "#EAF1FB",
     borderRadius: 18,
     paddingHorizontal: 16,
@@ -262,6 +413,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#12233D",
   },
+  genderRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 14,
+  },
+  genderButton: {
+    flex: 1,
+    height: 52,
+    borderRadius: 18,
+    backgroundColor: "#EAF1FB",
+    borderWidth: 1,
+    borderColor: "#D9E6FA",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  genderButtonSelected: {
+    backgroundColor: "#0D63D8",
+    borderColor: "#0D63D8",
+  },
+  genderText: {
+    color: "#0D63D8",
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  genderTextSelected: {
+    color: "#FFFFFF",
+  },
   button: {
     height: 56,
     backgroundColor: "#0D63D8",
@@ -269,6 +449,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginTop: 8,
+  },
+  buttonDisabled: {
+    opacity: 0.75,
   },
   buttonText: {
     color: "#fff",

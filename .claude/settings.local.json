@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem \"c:\\\\REVIVE\\\\frontend\\\\src\" -Recurse -File | Where-Object { $_.Name -match \"nav|header|layout|auth|route|login|signup|App\" -or $_.DirectoryName -match \"nav|auth|layout|route\" } | Select-Object FullName)",
+      "PowerShell(Get-ChildItem \"c:\\\\REVIVE\\\\admin\\\\src\" -Recurse -File | Where-Object { $_.Name -match \"nav|header|layout|auth|route|login|signup|App|Staff\" -or $_.DirectoryName -match \"nav|auth|layout|route|Staff\" } | Select-Object FullName)",
+      "PowerShell(Get-ChildItem \"c:\\\\REVIVE\\\\backend\" -Recurse -File | Where-Object { $_.Name -match \"auth|route|index|middleware\" } | Select-Object FullName)"
+    ]
+  }
+}

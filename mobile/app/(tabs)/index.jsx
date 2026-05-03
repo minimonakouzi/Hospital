@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -19,6 +19,12 @@ import { useFocusEffect } from "@react-navigation/native";
 import { getMyAppointments } from "../../services/appointments";
 import { getMyServiceAppointments } from "../../services/serviceAppointments";
 import { getMyPatientProfile } from "../../services/patientProfile";
+import {
+  getMyLabReports,
+  getMyRadiologyReports,
+} from "../../services/reports";
+import { getMyBills } from "../../services/billing";
+import { getMyNotifications } from "../../services/notifications";
 
 function buildDoctorAppointmentDate(dateString, timeString) {
   if (!dateString) return null;
@@ -77,13 +83,13 @@ function normalizeDoctorAppointment(item) {
   return {
     id: item?._id || item?.id || Math.random().toString(),
     type: "doctor",
-    title: doctor?.name || item?.doctorName || "Doctor",
+    title: doctor?.name || item?.doctorName || "Doctor appointment",
     subtitle:
       doctor?.specialization ||
       item?.speciality ||
       item?.doctorSpecialty ||
-      "General",
-    location: doctor?.location || item?.doctorHospital || "Revive Center",
+      "Doctor appointment",
+    location: doctor?.location || item?.doctorHospital || "",
     date: item?.date || "",
     time: item?.time || "",
     status: item?.status || "Pending",
@@ -114,11 +120,11 @@ function normalizeServiceAppointment(item) {
   return {
     id: item?._id || item?.id || Math.random().toString(),
     type: "service",
-    title: item?.serviceName || "Service",
-    subtitle: "Hospital Service",
-    location: "Revive Center",
+    title: item?.serviceName || "Service appointment",
+    subtitle: item?.serviceCategory || item?.category || "Service appointment",
+    location: item?.location || item?.serviceLocation || "",
     date: item?.date || "",
-    time: formattedTime || "Time not available",
+    time: formattedTime || "",
     status: item?.status || "Pending",
     appointmentDate,
   };
@@ -162,15 +168,145 @@ function formatCardDate(dateString, timeString) {
   return `${readable}${timeString ? ` ${timeString}` : ""}`;
 }
 
+function getSettledValue(result, fallback) {
+  return result?.status === "fulfilled" ? result.value : fallback;
+}
+
+function normalizeDate(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatShortDate(value) {
+  const date = normalizeDate(value);
+  if (!date) return "Date not available";
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatMoney(value) {
+  const amount = Number(value || 0);
+
+  return amount.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  });
+}
+
+function isActiveAppointment(item) {
+  const status = String(item?.status || "").toLowerCase();
+  return (
+    status !== "canceled" &&
+    status !== "cancelled" &&
+    status !== "completed"
+  );
+}
+
+function normalizeReport(item, reportType) {
+  const source = item || {};
+  const doctor = source.doctorId || source.doctor || {};
+  const date =
+    source.reportDate ||
+    source.resultDate ||
+    source.requestedDate ||
+    source.createdAt ||
+    source.updatedAt ||
+    "";
+
+  return {
+    id: source._id || source.id || `${reportType}-${date}-${source.reportCode || ""}`,
+    type: reportType,
+    code: source.reportCode || source.code || "",
+    title:
+      source.title ||
+      source.reportTitle ||
+      source.testName ||
+      source.testType ||
+      source.scanType ||
+      source.examName ||
+      `${reportType} report`,
+    status: source.status || "",
+    doctorName: doctor?.name || source.doctorName || "",
+    date,
+    sortDate: normalizeDate(date)?.getTime() || 0,
+  };
+}
+
+function normalizeBill(item) {
+  const source = item || {};
+  const service =
+    source.serviceAppointmentId?.serviceName ||
+    source.appointmentId?.serviceName ||
+    source.serviceName ||
+    "";
+  const date = source.billDate || source.invoiceDate || source.createdAt || "";
+  const totalAmount = Number(
+    source.totalAmount ?? source.amount ?? source.total ?? 0,
+  );
+  const paidAmount = Number(source.paidAmount ?? source.amountPaid ?? 0);
+  const remainingAmount = Number(
+    source.remainingAmount ??
+      source.dueAmount ??
+      source.balance ??
+      totalAmount - paidAmount,
+  );
+
+  return {
+    id: source._id || source.id || `bill-${date}-${source.billCode || ""}`,
+    code: source.billCode || source.invoiceNo || source.code || "",
+    type: source.billType || source.category || service || "Bill",
+    status: source.paymentStatus || source.status || "Pending",
+    totalAmount,
+    remainingAmount: Math.max(remainingAmount, 0),
+    date,
+    sortDate: normalizeDate(date)?.getTime() || 0,
+  };
+}
+
+function isUnpaidBill(item) {
+  const status = String(item?.status || "").toLowerCase();
+  return (
+    status !== "paid" &&
+    status !== "settled" &&
+    (item?.remainingAmount > 0 || status === "pending" || status === "unpaid")
+  );
+}
+
+function normalizeNotification(item) {
+  const source = item || {};
+  const date = source.createdAt || source.date || source.updatedAt || "";
+
+  return {
+    id: source._id || source.id || `notification-${date}-${source.title || ""}`,
+    title: source.title || source.type || "Notification",
+    message: source.message || source.body || source.description || "",
+    type: source.type || source.category || "",
+    read: Boolean(source.readAt || source.isRead || source.read),
+    date,
+    sortDate: normalizeDate(date)?.getTime() || 0,
+  };
+}
+
 export default function HomeScreen() {
   const { user } = useUser();
   const { signOut, getToken } = useAuth();
   const router = useRouter();
 
   const [appointments, setAppointments] = useState([]);
+  const [patientProfile, setPatientProfile] = useState(null);
+  const [reports, setReports] = useState([]);
+  const [bills, setBills] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [loadingUpcoming, setLoadingUpcoming] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [profileImageUrl, setProfileImageUrl] = useState("");
+  const [dashboardError, setDashboardError] = useState("");
 
   const firstName = user?.firstName?.trim() || "";
   const lastName = user?.lastName?.trim() || "";
@@ -192,6 +328,10 @@ export default function HomeScreen() {
   });
 
   const clerkImage = user?.imageUrl || user?.profileImageUrl || "";
+  const profileName =
+    patientProfile?.name ||
+    `${patientProfile?.firstName || ""} ${patientProfile?.lastName || ""}`.trim();
+  const displayName = profileName || fullName;
 
   const profileImageSource = useMemo(() => {
     if (profileImageUrl) return { uri: profileImageUrl };
@@ -199,39 +339,54 @@ export default function HomeScreen() {
     return null;
   }, [profileImageUrl, clerkImage]);
 
-  const loadPatientProfile = async () => {
-    try {
-      const token = await getToken({ template: "default", skipCache: true });
-
-      if (!token) {
-        setProfileImageUrl("");
-        return;
-      }
-
-      const profile = await getMyPatientProfile(token);
-      setProfileImageUrl(profile?.imageUrl || "");
-    } catch (error) {
-      console.log("HOME PROFILE LOAD ERROR:", error);
-      setProfileImageUrl("");
-    }
-  };
-
-  const loadAppointments = async (isRefresh = false) => {
+  const loadDashboard = async (isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true);
       else setLoadingUpcoming(true);
+      setDashboardError("");
 
       const token = await getToken({ template: "default", skipCache: true });
 
       if (!token) {
+        setPatientProfile(null);
+        setProfileImageUrl("");
         setAppointments([]);
+        setReports([]);
+        setBills([]);
+        setNotifications([]);
+        setDashboardError("Please sign in again to refresh your dashboard.");
         return;
       }
 
-      const [doctorData, serviceData] = await Promise.all([
+      const results = await Promise.allSettled([
+        getMyPatientProfile(token),
         getMyAppointments(token),
         getMyServiceAppointments(token),
+        getMyLabReports(token),
+        getMyRadiologyReports(token),
+        getMyBills(token),
+        getMyNotifications(token),
       ]);
+
+      const [
+        profileResult,
+        doctorResult,
+        serviceResult,
+        labResult,
+        radiologyResult,
+        billsResult,
+        notificationsResult,
+      ] = results;
+
+      const profile = getSettledValue(profileResult, null);
+      const doctorData = getSettledValue(doctorResult, {});
+      const serviceData = getSettledValue(serviceResult, {});
+      const labReports = getSettledValue(labResult, []);
+      const radiologyReports = getSettledValue(radiologyResult, []);
+      const billData = getSettledValue(billsResult, []);
+      const notificationData = getSettledValue(notificationsResult, {
+        notifications: [],
+      });
 
       const doctorAppointments = (doctorData?.appointments || []).map(
         normalizeDoctorAppointment,
@@ -248,43 +403,83 @@ export default function HomeScreen() {
         ...serviceAppointments,
       ];
 
+      const mergedReports = [
+        ...(Array.isArray(labReports) ? labReports : []).map((item) =>
+          normalizeReport(item, "Lab"),
+        ),
+        ...(Array.isArray(radiologyReports) ? radiologyReports : []).map((item) =>
+          normalizeReport(item, "Radiology"),
+        ),
+      ];
+
+      const safeBills = (Array.isArray(billData) ? billData : []).map(
+        normalizeBill,
+      );
+      const safeNotifications = (
+        Array.isArray(notificationData?.notifications)
+          ? notificationData.notifications
+          : []
+      ).map(normalizeNotification);
+
+      setPatientProfile(profile);
+      setProfileImageUrl(profile?.imageUrl || "");
       setAppointments(mergedAppointments);
+      setReports(mergedReports);
+      setBills(safeBills);
+      setNotifications(safeNotifications);
+
+      const failedSections = results.filter(
+        (result) => result.status === "rejected",
+      );
+      if (failedSections.length === results.length) {
+        setDashboardError("Could not refresh your dashboard right now.");
+      } else if (failedSections.length > 0) {
+        setDashboardError("Some dashboard sections could not be refreshed.");
+      }
     } catch (error) {
-      console.log("HOME APPOINTMENTS ERROR:", error);
+      console.log("HOME DASHBOARD ERROR:", error);
+      setPatientProfile(null);
+      setProfileImageUrl("");
       setAppointments([]);
+      setReports([]);
+      setBills([]);
+      setNotifications([]);
+      setDashboardError("Could not refresh your dashboard right now.");
     } finally {
       setLoadingUpcoming(false);
       setRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    loadPatientProfile();
-  }, []);
-
   useFocusEffect(
     useCallback(() => {
-      loadAppointments();
-      loadPatientProfile();
+      loadDashboard();
     }, []),
   );
 
-  const upcomingAppointment = useMemo(() => {
+  const upcomingAppointments = useMemo(() => {
     const now = new Date();
 
     return appointments
       .filter((item) => {
-        const status = String(item.status || "").toLowerCase();
         return (
           item.appointmentDate &&
           item.appointmentDate >= now &&
-          status !== "canceled" &&
-          status !== "cancelled" &&
-          status !== "completed"
+          isActiveAppointment(item)
         );
       })
-      .sort((a, b) => a.appointmentDate - b.appointmentDate)[0];
+      .sort((a, b) => a.appointmentDate - b.appointmentDate);
   }, [appointments]);
+
+  const upcomingAppointment = upcomingAppointments[0];
+  const recentReportsCount = reports.length;
+  const unpaidBills = bills.filter(isUnpaidBill);
+  const unreadNotifications = notifications.filter((item) => !item.read);
+  const latestReport = [...reports].sort((a, b) => b.sortDate - a.sortDate)[0];
+  const latestBill = [...bills].sort((a, b) => b.sortDate - a.sortDate)[0];
+  const latestUnreadNotification = [...unreadNotifications].sort(
+    (a, b) => b.sortDate - a.sortDate,
+  )[0];
 
   const handleLogout = async () => {
     try {
@@ -297,9 +492,7 @@ export default function HomeScreen() {
   };
 
   const onRefresh = async () => {
-    setRefreshing(true);
-    await Promise.all([loadAppointments(true), loadPatientProfile()]);
-    setRefreshing(false);
+    await loadDashboard(true);
   };
 
   const statusMeta = getStatusMeta(upcomingAppointment?.status);
@@ -348,12 +541,26 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          <Text style={styles.greetingText}>Hello, {fullName}</Text>
+          <Text style={styles.greetingText}>Hello, {displayName}</Text>
           <Text style={styles.greetingSubtext}>
-            Stay on top of your care with easy access to your appointments and
-            services.
+            Here is your health overview.
           </Text>
         </View>
+
+        {dashboardError ? (
+          <View style={styles.noticeCard}>
+            <View style={styles.noticeIcon}>
+              <Ionicons name="information-circle-outline" size={20} color="#1C4DFF" />
+            </View>
+            <View style={styles.noticeTextWrap}>
+              <Text style={styles.noticeTitle}>Dashboard update</Text>
+              <Text style={styles.noticeText}>{dashboardError}</Text>
+            </View>
+            <TouchableOpacity style={styles.retryButton} onPress={() => loadDashboard()}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         <TouchableOpacity
           activeOpacity={0.92}
@@ -410,7 +617,10 @@ export default function HomeScreen() {
                 <View style={styles.infoItem}>
                   <Ionicons name="location-outline" size={16} color="#FFFFFF" />
                   <Text style={styles.infoText}>
-                    {upcomingAppointment.location}
+                    {upcomingAppointment.location ||
+                      (upcomingAppointment.type === "service"
+                        ? "Service appointment"
+                        : "Doctor appointment")}
                   </Text>
                 </View>
               </View>
@@ -458,6 +668,48 @@ export default function HomeScreen() {
           )}
         </TouchableOpacity>
 
+        <View style={styles.summaryGrid}>
+          <View style={styles.summaryCard}>
+            <View style={[styles.summaryIcon, { backgroundColor: "#E8F0FF" }]}>
+              <Ionicons name="calendar-outline" size={18} color="#1C4DFF" />
+            </View>
+            <Text style={styles.summaryValue}>
+              {loadingUpcoming ? "..." : upcomingAppointments.length}
+            </Text>
+            <Text style={styles.summaryLabel}>Upcoming</Text>
+          </View>
+
+          <View style={styles.summaryCard}>
+            <View style={[styles.summaryIcon, { backgroundColor: "#E7F8F3" }]}>
+              <Ionicons name="document-text-outline" size={18} color="#0B8F83" />
+            </View>
+            <Text style={styles.summaryValue}>
+              {loadingUpcoming ? "..." : recentReportsCount}
+            </Text>
+            <Text style={styles.summaryLabel}>Reports</Text>
+          </View>
+
+          <View style={styles.summaryCard}>
+            <View style={[styles.summaryIcon, { backgroundColor: "#FFF5E8" }]}>
+              <Ionicons name="receipt-outline" size={18} color="#D9822B" />
+            </View>
+            <Text style={styles.summaryValue}>
+              {loadingUpcoming ? "..." : unpaidBills.length}
+            </Text>
+            <Text style={styles.summaryLabel}>Bills due</Text>
+          </View>
+
+          <View style={styles.summaryCard}>
+            <View style={[styles.summaryIcon, { backgroundColor: "#F0ECFF" }]}>
+              <Ionicons name="notifications-outline" size={18} color="#5B5BD6" />
+            </View>
+            <Text style={styles.summaryValue}>
+              {loadingUpcoming ? "..." : unreadNotifications.length}
+            </Text>
+            <Text style={styles.summaryLabel}>Unread</Text>
+          </View>
+        </View>
+
         <Text style={styles.sectionTitle}>Quick Actions</Text>
 
         <View style={styles.quickActionsGrid}>
@@ -468,39 +720,166 @@ export default function HomeScreen() {
             <View style={[styles.quickIconBox, { backgroundColor: "#E4ECF8" }]}>
               <Ionicons name="medical-outline" size={24} color="#1664D9" />
             </View>
-            <Text style={styles.quickCardTitle}>Doctors</Text>
+            <Text style={styles.quickCardTitle}>Book Doctor</Text>
             <Text style={styles.quickCardSubtitle}>Browse specialists</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.quickCard}
-            onPress={() => router.push("/(tabs)/appointments")}
-          >
-            <View style={[styles.quickIconBox, { backgroundColor: "#DDF3EF" }]}>
-              <Ionicons name="calendar-outline" size={24} color="#0B8F83" />
-            </View>
-            <Text style={styles.quickCardTitle}>Appointments</Text>
-            <Text style={styles.quickCardSubtitle}>View your bookings</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.quickCard}
             onPress={() => router.push("/(tabs)/services")}
           >
-            <View style={[styles.quickIconBox, { backgroundColor: "#FFF1E4" }]}>
-              <Ionicons name="layers-outline" size={24} color="#D9822B" />
+            <View style={[styles.quickIconBox, { backgroundColor: "#DDF3EF" }]}>
+              <Ionicons name="layers-outline" size={24} color="#0B8F83" />
             </View>
-            <Text style={styles.quickCardTitle}>Book Visit</Text>
-            <Text style={styles.quickCardSubtitle}>Book a service</Text>
+            <Text style={styles.quickCardTitle}>Book Service</Text>
+            <Text style={styles.quickCardSubtitle}>Choose hospital care</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.quickCard} onPress={handleLogout}>
-            <View style={[styles.quickIconBox, { backgroundColor: "#FDECEC" }]}>
-              <Ionicons name="log-out-outline" size={24} color="#D64545" />
+          <TouchableOpacity
+            style={styles.quickCard}
+            onPress={() => router.push("/(tabs)/appointments")}
+          >
+            <View style={[styles.quickIconBox, { backgroundColor: "#EEF4FF" }]}>
+              <Ionicons name="calendar-outline" size={24} color="#1C4DFF" />
             </View>
-            <Text style={styles.quickCardTitle}>Logout</Text>
-            <Text style={styles.quickCardSubtitle}>Sign out safely</Text>
+            <Text style={styles.quickCardTitle}>My Appointments</Text>
+            <Text style={styles.quickCardSubtitle}>View your bookings</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickCard}
+            onPress={() => router.push("/(tabs)/reports")}
+          >
+            <View style={[styles.quickIconBox, { backgroundColor: "#E8F0FF" }]}>
+              <Ionicons name="document-text-outline" size={24} color="#1C4DFF" />
+            </View>
+            <Text style={styles.quickCardTitle}>Reports</Text>
+            <Text style={styles.quickCardSubtitle}>View medical files</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickCard}
+            onPress={() => router.push("/(tabs)/billing")}
+          >
+            <View style={[styles.quickIconBox, { backgroundColor: "#E7F8F3" }]}>
+              <Ionicons name="receipt-outline" size={24} color="#0B8F83" />
+            </View>
+            <Text style={styles.quickCardTitle}>Billing</Text>
+            <Text style={styles.quickCardSubtitle}>View bills and dues</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickCard}
+            onPress={() => router.push("/(tabs)/notifications")}
+          >
+            <View style={[styles.quickIconBox, { backgroundColor: "#FFF5E8" }]}>
+              <Ionicons name="notifications-outline" size={24} color="#D9822B" />
+            </View>
+            <Text style={styles.quickCardTitle}>Notifications</Text>
+            <Text style={styles.quickCardSubtitle}>View care updates</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickCard}
+            onPress={() => router.push("/(tabs)/prescriptions")}
+          >
+            <View style={[styles.quickIconBox, { backgroundColor: "#EEF4FF" }]}>
+              <Ionicons name="medical-outline" size={24} color="#1C4DFF" />
+            </View>
+            <Text style={styles.quickCardTitle}>Prescriptions</Text>
+            <Text style={styles.quickCardSubtitle}>View medications</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickCard}
+            onPress={() => router.push("/(tabs)/profile")}
+          >
+            <View style={[styles.quickIconBox, { backgroundColor: "#F0ECFF" }]}>
+              <Ionicons name="person-outline" size={24} color="#5B5BD6" />
+            </View>
+            <Text style={styles.quickCardTitle}>Profile</Text>
+            <Text style={styles.quickCardSubtitle}>Your details</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.sectionTitle}>Recent Activity</Text>
+
+        <View style={styles.activityList}>
+          {latestReport ? (
+            <TouchableOpacity
+              activeOpacity={0.9}
+              style={styles.activityCard}
+              onPress={() => router.push("/(tabs)/reports")}
+            >
+              <View style={[styles.activityIcon, { backgroundColor: "#E8F0FF" }]}>
+                <Ionicons name="document-text-outline" size={20} color="#1C4DFF" />
+              </View>
+              <View style={styles.activityBody}>
+                <Text style={styles.activityTitle}>{latestReport.title}</Text>
+                <Text style={styles.activityMeta}>
+                  {latestReport.type} report
+                  {latestReport.code ? ` - ${latestReport.code}` : ""}
+                </Text>
+              </View>
+              <Text style={styles.activityDate}>
+                {formatShortDate(latestReport.date)}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+
+          {latestBill ? (
+            <TouchableOpacity
+              activeOpacity={0.9}
+              style={styles.activityCard}
+              onPress={() => router.push("/(tabs)/billing")}
+            >
+              <View style={[styles.activityIcon, { backgroundColor: "#FFF5E8" }]}>
+                <Ionicons name="receipt-outline" size={20} color="#D9822B" />
+              </View>
+              <View style={styles.activityBody}>
+                <Text style={styles.activityTitle}>{latestBill.type}</Text>
+                <Text style={styles.activityMeta}>
+                  {latestBill.status} - Due{" "}
+                  {formatMoney(latestBill.remainingAmount)}
+                </Text>
+              </View>
+              <Text style={styles.activityDate}>
+                {formatShortDate(latestBill.date)}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+
+          {latestUnreadNotification ? (
+            <TouchableOpacity
+              activeOpacity={0.9}
+              style={styles.activityCard}
+              onPress={() => router.push("/(tabs)/notifications")}
+            >
+              <View style={[styles.activityIcon, { backgroundColor: "#F0ECFF" }]}>
+                <Ionicons name="notifications-outline" size={20} color="#5B5BD6" />
+              </View>
+              <View style={styles.activityBody}>
+                <Text style={styles.activityTitle}>
+                  {latestUnreadNotification.title}
+                </Text>
+                <Text style={styles.activityMeta} numberOfLines={1}>
+                  {latestUnreadNotification.message || "Unread notification"}
+                </Text>
+              </View>
+              <Text style={styles.activityDate}>
+                {formatShortDate(latestUnreadNotification.date)}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+
+          {!latestReport && !latestBill && !latestUnreadNotification ? (
+            <View style={styles.emptyActivityCard}>
+              <Ionicons name="pulse-outline" size={22} color="#1C4DFF" />
+              <Text style={styles.emptyActivityText}>
+                Your latest reports, bills, and notifications will appear here.
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.bottomSpace} />
@@ -616,6 +995,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     color: "#5E6878",
+  },
+  noticeCard: {
+    marginHorizontal: 20,
+    marginTop: 14,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#DCE7FF",
+  },
+  noticeIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#EEF4FF",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  noticeTextWrap: {
+    flex: 1,
+  },
+  noticeTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#07142B",
+  },
+  noticeText: {
+    marginTop: 2,
+    fontSize: 12,
+    lineHeight: 17,
+    color: "#5E6878",
+  },
+  retryButton: {
+    marginLeft: 10,
+    borderRadius: 999,
+    backgroundColor: "#EEF4FF",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  retryButtonText: {
+    color: "#1C4DFF",
+    fontSize: 12,
+    fontWeight: "800",
   },
 
   appointmentCard: {
@@ -737,6 +1162,41 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     fontSize: 14,
   },
+  summaryGrid: {
+    paddingHorizontal: 20,
+    marginTop: 18,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+  },
+  summaryCard: {
+    width: "48%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#E7ECF3",
+  },
+  summaryIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  summaryValue: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#07142B",
+  },
+  summaryLabel: {
+    marginTop: 3,
+    fontSize: 12,
+    color: "#6A7485",
+    fontWeight: "700",
+  },
 
   sectionTitle: {
     marginTop: 24,
@@ -777,6 +1237,67 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#6A7485",
     lineHeight: 17,
+  },
+  activityList: {
+    paddingHorizontal: 20,
+  },
+  activityCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E7ECF3",
+  },
+  activityIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  activityBody: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  activityTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#07142B",
+  },
+  activityMeta: {
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 16,
+    color: "#6A7485",
+  },
+  activityDate: {
+    maxWidth: 78,
+    textAlign: "right",
+    fontSize: 11,
+    lineHeight: 15,
+    color: "#7B8494",
+    fontWeight: "700",
+  },
+  emptyActivityCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#E7ECF3",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  emptyActivityText: {
+    flex: 1,
+    color: "#5E6878",
+    fontSize: 13,
+    lineHeight: 19,
   },
   bottomSpace: {
     height: 8,

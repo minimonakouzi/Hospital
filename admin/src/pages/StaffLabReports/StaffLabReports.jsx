@@ -21,6 +21,16 @@ import {
   updateStaffLabResult,
   updateStaffLabStatus,
 } from "../../api/staffLabReportApi";
+import LookupSelect, {
+  admissionLabel,
+  appointmentLabel,
+  doctorLabel,
+  patientLabel,
+  serviceAppointmentLabel,
+} from "../../components/LookupSelect/LookupSelect";
+import useSavedLookups from "../../hooks/useSavedLookups";
+import { getReportFileUrl, openBackendFile } from "../../utils/fileUrl";
+import { reportPayloadFromForm } from "../../utils/reportPayload";
 
 const testTypes = [
   "All",
@@ -59,6 +69,7 @@ const emptyForm = {
   interpretation: "",
   fileUrl: "",
   fileName: "",
+  file: null,
   status: "Requested",
   notes: "",
 };
@@ -133,16 +144,13 @@ function cleanedPayload(form) {
       Object.values(row).some((value) => String(value || "").trim() !== ""),
     );
 
-  Object.keys(payload).forEach((key) => {
-    if (payload[key] === "" || payload[key] === null || payload[key] === undefined) {
-      delete payload[key];
-    }
-  });
-
-  return payload;
+  return reportPayloadFromForm(payload);
 }
 
 export default function StaffLabReports() {
+  const { lookups, lookupLoading, lookupError } = useSavedLookups({
+    authMode: "staff",
+  });
   const [reports, setReports] = useState([]);
   const [filters, setFilters] = useState({
     search: "",
@@ -427,17 +435,7 @@ export default function StaffLabReports() {
                               <Trash2 className="mr-1 inline h-3.5 w-3.5" />
                               Delete
                             </button>
-                            {report.fileUrl ? (
-                              <a
-                                href={report.fileUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white"
-                              >
-                                <Download className="mr-1 inline h-3.5 w-3.5" />
-                                File
-                              </a>
-                            ) : null}
+                            <ReportFileButton report={report} />
                           </div>
                         </td>
                       </tr>
@@ -459,6 +457,9 @@ export default function StaffLabReports() {
           saving={saving}
           close={() => setModal(null)}
           includeIdentity
+          lookups={lookups}
+          lookupLoading={lookupLoading}
+          lookupError={lookupError}
         />
       ) : null}
       {modal === "result" ? (
@@ -469,6 +470,9 @@ export default function StaffLabReports() {
           onSubmit={submitResult}
           saving={saving}
           close={() => setModal(null)}
+          lookups={lookups}
+          lookupLoading={lookupLoading}
+          lookupError={lookupError}
         />
       ) : null}
       {selected ? (
@@ -580,6 +584,9 @@ function LabForm({
   saving,
   close,
   includeIdentity = false,
+  lookups,
+  lookupLoading,
+  lookupError,
 }) {
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/45 px-3 py-4 sm:items-center">
@@ -591,7 +598,7 @@ function LabForm({
           <div>
             <h2 className="text-xl font-black text-slate-950">{title}</h2>
             <p className="mt-1 text-sm text-slate-500">
-              Use real patient IDs. File upload is currently handled with
+              Select saved patient and visit records. File upload is currently handled with
               fileUrl/fileName fields.
             </p>
           </div>
@@ -599,27 +606,22 @@ function LabForm({
             <X />
           </button>
         </div>
+        {lookupError ? (
+          <div className="mt-4 rounded-2xl border border-rose-100 bg-rose-50 p-3 text-sm font-bold text-rose-700">
+            {lookupError}
+          </div>
+        ) : null}
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          {includeIdentity
-            ? [
-                "patientId",
-                "requestedByDoctorId",
-                "appointmentId",
-                "admissionId",
-                "serviceAppointmentId",
-              ].map((key) => (
-                <Field
-                  key={key}
-                  label={key}
-                  required={key === "patientId"}
-                  value={form[key] || ""}
-                  onChange={(value) =>
-                    setForm((current) => ({ ...current, [key]: value }))
-                  }
-                />
-              ))
-            : null}
+          {includeIdentity ? (
+            <>
+              <LookupSelect label="Patient" required allowEmpty={false} value={form.patientId} onChange={(value) => setForm((current) => ({ ...current, patientId: value }))} options={lookups.patients} getLabel={patientLabel} loading={lookupLoading} />
+              <LookupSelect label="Requested By Doctor" value={form.requestedByDoctorId} onChange={(value) => setForm((current) => ({ ...current, requestedByDoctorId: value }))} options={lookups.doctors} getLabel={doctorLabel} loading={lookupLoading} />
+              <LookupSelect label="Appointment" value={form.appointmentId} onChange={(value) => setForm((current) => ({ ...current, appointmentId: value }))} options={lookups.appointments} getLabel={appointmentLabel} loading={lookupLoading} />
+              <LookupSelect label="Admission" value={form.admissionId} onChange={(value) => setForm((current) => ({ ...current, admissionId: value }))} options={lookups.admissions} getLabel={admissionLabel} loading={lookupLoading} />
+              <LookupSelect label="Service Appointment" value={form.serviceAppointmentId} onChange={(value) => setForm((current) => ({ ...current, serviceAppointmentId: value }))} options={lookups.serviceAppointments} getLabel={serviceAppointmentLabel} loading={lookupLoading} />
+            </>
+          ) : null}
 
           <Field
             label="title"
@@ -672,20 +674,7 @@ function LabForm({
               setForm((current) => ({ ...current, resultDate: value }))
             }
           />
-          <Field
-            label="fileUrl"
-            value={form.fileUrl || ""}
-            onChange={(value) =>
-              setForm((current) => ({ ...current, fileUrl: value }))
-            }
-          />
-          <Field
-            label="fileName"
-            value={form.fileName || ""}
-            onChange={(value) =>
-              setForm((current) => ({ ...current, fileName: value }))
-            }
-          />
+          <FileField form={form} setForm={setForm} />
 
           {["description", "resultSummary", "interpretation", "notes"].map(
             (key) => (
@@ -866,17 +855,7 @@ function DetailModal({ report, close }) {
             wide
           />
           <Info label="Notes" value={report.notes || "-"} wide />
-          {report.fileUrl ? (
-            <a
-              href={report.fileUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-bold text-white md:w-fit"
-            >
-              <Download className="h-4 w-4" />
-              View / Download
-            </a>
-          ) : null}
+          <ReportFileButton report={report} full />
         </div>
       </div>
     </div>
@@ -897,5 +876,60 @@ function Info({ label, value, wide }) {
         {value || "-"}
       </p>
     </div>
+  );
+}
+
+function FileField({ form, setForm }) {
+  return (
+    <label className="grid gap-1 text-sm font-bold text-slate-700">
+      Report file
+      <input
+        type="file"
+        accept=".pdf,image/png,image/jpeg,image/jpg,image/webp"
+        className={`${inputClass} h-auto py-2`}
+        onChange={(event) =>
+          setForm((current) => ({
+            ...current,
+            file: event.target.files?.[0] || null,
+          }))
+        }
+      />
+      <span className="text-xs font-semibold text-slate-500">
+        {form.file?.name || form.fileName || "No file attached"}
+      </span>
+    </label>
+  );
+}
+
+function ReportFileButton({ report, full = false }) {
+  const fileUrl = getReportFileUrl(report);
+
+  if (!fileUrl) {
+    return (
+      <span
+        className={
+          full
+            ? "inline-flex h-11 items-center justify-center rounded-2xl bg-slate-100 px-4 text-sm font-bold text-slate-500 md:w-fit"
+            : "rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-500"
+        }
+      >
+        No file attached
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => openBackendFile(fileUrl)}
+      className={
+        full
+          ? "inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-bold text-white md:w-fit"
+          : "rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white"
+      }
+    >
+      <Download className={full ? "h-4 w-4" : "mr-1 inline h-3.5 w-3.5"} />
+      {full ? "View / Download" : "File"}
+    </button>
   );
 }

@@ -1,5 +1,6 @@
 import cors from 'cors';
 import 'dotenv/config';
+import path from "path";
 
 console.log("CLERK KEY =", process.env.CLERK_PUBLISHABLE_KEY);
 import express from 'express';
@@ -24,6 +25,7 @@ import supportTicketRouter from "./routes/supportTicketRouter.js";
 import radiologyReportRouter from "./routes/radiologyReportRouter.js";
 import labReportRouter from "./routes/labReportRouter.js";
 import patientBillRouter from "./routes/patientBillRouter.js";
+import lookupRouter from "./routes/lookupRouter.js";
 const app = express();
 const port = process.env.PORT || 4000;
 
@@ -62,7 +64,7 @@ app.use(express.urlencoded({ limit: "20mb", extended: true }));
 connectDB();
 
 // Static uploads folder
-
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 // Routes (unchanged)
 app.use("/api/appointments", appointmentRouter);
@@ -80,6 +82,7 @@ app.use("/api/support-tickets", supportTicketRouter);
 app.use("/api/radiology-reports", radiologyReportRouter);
 app.use("/api/lab-reports", labReportRouter);
 app.use("/api/patient-bills", patientBillRouter);
+app.use("/api/lookups", lookupRouter);
 app.use("/api/performance", performanceRouter);
 app.use("/api/staff-performance", performanceRouter);
 app.use("/api/audit-logs", auditLogRouter);

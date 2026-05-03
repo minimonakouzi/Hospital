@@ -19,6 +19,18 @@ async function parse(res, fallback) {
   return body;
 }
 
+function isFormData(payload) {
+  return typeof FormData !== "undefined" && payload instanceof FormData;
+}
+
+function jsonHeaders(payload, headers) {
+  return isFormData(payload) ? headers : { ...headers, "Content-Type": "application/json" };
+}
+
+function requestBody(payload) {
+  return isFormData(payload) ? payload : JSON.stringify(payload);
+}
+
 export async function fetchStaffLabReports(filters = {}) {
   const res = await fetch(`${API_BASE}/staff${query(filters)}`, { headers: staffAuthHeaders() });
   return parse(res, "Unable to load lab reports.");
@@ -27,8 +39,8 @@ export async function fetchStaffLabReports(filters = {}) {
 export async function createStaffLabReport(payload) {
   const res = await fetch(`${API_BASE}/staff`, {
     method: "POST",
-    headers: staffAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(payload),
+    headers: staffAuthHeaders(jsonHeaders(payload, {})),
+    body: requestBody(payload),
   });
   return parse(res, "Unable to create lab report.");
 }
@@ -36,8 +48,8 @@ export async function createStaffLabReport(payload) {
 export async function updateStaffLabResult(id, payload) {
   const res = await fetch(`${API_BASE}/staff/${id}/result`, {
     method: "PUT",
-    headers: staffAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(payload),
+    headers: staffAuthHeaders(jsonHeaders(payload, {})),
+    body: requestBody(payload),
   });
   return parse(res, "Unable to update lab result.");
 }
@@ -64,8 +76,8 @@ export async function fetchAdminLabReports(filters = {}, getToken) {
 export async function createAdminLabReport(payload, getToken) {
   const res = await fetch(API_BASE, {
     method: "POST",
-    headers: await adminAuthHeaders(getToken, { "Content-Type": "application/json" }),
-    body: JSON.stringify(payload),
+    headers: await adminAuthHeaders(getToken, jsonHeaders(payload, {})),
+    body: requestBody(payload),
   });
   return parse(res, "Unable to create lab report.");
 }
@@ -73,8 +85,8 @@ export async function createAdminLabReport(payload, getToken) {
 export async function updateAdminLabReport(id, payload, getToken) {
   const res = await fetch(`${API_BASE}/${id}`, {
     method: "PUT",
-    headers: await adminAuthHeaders(getToken, { "Content-Type": "application/json" }),
-    body: JSON.stringify(payload),
+    headers: await adminAuthHeaders(getToken, jsonHeaders(payload, {})),
+    body: requestBody(payload),
   });
   return parse(res, "Unable to update lab report.");
 }

@@ -422,7 +422,7 @@ export default function ServiceAppointmentsPage() {
       prev.map((a) => (a.id === id ? { ...a, status: newStatus } : a)),
     );
 
-    pushToast("Updating status", `Appointment #${id} → ${newStatus}`);
+    pushToast("Updating status", "Appointment status is updating...");
 
     try {
       const res = await fetch(`${API_BASE}/api/service-appointments/${id}`, {
@@ -467,13 +467,13 @@ export default function ServiceAppointmentsPage() {
         ),
       );
 
-      pushToast("Status updated", `Appointment #${id} is now ${newStatus}`);
+      pushToast("Status updated", "Appointment updated successfully.");
     } catch (err) {
       console.error("changeStatusRemote:", err);
       setAppointments((prev) =>
         prev.map((a) => (a.id === id ? { ...a, status: old.status } : a)),
       );
-      pushToast("Update failed", err.message || "Failed to update status");
+      pushToast("Update failed", err.message || "Unable to update appointment.");
     }
   }
 
@@ -503,7 +503,7 @@ export default function ServiceAppointmentsPage() {
 
     pushToast(
       "Rescheduling",
-      `Appointment #${id} → ${formatDateNice(dateStr)} ${timeStr}`,
+      `Appointment is being moved to ${formatDateNice(dateStr)} ${timeStr}`,
     );
 
     try {
@@ -553,13 +553,13 @@ export default function ServiceAppointmentsPage() {
 
       pushToast(
         "Rescheduled",
-        `Appointment #${id} moved to ${formatDateNice(finalDate)} ${finalTimeStr}`,
+        `Appointment moved to ${formatDateNice(finalDate)} ${finalTimeStr}`,
       );
     } catch (err) {
       console.error("rescheduleRemote:", err);
       pushToast(
         "Reschedule failed",
-        err.message || "Failed to reschedule — reloading",
+        err.message || "Unable to reschedule appointment. Reloading...",
       );
       await fetchAppointments();
     }
@@ -584,7 +584,7 @@ export default function ServiceAppointmentsPage() {
       prev.map((a) => (a.id === id ? { ...a, status: "Canceled" } : a)),
     );
 
-    pushToast("Canceling", `Appointment #${id} is being canceled`);
+    pushToast("Canceling", "Appointment is being canceled...");
 
     try {
       const res = await fetch(
@@ -615,10 +615,10 @@ export default function ServiceAppointmentsPage() {
         ),
       );
 
-      pushToast("Canceled", `Appointment #${id} canceled`);
+      pushToast("Canceled", "Appointment canceled successfully.");
     } catch (err) {
       console.error("cancelRemote:", err);
-      pushToast("Cancel failed", err.message || "Failed to cancel — reloading");
+      pushToast("Cancel failed", err.message || "Unable to cancel appointment. Reloading...");
       await fetchAppointments();
     }
   }

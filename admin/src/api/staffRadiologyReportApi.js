@@ -19,6 +19,18 @@ async function parse(res, fallback) {
   return body;
 }
 
+function isFormData(payload) {
+  return typeof FormData !== "undefined" && payload instanceof FormData;
+}
+
+function jsonHeaders(payload, headers) {
+  return isFormData(payload) ? headers : { ...headers, "Content-Type": "application/json" };
+}
+
+function requestBody(payload) {
+  return isFormData(payload) ? payload : JSON.stringify(payload);
+}
+
 export async function fetchStaffRadiologyReports(filters = {}) {
   const res = await fetch(`${API_BASE}/staff${query(filters)}`, { headers: staffAuthHeaders() });
   return parse(res, "Unable to load radiology reports.");
@@ -27,8 +39,8 @@ export async function fetchStaffRadiologyReports(filters = {}) {
 export async function createStaffRadiologyReport(payload) {
   const res = await fetch(`${API_BASE}/staff`, {
     method: "POST",
-    headers: staffAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(payload),
+    headers: staffAuthHeaders(jsonHeaders(payload, {})),
+    body: requestBody(payload),
   });
   return parse(res, "Unable to create radiology report.");
 }
@@ -36,8 +48,8 @@ export async function createStaffRadiologyReport(payload) {
 export async function updateStaffRadiologyReport(id, payload) {
   const res = await fetch(`${API_BASE}/staff/${id}`, {
     method: "PUT",
-    headers: staffAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify(payload),
+    headers: staffAuthHeaders(jsonHeaders(payload, {})),
+    body: requestBody(payload),
   });
   return parse(res, "Unable to update radiology report.");
 }
@@ -55,8 +67,8 @@ export async function fetchAdminRadiologyReports(filters = {}, getToken) {
 export async function createAdminRadiologyReport(payload, getToken) {
   const res = await fetch(API_BASE, {
     method: "POST",
-    headers: await adminAuthHeaders(getToken, { "Content-Type": "application/json" }),
-    body: JSON.stringify(payload),
+    headers: await adminAuthHeaders(getToken, jsonHeaders(payload, {})),
+    body: requestBody(payload),
   });
   return parse(res, "Unable to create radiology report.");
 }

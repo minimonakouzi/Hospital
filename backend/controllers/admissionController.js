@@ -736,6 +736,86 @@ export async function getNurseAdmissions(req, res) {
   }
 }
 
+export async function assignNurseByQr(req, res) {
+  try {
+    const nurseId = req.nurse?._id || req.nurse?.id;
+    if (!nurseId) {
+      return res.status(401).json({
+        success: false,
+        message: "Nurse authentication required.",
+      });
+    }
+
+    const admissionId = cleanString(req.body?.admissionId);
+    if (!admissionId) return badRequest(res, "Admission id is required.");
+    if (!isValidObjectId(admissionId)) return badRequest(res, "Invalid admission id.");
+
+    const admission = await Admission.findById(admissionId)
+      .select("_id nurseId status dischargeDate")
+      .lean();
+
+    if (!admission) return notFound(res, "Admission not found.");
+
+    if (
+      admission.status === "Discharged" ||
+      admission.dischargeDate ||
+      !ACTIVE_ADMISSION_STATUSES.includes(admission.status)
+    ) {
+      return badRequest(res, "Admission is not active.");
+    }
+
+    if (admission.nurseId) {
+      return badRequest(res, "Patient already assigned to a nurse.");
+    }
+
+    const updatedAdmission = await Admission.findOneAndUpdate(
+      {
+        _id: admissionId,
+        nurseId: null,
+        status: { $in: ACTIVE_ADMISSION_STATUSES },
+        dischargeDate: null,
+      },
+      {
+        $set: {
+          nurseId,
+          updatedBy: String(nurseId),
+        },
+      },
+      { new: true }
+    );
+
+    if (!updatedAdmission) {
+      const latestAdmission = await Admission.findById(admissionId)
+        .select("_id nurseId status dischargeDate")
+        .lean();
+
+      if (!latestAdmission) return notFound(res, "Admission not found.");
+
+      if (latestAdmission.nurseId) {
+        return badRequest(res, "Patient already assigned to a nurse.");
+      }
+
+      return badRequest(res, "Admission is not active.");
+    }
+
+    const populated = await populateAdmission(
+      Admission.findById(updatedAdmission._id)
+    ).lean();
+
+    return res.json({
+      success: true,
+      message: "Patient assigned successfully.",
+      data: populated,
+    });
+  } catch (err) {
+    console.error("assignNurseByQr error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while assigning patient.",
+    });
+  }
+}
+
 export async function getDoctorAdmissions(req, res) {
   try {
     const doctorId = req.doctor?._id || req.doctor?.id;
