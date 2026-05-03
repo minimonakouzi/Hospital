@@ -480,7 +480,7 @@ export default function ProfileScreen() {
                 activeOpacity={0.85}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons name="log-out-outline" size={16} color="#FFFFFF" />
+                <Ionicons name="log-out-outline" size={16} color="#D64545" />
               </TouchableOpacity>
             </View>
           </View>
@@ -842,10 +842,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   logoutButton: {
-    flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    backgroundColor: "#D64545",
+    justifyContent: "center",
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
     paddingHorizontal: 10,
     paddingVertical: 10,
     borderRadius: 17,

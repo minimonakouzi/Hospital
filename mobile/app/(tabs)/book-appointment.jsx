@@ -391,7 +391,7 @@ export default function BookAppointmentScreen() {
       const token = await getToken({ template: "default", skipCache: true });
 
       if (!token) {
-        Alert.alert("Error", "No Clerk token was returned.");
+        Alert.alert("Error", "Your session expired. Please sign in again.");
         return;
       }
 
@@ -412,21 +412,21 @@ export default function BookAppointmentScreen() {
 
       Alert.alert(
         "Booking Confirmed",
-        `${doctor.name}\n${selectedDate} at ${selectedTime}`,
+        `Your appointment with ${doctor.name} is set for ${selectedDate} at ${selectedTime}.`,
         [
           {
             text: "View Appointments",
             onPress: () => router.push("/(tabs)/appointments"),
           },
           {
-            text: "OK",
+            text: "Done",
             onPress: () => router.push("/(tabs)"),
           },
         ],
       );
     } catch (error) {
       console.log("BOOKING ERROR FULL:", error);
-      Alert.alert("Error", error.message || "Could not create appointment.");
+      Alert.alert("Error", "Could not create your appointment. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -477,6 +477,9 @@ export default function BookAppointmentScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.pageHeader}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.pageHeaderBack}>
+            <Ionicons name="arrow-back" size={22} color="#1C4DFF" />
+          </TouchableOpacity>
           <Ionicons name="calendar-outline" size={25} color="#000000" />
           <Text style={styles.pageHeaderText}>Book Your Appointment</Text>
         </View>
@@ -785,7 +788,7 @@ export default function BookAppointmentScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.confirmButton, loading && styles.disabledButton]}
+              style={[styles.confirmButton, (loading || !selectedDate || !selectedTime) && styles.disabledButton]}
               onPress={handleConfirmBooking}
               disabled={loading || !selectedDate || !selectedTime}
             >
@@ -1229,14 +1232,17 @@ const styles = StyleSheet.create({
   confirmButton: {
     height: 50,
     borderRadius: 18,
-    backgroundColor: "#B9BCC7",
+    backgroundColor: "#0D63D8",
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
   },
   disabledButton: {
-    opacity: 0.7,
+    backgroundColor: "#B9BCC7",
+  },
+  pageHeaderBack: {
+    marginRight: 4,
   },
   confirmButtonText: {
     color: "#FFFFFF",

@@ -17,7 +17,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { getServices } from "../../services/services";
 
-// --- Helper Functions (No changes) ---
 function countAllSlots(slots) {
   const values = Object.values(slots || {});
   return values.reduce((sum, arr) => {
@@ -46,7 +45,6 @@ function normalizeService(service) {
       service?.slots && typeof service.slots === "object" ? service.slots : {},
   };
 }
-// --- End Helper Functions ---
 
 export default function ServicesScreen() {
   const router = useRouter();
@@ -55,7 +53,6 @@ export default function ServicesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // --- Data Loading (No changes) ---
   const loadServices = async (isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true);
@@ -76,7 +73,6 @@ export default function ServicesScreen() {
   useEffect(() => {
     loadServices();
   }, []);
-  // --- End Data Loading ---
 
   const filteredServices = useMemo(() => {
     const text = searchText.toLowerCase().trim();
@@ -122,7 +118,7 @@ export default function ServicesScreen() {
       >
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => router.push("/(tabs)")}
             style={styles.backButton}
           >
             <Ionicons name="arrow-back" size={24} color="#07142B" />
@@ -144,15 +140,6 @@ export default function ServicesScreen() {
               placeholderTextColor="#7A8597"
             />
           </View>
-          <TouchableOpacity
-            style={styles.searchActionButton}
-            onPress={() => {
-              /* Add filter logic here */
-            }}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="options-outline" size={22} color="#4E596A" />
-          </TouchableOpacity>
         </View>
 
         {/* --- CONTENT --- */}
@@ -216,14 +203,12 @@ export default function ServicesScreen() {
                     {service.name}
                   </Text>
 
-                  {/* Logic Change: Conditionally render the description */}
                   {service.shortDescription ? (
                     <Text style={styles.cardDescription} numberOfLines={2}>
                       {service.shortDescription}
                     </Text>
                   ) : null}
 
-                  {/* Style Change: Reverted to your original icon-based meta row */}
                   <View style={styles.metaRow}>
                     <View style={styles.metaItem}>
                       <Ionicons name="cash-outline" size={16} color="#4E596A" />

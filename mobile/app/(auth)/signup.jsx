@@ -144,7 +144,7 @@ export default function SignupScreen() {
       });
 
       Alert.alert("Verification", "A code was sent to your email.");
-      router.push("/verify");
+      router.push("/(auth)/verify");
     } catch (err) {
       const message =
         err?.errors?.[0]?.longMessage ||

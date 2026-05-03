@@ -765,6 +765,7 @@ const styles = StyleSheet.create({
   },
   filtersRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     paddingHorizontal: 20,
     marginTop: 18,
     gap: 10,

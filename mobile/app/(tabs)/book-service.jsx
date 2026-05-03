@@ -11,7 +11,7 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
-  Platform, // Enhanced: Import Platform for platform-specific styles
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -19,7 +19,6 @@ import { useAuth, useUser } from "@clerk/clerk-expo";
 import { getServiceById } from "../../services/services";
 import { createServiceAppointment } from "../../services/serviceAppointments";
 
-// --- Helper Functions (No changes needed here) ---
 function parseSlots(slotsValue) {
   if (!slotsValue) return {};
   if (typeof slotsValue === "string") {
@@ -96,7 +95,6 @@ function splitTimeString(timeStr) {
     ampm: match[3].toUpperCase(),
   };
 }
-// --- End Helper Functions ---
 
 export default function BookServiceScreen() {
   const router = useRouter();
@@ -147,7 +145,6 @@ export default function BookServiceScreen() {
   const [selectedTime, setSelectedTime] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // --- Hooks (No major changes) ---
   useEffect(() => {
     setPatientName(user?.fullName || "");
     setEmail(user?.primaryEmailAddress?.emailAddress || "");
@@ -218,9 +215,6 @@ export default function BookServiceScreen() {
         : [],
     [service.instructions],
   );
-  // --- End Hooks ---
-
-  // --- Main booking handler (No major changes) ---
   const handleConfirmBooking = async () => {
     try {
       if (!service.id) {
@@ -325,13 +319,12 @@ export default function BookServiceScreen() {
       console.log("SERVICE BOOKING ERROR:", error);
       Alert.alert(
         "Booking Failed",
-        error.message || "Could not create service booking. Please try again.",
+        "Could not create your service booking. Please try again.",
       );
     } finally {
       setLoading(false);
     }
   };
-  // --- End handler ---
 
   if (serviceLoading && !service.id) {
     return (
@@ -404,7 +397,6 @@ export default function BookServiceScreen() {
           </View>
         </View>
 
-        {/* Enhanced: Combined About and Price into a single, more elegant card */}
         <View style={styles.detailsCard}>
           <TouchableOpacity
             style={styles.detailsRow}
@@ -650,10 +642,10 @@ export default function BookServiceScreen() {
         <TouchableOpacity
           style={[
             styles.confirmButton,
-            loading && styles.confirmButtonDisabled,
+            (loading || !selectedDate || !selectedTime) && styles.confirmButtonDisabled,
           ]}
           onPress={handleConfirmBooking}
-          disabled={loading}
+          disabled={loading || !selectedDate || !selectedTime}
         >
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
@@ -669,7 +661,6 @@ export default function BookServiceScreen() {
   );
 }
 
-// Enhanced: Refined styles for a more modern, mobile-friendly look
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F5F7FB" },
   container: { flex: 1 },
@@ -733,8 +724,7 @@ const styles = StyleSheet.create({
   },
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.1)",
-    backgroundImage: "linear-gradient(to top, rgba(0,0,0,0.4), transparent)",
+    backgroundColor: "rgba(0,0,0,0.35)",
   },
   backButton: {
     position: "absolute",
@@ -763,14 +753,12 @@ const styles = StyleSheet.create({
     color: "#ECF3FF",
     fontWeight: "500",
   },
-  // Enhanced: A single card for core details with shadows
   detailsCard: {
     marginHorizontal: 16,
     marginTop: -30, // Pulls the card up over the hero image slightly
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
     paddingVertical: 8,
-    // --- Shadow styles ---
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
@@ -795,14 +783,12 @@ const styles = StyleSheet.create({
   detailsLabel: { flex: 1, fontSize: 15, fontWeight: "700", color: "#07142B" },
   priceValue: { fontSize: 18, fontWeight: "800", color: "#245BDB" },
   divider: { height: 1, backgroundColor: "#F0F2F5", marginHorizontal: 16 },
-  // Enhanced: Unified card style for all sections
   card: {
     marginHorizontal: 16,
     marginTop: 16,
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 16,
-    // --- Shadow styles ---
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,

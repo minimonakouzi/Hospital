@@ -523,14 +523,26 @@ export default function HomeScreen() {
             </View>
 
             <View>
-              <Text style={styles.logoText}>Medical Portal</Text>
-              <Text style={styles.logoSubText}>Patient Dashboard</Text>
+              <Text style={styles.logoText}>REVIVE</Text>
+              <Text style={styles.logoSubText}>Patient Portal</Text>
             </View>
           </View>
 
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={22} color="#1C4DFF" />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.headerIconButton}
+              onPress={() => router.push("/(tabs)/notifications")}
+            >
+              <Ionicons name="notifications-outline" size={22} color="#1C4DFF" />
+              {unreadNotifications.length > 0 && (
+                <View style={styles.bellBadge} />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.headerIconButton} onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={22} color="#1C4DFF" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.greetingCard}>
@@ -770,36 +782,15 @@ export default function HomeScreen() {
 
           <TouchableOpacity
             style={styles.quickCard}
-            onPress={() => router.push("/(tabs)/notifications")}
-          >
-            <View style={[styles.quickIconBox, { backgroundColor: "#FFF5E8" }]}>
-              <Ionicons name="notifications-outline" size={24} color="#D9822B" />
-            </View>
-            <Text style={styles.quickCardTitle}>Notifications</Text>
-            <Text style={styles.quickCardSubtitle}>View care updates</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.quickCard}
             onPress={() => router.push("/(tabs)/prescriptions")}
           >
             <View style={[styles.quickIconBox, { backgroundColor: "#EEF4FF" }]}>
-              <Ionicons name="medical-outline" size={24} color="#1C4DFF" />
+              <Ionicons name="clipboard-outline" size={24} color="#1C4DFF" />
             </View>
             <Text style={styles.quickCardTitle}>Prescriptions</Text>
             <Text style={styles.quickCardSubtitle}>View medications</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.quickCard}
-            onPress={() => router.push("/(tabs)/profile")}
-          >
-            <View style={[styles.quickIconBox, { backgroundColor: "#F0ECFF" }]}>
-              <Ionicons name="person-outline" size={24} color="#5B5BD6" />
-            </View>
-            <Text style={styles.quickCardTitle}>Profile</Text>
-            <Text style={styles.quickCardSubtitle}>Your details</Text>
-          </TouchableOpacity>
         </View>
 
         <Text style={styles.sectionTitle}>Recent Activity</Text>
@@ -942,13 +933,29 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  logoutButton: {
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerIconButton: {
     width: 46,
     height: 46,
     borderRadius: 23,
     backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",
+  },
+  bellBadge: {
+    position: "absolute",
+    top: 9,
+    right: 9,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#D64545",
+    borderWidth: 1.5,
+    borderColor: "#F5F7FB",
   },
 
   greetingCard: {
@@ -1177,6 +1184,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: "#E7ECF3",
+    shadowColor: "#0D63D8",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   summaryIcon: {
     width: 36,

@@ -132,13 +132,6 @@ export default function DoctorsScreen() {
             />
           </View>
 
-          <TouchableOpacity
-            style={styles.filterButton}
-            activeOpacity={0.85}
-            onPress={() => {}}
-          >
-            <Ionicons name="options-outline" size={20} color="#1C4DFF" />
-          </TouchableOpacity>
         </View>
 
         <Text style={styles.sectionTitle}>Available Doctors</Text>
@@ -277,6 +270,7 @@ const styles = StyleSheet.create({
   searchRow: {
     paddingHorizontal: 16,
     marginTop: 16,
+    marginBottom: 14,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
