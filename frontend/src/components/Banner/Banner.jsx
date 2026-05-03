@@ -5,16 +5,29 @@ import {
   Clock3,
   Users,
   Stethoscope,
-  Star,
   CalendarDays,
+  FileHeart,
+  ArrowRight,
 } from "lucide-react";
 import heroImage from "../../assets/BannerImg.png";
 
 export default function Banner() {
-  const stats = [
-    { icon: ShieldCheck, text: "Certified Care" },
-    { icon: Clock3, text: "24/7 Booking" },
-    { icon: Users, text: "Trusted Specialists" },
+  const highlights = [
+    {
+      icon: CalendarDays,
+      title: "Appointments",
+      text: "Find doctors and book available visits online.",
+    },
+    {
+      icon: FileHeart,
+      title: "Records",
+      text: "Access your medical records from the patient portal.",
+    },
+    {
+      icon: ShieldCheck,
+      title: "Services",
+      text: "Explore hospital services before continuing to booking.",
+    },
   ];
 
   return (
@@ -62,11 +75,11 @@ export default function Banner() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: "easeOut" }}
-          className="relative overflow-hidden rounded-[32px]"
+          className="relative overflow-hidden rounded-[28px]"
         >
           {/* scanner border layer */}
-          <div className="pointer-events-none absolute inset-0 rounded-[32px] p-[2px]">
-            <div className="absolute inset-0 rounded-[32px] border border-white/55 bg-white/10" />
+          <div className="pointer-events-none absolute inset-0 rounded-[28px] p-[2px]">
+            <div className="absolute inset-0 rounded-[28px] border border-white/18 bg-white/[0.06]" />
 
             {/* top scanner */}
             <div className="absolute left-0 top-0 h-[2px] w-full overflow-hidden rounded-full">
@@ -118,76 +131,63 @@ export default function Banner() {
           </div>
 
           {/* main card */}
-          <div className="relative z-10 overflow-hidden rounded-[30px] border border-white/60 bg-white/28 shadow-[0_18px_50px_rgba(30,64,175,0.10)] backdrop-blur-xl">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.40),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(191,219,254,0.22),transparent_24%)]" />
+          <div className="relative z-10 overflow-hidden rounded-[26px] border border-white/16 bg-[#061226]/32 shadow-[0_22px_60px_rgba(2,8,23,0.24)] backdrop-blur-[10px]">
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.13),rgba(255,255,255,0.04)_42%,rgba(37,99,235,0.13))]" />
 
-            <div className="relative z-10 grid items-center gap-8 px-5 py-6 sm:px-7 sm:py-8 lg:grid-cols-[1.05fr_0.95fr] lg:px-10 lg:py-10">
+            <div className="relative z-10 grid items-center gap-8 px-5 py-6 sm:px-7 sm:py-8 lg:grid-cols-[1.02fr_0.98fr] lg:px-10 lg:py-10">
               {/* left */}
               <div className="max-w-3xl">
                 <motion.div
                   initial={{ opacity: 0, x: -18 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.12, duration: 0.55 }}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#2563eb] sm:text-sm"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/18 bg-white/[0.09] px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-blue-100 shadow-[0_10px_30px_rgba(2,8,23,0.16)] backdrop-blur-[8px] sm:text-sm"
                 >
                   <Stethoscope className="h-4 w-4" />
-                  Revive Healthcare Platform
+                  Revive patient care
                 </motion.div>
 
                 <motion.h1
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2, duration: 0.6 }}
-                  className="mt-5 text-3xl font-bold leading-tight text-[#0f172a] sm:text-4xl lg:text-5xl xl:text-[3.25rem]"
+                  className="mt-5 text-3xl font-bold leading-tight tracking-normal text-white drop-shadow-[0_8px_28px_rgba(2,8,23,0.45)] sm:text-4xl lg:text-5xl xl:text-[3.35rem]"
                 >
-                  Modern Healthcare
-                  <span className="block text-[#2563eb]">
-                    Designed Around Patients
-                  </span>
+                  Modern healthcare,
+                  <span className="block text-blue-100">designed around you</span>
                 </motion.h1>
 
                 <motion.p
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.28, duration: 0.55 }}
-                  className="mt-4 max-w-2xl text-sm leading-7 text-[#475569] sm:text-base lg:text-[1.02rem]"
+                  className="mt-4 max-w-2xl text-sm font-medium leading-7 text-blue-50/84 drop-shadow-[0_3px_18px_rgba(2,8,23,0.35)] sm:text-base lg:text-[1.02rem]"
                 >
                   Book appointments, discover trusted doctors, and explore
-                  hospital services through a cleaner, more professional Revive
+                  Revive Hospital services through a clear, secure patient web
                   experience.
                 </motion.p>
-
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.96 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.34, duration: 0.45 }}
-                  className="mt-4 flex flex-wrap items-center gap-2 text-amber-400"
-                >
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <Star key={i} className="h-5 w-5 fill-current" />
-                  ))}
-                  <span className="ml-1 text-sm font-semibold text-[#475569]">
-                    Trusted by patients and specialists
-                  </span>
-                </motion.div>
 
                 <motion.div
                   initial={{ opacity: 0, y: 14 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.42, duration: 0.55 }}
-                  className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3"
+                  className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-3"
                 >
-                  {stats.map(({ icon: Icon, text }) => (
+                  {highlights.map(({ icon: Icon, title, text }) => (
                     <div
-                      key={text}
-                      className="flex items-center gap-3 rounded-[20px] border border-white/70 bg-white/42 px-3 py-3.5 shadow-sm"
+                      key={title}
+                      className="rounded-[20px] border border-white/12 bg-white/[0.07] p-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.10)]"
                     >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#eff6ff] text-[#2563eb]">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-[14px] border border-sky-200/18 bg-sky-200/[0.10] text-sky-100">
                         <Icon className="h-5 w-5" />
                       </div>
-                      <span className="text-sm font-semibold text-[#334155]">
+                      <h2 className="mt-3 text-sm font-bold text-white">
+                        {title}
+                      </h2>
+                      <p className="mt-1 text-xs font-medium leading-5 text-blue-50/72">
                         {text}
-                      </span>
+                      </p>
                     </div>
                   ))}
                 </motion.div>
@@ -200,15 +200,16 @@ export default function Banner() {
                 >
                   <a
                     href="/doctors"
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-[#2563eb] px-7 py-3.5 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(37,99,235,0.22)] transition hover:-translate-y-0.5 hover:bg-[#1d4ed8]"
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,#f8fbff,#dbeafe)] px-7 text-sm font-bold text-[#12356f] shadow-[0_16px_36px_rgba(2,8,23,0.24)] transition hover:-translate-y-0.5"
                   >
                     <CalendarDays className="h-4 w-4" />
                     Book Appointment
+                    <ArrowRight className="h-4 w-4" />
                   </a>
 
                   <a
                     href="/services"
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/80 bg-white/55 px-7 py-3.5 text-sm font-semibold text-[#2563eb] transition hover:bg-white/70"
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-full border border-white/22 bg-white/[0.08] px-7 text-sm font-bold text-white shadow-[0_14px_34px_rgba(2,8,23,0.18)] backdrop-blur-[8px] transition hover:-translate-y-0.5 hover:border-white/34 hover:bg-white/[0.14]"
                   >
                     <ShieldCheck className="h-4 w-4" />
                     Explore Services
@@ -223,11 +224,8 @@ export default function Banner() {
                 transition={{ delay: 0.18, duration: 0.65 }}
                 className="relative mx-auto w-full max-w-[500px]"
               >
-                <div className="absolute -left-4 top-8 h-24 w-24 rounded-full bg-blue-200/40 blur-2xl" />
-                <div className="absolute -right-2 bottom-6 h-28 w-28 rounded-full bg-cyan-200/40 blur-2xl" />
-
-                <div className="relative overflow-hidden rounded-[28px] border border-white/60 bg-white/26 p-3 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-xl sm:p-4">
-                  <div className="overflow-hidden rounded-[22px] bg-white/28">
+                <div className="relative overflow-hidden rounded-[24px] border border-white/16 bg-white/[0.08] p-3 shadow-[0_18px_46px_rgba(2,8,23,0.18)] backdrop-blur-[8px] sm:p-4">
+                  <div className="overflow-hidden rounded-[20px] border border-white/12 bg-white/[0.10]">
                     <img
                       src={heroImage}
                       alt="Revive healthcare"
@@ -236,21 +234,23 @@ export default function Banner() {
                   </div>
 
                   <div className="mt-4 grid grid-cols-2 gap-3">
-                    <div className="rounded-[18px] border border-white/65 bg-white/42 px-4 py-3 text-center">
-                      <div className="text-xl font-bold text-[#0f172a] sm:text-2xl">
-                        500+
+                    <div className="rounded-[18px] border border-white/12 bg-white/[0.07] px-4 py-3">
+                      <div className="flex items-center gap-2 text-sm font-bold text-white">
+                        <Clock3 className="h-4 w-4 text-sky-100" />
+                        Plan visits
                       </div>
-                      <div className="mt-1 text-[11px] font-medium text-[#64748b] sm:text-xs">
-                        Appointments Managed
-                      </div>
+                      <p className="mt-1 text-xs leading-5 text-blue-50/72">
+                        View available doctor and service booking paths.
+                      </p>
                     </div>
-                    <div className="rounded-[18px] border border-white/65 bg-white/42 px-4 py-3 text-center">
-                      <div className="text-xl font-bold text-[#2563eb] sm:text-2xl">
-                        4.9/5
+                    <div className="rounded-[18px] border border-white/12 bg-white/[0.07] px-4 py-3">
+                      <div className="flex items-center gap-2 text-sm font-bold text-white">
+                        <Users className="h-4 w-4 text-sky-100" />
+                        Patient portal
                       </div>
-                      <div className="mt-1 text-[11px] font-medium text-[#64748b] sm:text-xs">
-                        Patient Satisfaction
-                      </div>
+                      <p className="mt-1 text-xs leading-5 text-blue-50/72">
+                        Keep records and appointment details easy to find.
+                      </p>
                     </div>
                   </div>
                 </div>

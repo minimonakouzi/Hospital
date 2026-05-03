@@ -189,6 +189,17 @@ function StatusBadge({ itemStatus }) {
   );
 }
 
+function safeMoney(value) {
+  if (value === null || value === undefined || value === "") return null;
+  return `$${value}`;
+}
+
+function getPaymentMethod(payment) {
+  if (typeof payment === "string" && payment.trim()) return payment;
+  if (payment?.method) return payment.method;
+  return "Cash";
+}
+
 function PrescriptionBadge({ status = "Not Required" }) {
   if (status === "Submitted") {
     return (
@@ -240,37 +251,37 @@ function Avatar({ image, label }) {
 
 function DoctorAppointmentCard({ item }) {
   return (
-    <article className="overflow-hidden rounded-[30px] border border-white/60 bg-white/85 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-[0_22px_55px_rgba(15,23,42,0.11)]">
+    <article className="overflow-hidden rounded-[24px] border border-white/70 bg-white/88 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-[0_22px_55px_rgba(15,23,42,0.11)]">
       <div className="p-5">
-        <div className="flex justify-center">
+        <div className="flex items-start gap-4">
           <Avatar image={item.image} label={item.doctor} />
-        </div>
-
-        <div className="mt-4 text-center">
-          <h3 className="text-[1.65rem] font-bold leading-tight text-[#0f172a]">
-            {item.doctor}
-          </h3>
-          <p className="mt-1 text-sm text-[#2563eb]">
-            {item.specialization || "-"}
-          </p>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-xl font-bold leading-tight text-[#0f172a]">
+              {item.doctor}
+            </h3>
+            {item.specialization && (
+              <p className="mt-1 text-sm font-semibold text-[#2563eb]">
+                {item.specialization}
+              </p>
+            )}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <PaymentBadge payment={item.payment} />
+              <StatusBadge itemStatus={item.status} />
+              <PrescriptionBadge status={item.prescriptionStatus} />
+            </div>
+          </div>
         </div>
 
         <div className="mt-5 space-y-3">
-          <div className="flex items-center justify-center gap-2 rounded-full border border-[#dbe6f7] bg-[#f8fbff] px-4 py-3 text-sm font-medium text-[#334155]">
+          <div className="flex items-center gap-2 rounded-[18px] border border-[#dbe6f7] bg-[#f8fbff] px-4 py-3 text-sm font-medium text-[#334155]">
             <CalendarDays className="h-4 w-4 text-[#2563eb]" />
             {formatDateNice(item.date)}
           </div>
 
-          <div className="flex items-center justify-center gap-2 rounded-full border border-[#dbe6f7] bg-[#f8fbff] px-4 py-3 text-sm font-medium text-[#334155]">
+          <div className="flex items-center gap-2 rounded-[18px] border border-[#dbe6f7] bg-[#f8fbff] px-4 py-3 text-sm font-medium text-[#334155]">
             <Clock className="h-4 w-4 text-[#2563eb]" />
-            {item.time}
+            {item.time || "-"}
           </div>
-        </div>
-
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-          <PaymentBadge payment={item.payment} />
-          <StatusBadge itemStatus={item.status} />
-          <PrescriptionBadge status={item.prescriptionStatus} />
         </div>
       </div>
     </article>
@@ -278,37 +289,38 @@ function DoctorAppointmentCard({ item }) {
 }
 
 function ServiceAppointmentCard({ item }) {
-  return (
-    <article className="overflow-hidden rounded-[30px] border border-white/60 bg-white/85 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-[0_22px_55px_rgba(15,23,42,0.11)]">
-      <div className="p-5">
-        <div className="flex justify-center">
-          <Avatar image={item.image} label={item.name} />
-        </div>
+  const price = safeMoney(item.price);
 
-        <div className="mt-4 text-center">
-          <h3 className="text-[1.55rem] font-bold leading-tight text-[#0f172a]">
-            {item.name}
-          </h3>
-          <p className="mt-2 text-2xl font-bold text-[#2563eb]">
-            ${item.price}
-          </p>
+  return (
+    <article className="overflow-hidden rounded-[24px] border border-white/70 bg-white/88 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-[0_22px_55px_rgba(15,23,42,0.11)]">
+      <div className="p-5">
+        <div className="flex items-start gap-4">
+          <Avatar image={item.image} label={item.name} />
+          <div className="min-w-0 flex-1">
+            <h3 className="text-xl font-bold leading-tight text-[#0f172a]">
+              {item.name}
+            </h3>
+            {price && (
+              <p className="mt-1 text-sm font-bold text-[#2563eb]">{price}</p>
+            )}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <PaymentBadge payment={item.payment} />
+              <StatusBadge itemStatus={item.status} />
+              <PrescriptionBadge status={item.prescriptionStatus} />
+            </div>
+          </div>
         </div>
 
         <div className="mt-5 space-y-3">
-          <div className="flex items-center justify-center gap-2 rounded-full border border-[#dbe6f7] bg-[#f8fbff] px-4 py-3 text-sm font-medium text-[#334155]">
+          <div className="flex items-center gap-2 rounded-[18px] border border-[#dbe6f7] bg-[#f8fbff] px-4 py-3 text-sm font-medium text-[#334155]">
             <CalendarDays className="h-4 w-4 text-[#2563eb]" />
             {formatDateNice(item.date)}
           </div>
 
-          <div className="flex items-center justify-center gap-2 rounded-full border border-[#dbe6f7] bg-[#f8fbff] px-4 py-3 text-sm font-medium text-[#334155]">
+          <div className="flex items-center gap-2 rounded-[18px] border border-[#dbe6f7] bg-[#f8fbff] px-4 py-3 text-sm font-medium text-[#334155]">
             <Clock className="h-4 w-4 text-[#2563eb]" />
-            {item.time}
+            {item.time || "-"}
           </div>
-        </div>
-
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-          <PaymentBadge payment={item.payment} />
-          <StatusBadge itemStatus={item.status} />
         </div>
       </div>
     </article>
@@ -481,21 +493,17 @@ export default function AppointmentPage() {
 
   /* -------------------- Combined loader -------------------- */
   useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
     loadDoctorAppointments();
     loadServiceAppointments();
-  }, [
-    isLoaded,
-    isSignedIn,
-    user,
-    loadDoctorAppointments,
-    loadServiceAppointments,
-  ]);
+  }, [isLoaded, isSignedIn, loadDoctorAppointments, loadServiceAppointments]);
 
   /* -------------------- Normalization for UI -------------------- */
   const appointmentData = useMemo(() => {
     return doctorAppts
       .map((a) => {
-        const id = a._id || a.id || String(a._id || "");
+        const id =
+          a?._id || a?.id || `${a?.date || "appointment"}-${a?.time || ""}`;
         const doctorObj =
           typeof a.doctorId === "object" && a.doctorId ? a.doctorId : {};
         const image =
@@ -509,8 +517,7 @@ export default function AppointmentPage() {
           (doctorObj.name && String(doctorObj.name).trim()) ||
           (a.doctorName && String(a.doctorName).trim()) ||
           (a.doctor && String(a.doctor).trim()) ||
-          (a.patientName && String(a.patientName).trim()) ||
-          "Doctor";
+          "Doctor appointment";
 
         const specialization =
           doctorObj.specialization || a.specialization || a.speciality || "";
@@ -526,7 +533,7 @@ export default function AppointmentPage() {
           }
         }
 
-        const payment = (a.payment && a.payment.method) || "Cash";
+        const payment = getPaymentMethod(a.payment);
         const status =
           a.status ||
           (a.payment && a.payment.status === "Paid" ? "Confirmed" : "Pending");
@@ -556,7 +563,8 @@ export default function AppointmentPage() {
   const serviceData = useMemo(() => {
     return serviceAppts
       .map((s) => {
-        const id = s._id || s.id || String(s._id || "");
+        const id =
+          s?._id || s?.id || `${s?.date || "service"}-${s?.time || ""}`;
         const svc =
           typeof s.serviceId === "object" && s.serviceId ? s.serviceId : {};
         const image =
@@ -567,7 +575,7 @@ export default function AppointmentPage() {
           s.serviceImage ||
           "";
         const name = s.serviceName || svc.name || svc.title || "Service";
-        const price = s.fees ?? s.amount ?? s.price ?? 0;
+        const price = s.fees ?? s.amount ?? s.price ?? null;
         const date = s.date || "";
         let time = s.time || "";
 
@@ -579,7 +587,7 @@ export default function AppointmentPage() {
           }
         }
 
-        const payment = (s.payment && s.payment.method) || "Cash";
+        const payment = getPaymentMethod(s.payment);
         const status =
           s.status ||
           (s.payment && s.payment.status === "Paid" ? "Confirmed" : "Pending");
@@ -626,7 +634,7 @@ export default function AppointmentPage() {
 
       <div className="relative z-10 mx-auto max-w-[1380px] px-4 pb-16 sm:px-6 lg:px-8">
         {/* hero */}
-        <div className="mb-8 overflow-hidden rounded-[34px] border border-white/60 bg-white/70 shadow-[0_18px_50px_rgba(30,64,175,0.08)] backdrop-blur-xl">
+        <div className="mb-8 overflow-hidden rounded-[28px] border border-white/60 bg-white/78 shadow-[0_18px_50px_rgba(30,64,175,0.08)] backdrop-blur-xl">
           <div className="grid items-center gap-8 px-6 py-8 md:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:px-10 lg:py-10">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-[#d9e6fb] bg-white px-4 py-2 text-sm font-medium text-[#2563eb]">
@@ -644,7 +652,7 @@ export default function AppointmentPage() {
               </p>
             </div>
 
-            <div className="rounded-[28px] border border-[#dbe6f7] bg-[#eef4fb] p-5 shadow-inner">
+            <div className="rounded-[24px] border border-[#dbe6f7] bg-[#eef4fb] p-5 shadow-inner">
               <div className="flex items-start gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#2563eb] shadow-sm">
                   <Search className="h-5 w-5" />
@@ -681,65 +689,73 @@ export default function AppointmentPage() {
           </div>
         </div>
 
-        {/* Doctor appointments */}
-        <div className="mb-12">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#2563eb] shadow-sm">
-              <Stethoscope className="h-5 w-5" />
+        {!isLoaded ? (
+          <EmptyState text="Preparing your appointments..." />
+        ) : !isSignedIn ? (
+          <EmptyState text="Please sign in to view your appointments and booked services." />
+        ) : (
+          <>
+            {/* Doctor appointments */}
+            <div className="mb-12">
+              <div className="mb-6 flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#2563eb] shadow-sm">
+                  <Stethoscope className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-3xl font-bold tracking-tight text-[#0f172a]">
+                    Your Doctor Appointments
+                  </h2>
+                  <p className="mt-1 text-sm text-[#64748b]">
+                    {filteredDoctors.length} appointment
+                    {filteredDoctors.length === 1 ? "" : "s"} found
+                  </p>
+                </div>
+              </div>
+
+              {loadingDoctors ? (
+                <EmptyState text="Loading doctor appointments..." />
+              ) : filteredDoctors.length === 0 ? (
+                <EmptyState text="No doctor appointments found." />
+              ) : (
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                  {filteredDoctors.map((item) => (
+                    <DoctorAppointmentCard key={item.id} item={item} />
+                  ))}
+                </div>
+              )}
             </div>
+
+            {/* Service appointments */}
             <div>
-              <h2 className="text-3xl font-bold tracking-tight text-[#0f172a]">
-                Your Doctor Appointments
-              </h2>
-              <p className="mt-1 text-sm text-[#64748b]">
-                {filteredDoctors.length} appointment
-                {filteredDoctors.length === 1 ? "" : "s"} found
-              </p>
-            </div>
-          </div>
+              <div className="mb-6 flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#2563eb] shadow-sm">
+                  <FlaskConical className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-3xl font-bold tracking-tight text-[#0f172a]">
+                    Your Booked Services
+                  </h2>
+                  <p className="mt-1 text-sm text-[#64748b]">
+                    {filteredServices.length} service
+                    {filteredServices.length === 1 ? "" : "s"} found
+                  </p>
+                </div>
+              </div>
 
-          {loadingDoctors ? (
-            <EmptyState text="Loading doctor appointments..." />
-          ) : filteredDoctors.length === 0 ? (
-            <EmptyState text="No doctor appointments found." />
-          ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-              {filteredDoctors.map((item) => (
-                <DoctorAppointmentCard key={item.id} item={item} />
-              ))}
+              {loadingServices ? (
+                <EmptyState text="Loading service appointments..." />
+              ) : filteredServices.length === 0 ? (
+                <EmptyState text="No booked services found." />
+              ) : (
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                  {filteredServices.map((item) => (
+                    <ServiceAppointmentCard key={item.id} item={item} />
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-
-        {/* Service appointments */}
-        <div>
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#2563eb] shadow-sm">
-              <FlaskConical className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-3xl font-bold tracking-tight text-[#0f172a]">
-                Your Booked Services
-              </h2>
-              <p className="mt-1 text-sm text-[#64748b]">
-                {filteredServices.length} service
-                {filteredServices.length === 1 ? "" : "s"} found
-              </p>
-            </div>
-          </div>
-
-          {loadingServices ? (
-            <EmptyState text="Loading service appointments..." />
-          ) : filteredServices.length === 0 ? (
-            <EmptyState text="No booked services found." />
-          ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-              {filteredServices.map((item) => (
-                <ServiceAppointmentCard key={item.id} item={item} />
-              ))}
-            </div>
-          )}
-        </div>
+          </>
+        )}
 
         {error && (
           <div className="mt-8 rounded-[24px] border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">

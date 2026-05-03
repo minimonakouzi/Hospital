@@ -3,7 +3,6 @@ import Navbar from "../../components/Navbar/Navbar";
 import Banner from "../../components/Banner/Banner";
 import Certification from "../../components/Certification/Certification";
 import HomeDoctors from "../../components/HomeDoctors/HomeDoctors";
-import Testimonial from "../../components/Testimonial/Testimonial";
 import Footer from "../../components/Footer/Footer";
 import bgImage from "../../assets/medical-bg.png";
 
@@ -18,28 +17,19 @@ const Home = () => {
         }}
       />
 
-      {/* Light overlay */}
-      <div className="fixed inset-0 z-[1] bg-white/10" />
+      <div className="fixed inset-0 z-[1] bg-[linear-gradient(180deg,rgba(2,8,23,0.70)_0%,rgba(7,32,66,0.34)_38%,rgba(238,246,255,0.92)_100%)]" />
+      <div className="fixed inset-0 z-[1] bg-[radial-gradient(ellipse_at_center,rgba(37,99,235,0.16)_0%,rgba(6,18,38,0.08)_42%,rgba(2,8,23,0.34)_100%)]" />
 
       <Navbar />
 
       <main className="relative z-10">
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute left-1/2 top-0 h-72 w-72 -translate-x-1/2 rounded-full bg-cyan-300/12 blur-3xl" />
-          <div className="absolute -left-24 top-[30rem] h-72 w-72 rounded-full bg-blue-300/10 blur-3xl" />
-          <div className="absolute right-0 top-[70rem] h-72 w-72 rounded-full bg-sky-300/10 blur-3xl" />
-        </div>
-
-        {/* first screen only */}
-        <section className="flex min-h-[100svh] items-center justify-center px-0 pt-20">
+        <section className="flex min-h-[calc(100svh-24px)] items-center justify-center px-0 pb-10 pt-24">
           <Banner />
         </section>
 
-        {/* below fold */}
         <div className="space-y-0">
           <Certification />
           <HomeDoctors />
-          <Testimonial />
         </div>
       </main>
 

@@ -253,10 +253,13 @@ export default function AnimatedNavbar() {
         showNavbar ? "translate-y-0" : "-translate-y-full"
       }`}
     >
-      <div className="mx-auto max-w-[1020px] px-3 pt-3 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1240px] px-3 pt-3 sm:px-6 lg:px-8">
         <div className="overflow-visible rounded-[22px] border border-white/16 bg-[#061226]/42 shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_18px_44px_rgba(2,8,23,0.20)] backdrop-blur-[12px]">
-          <div className="flex items-center justify-between gap-4 px-3 py-2 sm:px-4">
-            <Link to="/" className="flex min-w-0 shrink-0 items-center gap-3">
+          <div className="flex items-center justify-between gap-3 px-3 py-2 sm:px-4">
+            <Link
+              to="/"
+              className="flex min-w-[210px] shrink-0 items-center gap-3"
+            >
               <div className="flex h-11 w-11 items-center justify-center rounded-[17px] border border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(226,241,255,0.90))] shadow-[inset_0_1px_0_rgba(255,255,255,0.86),0_10px_24px_rgba(2,8,23,0.20)]">
                 <img
                   src={logoImg}
@@ -275,7 +278,7 @@ export default function AnimatedNavbar() {
               </div>
             </Link>
 
-            <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1.5 xl:flex">
+            <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 xl:flex">
               {navGroups.map((group) =>
                 group.type === "link" ? (
                   <DesktopLink
@@ -295,7 +298,7 @@ export default function AnimatedNavbar() {
               )}
             </nav>
 
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex min-w-[104px] shrink-0 items-center justify-end gap-2">
               <div className="hidden xl:block">
                 {isSignedIn ? (
                   <button
@@ -380,7 +383,7 @@ function DesktopLink({ item, isActive }) {
       to={item.to}
       end
       className={[
-        "inline-flex h-10 items-center gap-2 rounded-full px-4 text-[13px] font-bold transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200 focus-visible:ring-offset-2 focus-visible:ring-offset-[#061226]",
+        "inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-[13px] font-bold transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200 focus-visible:ring-offset-2 focus-visible:ring-offset-[#061226]",
         isActive
           ? "bg-white/[0.14] text-white shadow-[0_8px_22px_rgba(2,8,23,0.16)]"
           : "text-blue-50/78 hover:bg-white/[0.10] hover:text-white",
@@ -401,7 +404,7 @@ function DesktopMenu({ group, isActive, activeMenu, setActiveMenu }) {
         type="button"
         onClick={() => setActiveMenu(menuOpen ? null : group.label)}
         className={[
-          "inline-flex h-10 items-center gap-2 rounded-full px-4 text-[13px] font-bold transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200 focus-visible:ring-offset-2 focus-visible:ring-offset-[#061226]",
+          "inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-[13px] font-bold transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200 focus-visible:ring-offset-2 focus-visible:ring-offset-[#061226]",
           isActive || menuOpen
             ? "bg-white/[0.14] text-white shadow-[0_8px_22px_rgba(2,8,23,0.16)]"
             : "text-blue-50/78 hover:bg-white/[0.10] hover:text-white",

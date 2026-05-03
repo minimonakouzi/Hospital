@@ -4,8 +4,8 @@ import {
   Activity,
   CalendarDays,
   ChevronRight,
+  Search,
   ShieldCheck,
-  Star,
   Stethoscope,
 } from "lucide-react";
 
@@ -30,13 +30,13 @@ function getServiceDescription(service) {
     service?.shortDescription ||
     service?.description ||
     service?.about ||
-    "Professional diagnostic service with reliable testing and patient-friendly care."
+    ""
   );
 }
 
 function getServicePrice(service) {
   return (
-    service?.price ?? service?.fees ?? service?.fee ?? service?.amount ?? 0
+    service?.price ?? service?.fees ?? service?.fee ?? service?.amount ?? null
   );
 }
 
@@ -56,6 +56,8 @@ export default function ServicePage({ apiBase }) {
 
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState("");
+  const [availabilityFilter, setAvailabilityFilter] = useState("all");
 
   async function fetchServices() {
     setLoading(true);
@@ -105,6 +107,22 @@ export default function ServicePage({ apiBase }) {
     }));
   }, [services]);
 
+  const filteredServices = useMemo(() => {
+    const q = query.trim().toLowerCase();
+
+    return normalizedServices.filter((service) => {
+      const matchesQuery =
+        !q ||
+        service._name.toLowerCase().includes(q) ||
+        service._description.toLowerCase().includes(q);
+      const matchesAvailability =
+        availabilityFilter === "all" ||
+        (availabilityFilter === "available" && service._available);
+
+      return matchesQuery && matchesAvailability;
+    });
+  }, [availabilityFilter, normalizedServices, query]);
+
   function handleBook(service) {
     const id = service?._serviceId;
     if (!id) return;
@@ -118,7 +136,7 @@ export default function ServicePage({ apiBase }) {
 
       <div className="relative z-10 mx-auto max-w-[1380px] px-4 pb-16 sm:px-6 lg:px-8">
         {/* Hero */}
-        <div className="mb-8 overflow-hidden rounded-[34px] border border-white/60 bg-white/70 shadow-[0_18px_50px_rgba(30,64,175,0.08)] backdrop-blur-xl">
+        <div className="mb-8 overflow-hidden rounded-[28px] border border-white/60 bg-white/78 shadow-[0_18px_50px_rgba(30,64,175,0.08)] backdrop-blur-xl">
           <div className="grid items-center gap-8 px-6 py-8 md:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:px-10 lg:py-10">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-[#d9e6fb] bg-white px-4 py-2 text-sm font-medium text-[#2563eb]">
@@ -148,7 +166,7 @@ export default function ServicePage({ apiBase }) {
               </div>
             </div>
 
-            <div className="rounded-[28px] border border-[#dbe6f7] bg-[#eef4fb] p-5 shadow-inner">
+            <div className="rounded-[24px] border border-[#dbe6f7] bg-[#eef4fb] p-5 shadow-inner">
               <div className="flex items-start gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#2563eb] shadow-sm">
                   <CalendarDays className="h-5 w-5" />
@@ -163,22 +181,35 @@ export default function ServicePage({ apiBase }) {
                 </div>
               </div>
 
-              <div className="mt-5 grid grid-cols-2 gap-4">
-                <div className="rounded-[20px] border border-[#dbe6f7] bg-white p-4">
-                  <p className="text-sm text-[#64748b]">Total Services</p>
-                  <p className="mt-2 text-2xl font-bold text-[#0f172a]">
-                    {normalizedServices.length}
-                  </p>
+              <div className="mt-5 space-y-3">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94a3b8]" />
+                  <input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search services..."
+                    className="h-12 w-full rounded-[18px] border border-[#dbe6f7] bg-white pl-11 pr-4 text-sm text-[#0f172a] outline-none transition focus:border-[#bfd3fa]"
+                  />
                 </div>
 
-                <div className="rounded-[20px] border border-[#dbe6f7] bg-white p-4">
-                  <p className="text-sm text-[#64748b]">Available Now</p>
-                  <p className="mt-2 text-2xl font-bold text-[#0f172a]">
-                    {
-                      normalizedServices.filter((service) => service._available)
-                        .length
-                    }
-                  </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    ["all", "All services"],
+                    ["available", "Available"],
+                  ].map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setAvailabilityFilter(value)}
+                      className={`h-11 rounded-[16px] border px-3 text-sm font-semibold transition ${
+                        availabilityFilter === value
+                          ? "border-[#bfdbfe] bg-[#2563eb] text-white"
+                          : "border-[#dbe6f7] bg-white text-[#334155] hover:text-[#2563eb]"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -194,18 +225,22 @@ export default function ServicePage({ apiBase }) {
           <div className="rounded-[30px] border border-[#dbe6f7] bg-white/80 px-6 py-14 text-center text-[#64748b] shadow-sm">
             No services available right now.
           </div>
+        ) : filteredServices.length === 0 ? (
+          <div className="rounded-[30px] border border-[#dbe6f7] bg-white/80 px-6 py-14 text-center text-[#64748b] shadow-sm">
+            No services match your search.
+          </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-            {normalizedServices.map((service) => {
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {filteredServices.map((service) => {
               const available = service._available;
 
               return (
                 <article
                   key={service._serviceId}
-                  className="overflow-hidden rounded-[30px] border border-white/60 bg-white/85 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-[0_22px_55px_rgba(15,23,42,0.11)]"
+                  className="overflow-hidden rounded-[24px] border border-white/70 bg-white/88 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur-xl transition hover:-translate-y-1 hover:shadow-[0_22px_55px_rgba(15,23,42,0.11)]"
                 >
                   <div className="p-4">
-                    <div className="overflow-hidden rounded-[24px] bg-[#f8fbff]">
+                    <div className="overflow-hidden rounded-[20px] bg-[#f8fbff]">
                       {service._image ? (
                         <img
                           src={service._image}
@@ -219,13 +254,13 @@ export default function ServicePage({ apiBase }) {
                       )}
                     </div>
 
-                    <div className="mt-4 text-center">
-                      <h3 className="text-lg font-bold text-[#0f172a]">
+                    <div className="mt-4">
+                      <h3 className="text-xl font-bold text-[#0f172a]">
                         {service._name}
                       </h3>
                     </div>
 
-                    <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-semibold ${
                           available
@@ -236,16 +271,12 @@ export default function ServicePage({ apiBase }) {
                         {available ? "Available" : "Not Available"}
                       </span>
 
-                      <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#2563eb]">
-                        ${service._price}
-                      </span>
-
-                      <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-600">
-                        <span className="inline-flex items-center gap-1">
-                          <Star className="h-3.5 w-3.5" />
-                          Diagnostic
+                      {service._price !== null && service._price !== "" && (
+                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#2563eb]">
+                          ${service._price}
                         </span>
-                      </span>
+                      )}
+
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-semibold ${
                           service._requiresPrescription
@@ -259,11 +290,13 @@ export default function ServicePage({ apiBase }) {
                       </span>
                     </div>
 
-                    <div className="mt-4 rounded-[20px] bg-[#f8fbff] p-4">
-                      <p className="line-clamp-3 text-sm leading-7 text-[#64748b]">
-                        {service._description}
-                      </p>
-                    </div>
+                    {service._description && (
+                      <div className="mt-4 rounded-[18px] bg-[#f8fbff] p-4">
+                        <p className="line-clamp-3 text-sm leading-7 text-[#64748b]">
+                          {service._description}
+                        </p>
+                      </div>
+                    )}
 
                     <div className="mt-5">
                       <button
